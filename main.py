@@ -123,7 +123,7 @@ def addme(bot, update):
             # Commit your changes in the database
             db.commit()
             bot.send_message(chat_id=chat_id, text="Added! Now whenever you " + emojize(":heart:", use_aliases=True) + \
-                                                   " a photo in DTP, I'll forward it to you here " + \
+                                                   " a photo in DTP, I'll forward it to you here! " + \
                                                    emojize(":smiley:", use_aliases=True))
         except Exception as e:
             # Rollback in case there is any error
@@ -169,31 +169,49 @@ def process_emoji(bot, update):
     try:
         username = update.message.reply_to_message.from_user.username
     except Exception as e:
-        print("process_emoji() error: " + str(e))
+        print("That ain't an emoji chief. Here's an error message for ya though.")
+        print(str(e))
         username = None
     # or update.message.chat.title == "Debauchery Tea Party":
     if update.message.chat.title == "Bot testing":
         # If :thumbsup:, add 1 point
         if emojize(":thumbsup:", use_aliases=True) in update.message.text and username is not None:
-            update_karma(username, "+", "1")
+            if update.message.from_user.username == username:
+                bot.send_message(chat_id=update.message.chat_id, text=update.message.from_user.username + \
+                                                                      " just tried to give themselves points.")
+                bot.send_sticker(chat_id=update.message.chat_id, sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
+            else:
+                update_karma(username, "+", "1")
 
         # If :ok_hand:, add 2 points
         if emojize(":ok_hand:", use_aliases=True) in update.message.text and username is not None:
-            update_karma(username, "+", "2")
+            if update.message.from_user.username == username:
+                bot.send_message(chat_id=update.message.chat_id, text=update.message.from_user.username + \
+                                                                      " just tried to give themselves points. Shame.")
+            else:
+                update_karma(username, "+", "2")
 
         # If :heart:, add 3 points and forward the message to whoever liked it
         if emojize(":heart:", use_aliases=True) in update.message.text and username is not None:
-            update_karma(username, "+", "3")
-            # Get user's personal chat_id with Aqua
-            tele_chat_id = get_chat_id(update.message.from_user.username)
-            # Send message
-            bot.forward_message(chat_id=tele_chat_id, from_chat_id=update.message.chat_id, \
-                                message_id=update.message.reply_to_message.message_id)
-            bot.send_message(chat_id=update.message.chat_id, text=update.message.reply_to_message)
+            if update.message.from_user.username == username:
+                bot.send_message(chat_id=update.message.chat_id, text=update.message.from_user.username + \
+                                                                      " just tried to give themselves points. Shame.")
+            else:
+                update_karma(username, "+", "3")
+                # Get user's personal chat_id with Aqua
+                tele_chat_id = get_chat_id(update.message.from_user.username)
+                # Send message
+                bot.forward_message(chat_id=tele_chat_id, from_chat_id=update.message.chat_id, \
+                                    message_id=update.message.reply_to_message.message_id)
+                bot.send_message(chat_id=update.message.chat_id, text=update.message.reply_to_message)
 
         # If :thumbsdown:, subtract 1 point
         if emojize(":thumbsdown:", use_aliases=True) in update.message.text and username is not None:
-            update_karma(username, "-", "1")
+            if update.message.from_user.username == username:
+                bot.send_message(chat_id=update.message.chat_id, text=update.message.from_user.username + \
+                                                                      " just tried to give themselves points. Shame.")
+            else:
+                update_karma(username, "-", "1")
 
         # If :no_entry_sign: or :underage:, send lolice gif
         if emojize(":no_entry_sign:", use_aliases=True) in update.message.text and username is not None or \
@@ -205,12 +223,12 @@ def process_emoji(bot, update):
             bot.send_message(chat_id=update.message.chat_id, text="MODS!! MODS!!!! LOLI LEWDING REPORTED!!!")
 
         # If :sweat_drops:, send Aqua Nature Beauty party trick gif
-        if emojize(":sweat_drops:", use_aliases=True) in update.message.text and username is not None:
+        if emojize(":sweat_drops:", use_aliases=True) in update.message.text:
             bot.send_animation(chat_id=update.message.chat_id, animation="CgADAQADSwADac6YRfOLXW5UD4qJAg")
 
         # If :crocodile: or :shower:, send Aqua purification gif
-        if emojize(":crocodile:", use_aliases=True) in update.message.text and username is not None or \
-                emojize(":shower:", use_aliases=True) in update.message.text and username is not None:
+        if emojize(":crocodile:", use_aliases=True) in update.message.text or \
+                emojize(":shower:", use_aliases=True) in update.message.text:
             bot.send_animation(chat_id=update.message.chat_id, animation="CgADAQADewADMXsJRAYOmfxivPi3Ag")
 
 
