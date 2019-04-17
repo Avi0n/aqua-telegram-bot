@@ -172,8 +172,7 @@ def process_emoji(bot, update):
         print("That ain't an emoji chief. Here's an error message for ya though.")
         print(str(e))
         username = None
-    # or update.message.chat.title == "Debauchery Tea Party":
-    if update.message.chat.title == "Bot testing":
+    if update.message.chat.title == "Bot testing" or update.message.chat.title == "Debauchery Tea Party":
         # If :thumbsup:, add 1 point
         if emojize(":thumbsup:", use_aliases=True) in update.message.text and username is not None:
             if update.message.from_user.username == username:
