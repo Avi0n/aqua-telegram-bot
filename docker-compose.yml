@@ -1,4 +1,4 @@
-version: '2'
+version: '3.1'
 
 services:
   mariadb:
@@ -6,12 +6,13 @@ services:
     container_name: mariadb
     restart: always
     hostname: mariadb
-    command: mysqld --innodb-flush-method=littlesync --innodb-use-native-aio=OFF --log_bin=ON
+    command: 
+      'mysqld --innodb-flush-method=littlesync --innodb-use-native-aio=OFF --log_bin=ON'
     volumes:
-        - ./mariadb:/config:rw
-        - ./mariadb/data:/var/lib/mysql
+        - db-config:/config:rw
+        - db-data:/var/lib/mysql
     ports:
-      - "3306:3306"
+      - '3306:3306'
     environment:
       - MYSQL_ROOT_PASSWORD=${MYSQL_PASS}
 
@@ -21,3 +22,7 @@ services:
     container_name: aqua-telegram-bot
     depends_on:
       - mariadb
+
+volumes:
+  db-config:
+  db-data:
