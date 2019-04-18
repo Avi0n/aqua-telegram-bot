@@ -1,0 +1,5 @@
+mysqlclient
+python-telegram-bot
+emoji
+python-dotenv
+

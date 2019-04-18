@@ -1,0 +1,23 @@
+version: '2'
+
+services:
+  mariadb:
+    build: ./db-docker
+    container_name: mariadb
+    restart: always
+    hostname: mariadb
+    command: --transaction-isolation=READ-COMMITTED --binlog-format=ROW
+    volumes:
+        - ./mariadb:/config:rw
+        - ./mariadb/data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_PASS}
+
+  aqua-telegram-bot:
+    restart: unless-stopped
+    build: .
+    container_name: aqua-telegram-bot
+    depends_on:
+      - mariadb
