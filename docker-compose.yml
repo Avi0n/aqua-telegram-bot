@@ -6,7 +6,7 @@ services:
     container_name: mariadb
     restart: always
     hostname: mariadb
-    command: --transaction-isolation=READ-COMMITTED --binlog-format=ROW
+    command: mysqld --innodb-flush-method=littlesync --innodb-use-native-aio=OFF --log_bin=ON
     volumes:
         - ./mariadb:/config:rw
         - ./mariadb/data:/var/lib/mysql
