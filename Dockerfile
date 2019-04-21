@@ -2,13 +2,14 @@ FROM jfloff/alpine-python:3.7
 
 MAINTAINER Avi0n
 
-COPY . /app
-
 WORKDIR /app
 
-RUN apk add --no-cache mariadb-dev build-base
+COPY ./requirements.txt /app
 
-RUN pip install pip --upgrade && \
-pip install -r requirements.txt
+RUN apk add mariadb-dev build-base
 
-CMD python ./main.py
+RUN pip install -r requirements.txt
+
+COPY . /app
+
+CMD [ "python", "./main.py" ]
