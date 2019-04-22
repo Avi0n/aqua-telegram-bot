@@ -10,7 +10,7 @@ load_dotenv()
 
 # Initialize logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    level=logging.INFO)
+                    level=logging.DEBUG)
 
 logger = logging.getLogger(__name__)
 
@@ -172,7 +172,6 @@ def process_emoji(bot, update):
     try:
         username = update.message.reply_to_message.from_user.username
     except Exception as e:
-        print("That ain't an emoji chief. Here's an error message for ya though.")
         print(str(e))
         username = None
 
@@ -180,22 +179,17 @@ def process_emoji(bot, update):
     message_emoji = ""
     emoji_found = False
 
-    if update.message.text is None:
-        emoji_found = False
-    else:
+    if not update.message.text is None:
         message_emoji = update.message.text
         print(message_emoji)
         emoji_found = True
-    print("emoji in message.text = " + str(emoji_found))
+        print("emoji in update.message.text = " + str(emoji_found))
 
-    if emoji_found == False:
-        if update.message.sticker.emoji is None:
-            emoji_found = False
-        else:
-            message_emoji = update.message.sticker.emoji
-            print(message_emoji)
-            emoji_found = True
-        print("emoji in message.sticker.emoji = " + str(emoji_found))
+    elif not update.message.sticker.emoji is None:
+        message_emoji = update.message.sticker.emoji
+        print(message_emoji)
+        emoji_found = True
+        print("emoji in update.message.sticker.emoji = " + str(emoji_found))
 
     if update.message.chat.title == "Bot testing" or update.message.chat.title == "Debauchery Tea Party":
         # If :thumbsup:, add 1 point
@@ -288,32 +282,25 @@ class FilterEmoji(BaseFilter):
         message_emoji = ""
         emoji_found = False
 
-        if message.text is None:
-            emoji_found = False
-        else:
+        if not message.text is None:
             message_emoji = message.text
             print(message_emoji)
             emoji_found = True
-        print("emoji in message.text = " + str(emoji_found))
+            print("emoji in message.text = " + str(emoji_found))
 
-        if emoji_found == False:
-            if message.sticker.emoji is None:
-                emoji_found = False
-            else:
-                message_emoji = message.sticker.emoji
-                print(message_emoji)
-                emoji_found = True
+        elif not message.sticker.emoji is None:
+            message_emoji = message.sticker.emoji
+            print(message_emoji)
+            emoji_found = True
             print("emoji in message.sticker.emoji = " + str(emoji_found))
 
-        try:
+        if emoji_found is True:
             for x in accepted_emojis:
-                # if emojize(x, use_aliases=True) in message.text or
                 if emojize(x, use_aliases=True) in message_emoji:
                     print("Yep, that's an emoji in the message")
                     return True
-
-        except Exception as e:
-            print(str(e))
+        else:    
+            print("That ain't an emoji chief.")
             return False
 
 
