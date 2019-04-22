@@ -17,11 +17,11 @@ services:
       - MYSQL_ROOT_PASSWORD=${MYSQL_PASS}
 
   aqua-telegram-bot:
-    restart: unless-stopped
+    restart: always
     build: .
     container_name: aqua-telegram-bot
     volumes:
-      - .:/app
+      - ./:/app
     depends_on:
       - mariadb
 
