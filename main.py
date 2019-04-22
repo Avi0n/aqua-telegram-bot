@@ -192,26 +192,6 @@ def process_emoji(bot, update):
         print("emoji in update.message.sticker.emoji = " + str(emoji_found))
 
     if update.message.chat.title == "Bot testing" or update.message.chat.title == "Debauchery Tea Party":
-        # If message contains :thumbsup:, add 1 point
-        if emojize(":thumbsup:", use_aliases=True) in message_emoji and username is not None:
-            if update.message.from_user.username == username:
-                bot.send_message(chat_id=update.message.chat_id, text=update.message.from_user.username +
-                                 " just tried to give themselves points.")
-                bot.send_sticker(chat_id=update.message.chat_id,
-                                 sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
-            else:
-                update_karma(username, "+", "1")
-
-        # If message contains :ok_hand:, add 2 points
-        if emojize(":ok_hand:", use_aliases=True) in message_emoji and username is not None:
-            if update.message.from_user.username == username:
-                bot.send_message(chat_id=update.message.chat_id, text=update.message.from_user.username +
-                                 " just tried to give themselves points.")
-                bot.send_sticker(chat_id=update.message.chat_id,
-                                 sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
-            else:
-                update_karma(username, "+", "2")
-
         # If message contains :heart:, add 3 points and forward the message to whoever liked it
         if emojize(":heart:", use_aliases=True) in message_emoji and username is not None:
             if update.message.from_user.username == username:
@@ -222,6 +202,36 @@ def process_emoji(bot, update):
             else:
                 update_karma(username, "+", "3")
 
+        # If message contains :ok_hand:, add 2 points
+        elif emojize(":ok_hand:", use_aliases=True) in message_emoji and username is not None:
+            if update.message.from_user.username == username:
+                bot.send_message(chat_id=update.message.chat_id, text=update.message.from_user.username +
+                                 " just tried to give themselves points.")
+                bot.send_sticker(chat_id=update.message.chat_id,
+                                 sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
+            else:
+                update_karma(username, "+", "2")
+
+        # If message contains :thumbsup:, add 1 point
+        elif emojize(":thumbsup:", use_aliases=True) in message_emoji and username is not None:
+            if update.message.from_user.username == username:
+                bot.send_message(chat_id=update.message.chat_id, text=update.message.from_user.username +
+                                 " just tried to give themselves points.")
+                bot.send_sticker(chat_id=update.message.chat_id,
+                                 sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
+            else:
+                update_karma(username, "+", "1")
+
+        # If message contains :thumbsdown:, subtract 1 point
+        elif emojize(":thumbsdown:", use_aliases=True) in message_emoji and username is not None:
+            if update.message.from_user.username == username:
+                bot.send_message(chat_id=update.message.chat_id, text=update.message.from_user.username +
+                                 " just tried to take away points from themselves.")
+                bot.send_sticker(chat_id=update.message.chat_id,
+                                 sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
+            else:
+                update_karma(username, "-", "1")
+
         # If message contains :star:, forward message that the user replied to with :star:
         if emojize(":star:", use_aliases=True) in message_emoji and username is not None:
             # Get user's personal chat_id with Aqua
@@ -231,16 +241,6 @@ def process_emoji(bot, update):
                                 message_id=update.message.reply_to_message.message_id)
             bot.send_message(chat_id=update.message.chat_id,
                              text=update.message.reply_to_message)
-
-        # If message contains :thumbsdown:, subtract 1 point
-        if emojize(":thumbsdown:", use_aliases=True) in message_emoji and username is not None:
-            if update.message.from_user.username == username:
-                bot.send_message(chat_id=update.message.chat_id, text=update.message.from_user.username +
-                                 " just tried to take away points from themselves.")
-                bot.send_sticker(chat_id=update.message.chat_id,
-                                 sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
-            else:
-                update_karma(username, "-", "1")
 
         # If message contains :no_entry_sign: or :underage:, send lolice gif
         if emojize(":no_entry_sign:", use_aliases=True) in message_emoji and username is not None or \
