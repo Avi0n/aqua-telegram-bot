@@ -94,7 +94,8 @@ def update_karma(username, plus_or_minus, points):
 # Respond to /start
 def start(bot, update):
     bot.send_message(chat_id=update.message.chat_id,
-                     text="You can send '/karma' to see everyone's points")
+                     text="Send /karma to see everyone's points.\nSend /addme to let me forward" + \
+                         " photos that you " + emojize(":star:", use_aliases=True) + " to you!")
 
 
 # Respond to /karma
@@ -124,7 +125,7 @@ def addme(bot, update):
             cursor.execute(sql)
             # Commit your changes in the database
             db.commit()
-            bot.send_message(chat_id=chat_id, text="Added! Now whenever you " + emojize(":heart:", use_aliases=True) +
+            bot.send_message(chat_id=chat_id, text="Added! Now whenever you " + emojize(":star:", use_aliases=True) +
                                                    " a photo in DTP, I'll forward it to you here! " +
                                                    emojize(":smiley:", use_aliases=True))
         except Exception as e:
@@ -177,19 +178,14 @@ def process_emoji(bot, update):
 
     # Assign emoji in message or sticker to a variable
     message_emoji = ""
-    emoji_found = False
 
     if not update.message.text is None:
         message_emoji = update.message.text
         print(message_emoji)
-        emoji_found = True
-        print("emoji in update.message.text = " + str(emoji_found))
 
     elif not update.message.sticker.emoji is None:
         message_emoji = update.message.sticker.emoji
         print(message_emoji)
-        emoji_found = True
-        print("emoji in update.message.sticker.emoji = " + str(emoji_found))
 
     if update.message.chat.title == "Bot testing" or update.message.chat.title == "Debauchery Tea Party":
         # If message contains :heart:, add 3 points and forward the message to whoever liked it
@@ -270,9 +266,10 @@ class FilterEmoji(BaseFilter):
     def filter(self, message):
         accepted_emojis = [
             ":thumbsup:",
-            ":heart:",
             ":ok_hand:",
+            ":heart:",
             ":thumbsdown:",
+            ":star:",
             ":no_entry_sign:",
             ":underage:",
             ":police_car:",
