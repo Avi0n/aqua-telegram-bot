@@ -5,6 +5,8 @@ Python packages required:
 *  python-telegram-bot
 *  emoji
 *  python-dotenv
+*  requests
+*  Pillow
 
 ## Setting up a dev environment
 1.  Install [Docker](https://www.docker.com/get-started)
