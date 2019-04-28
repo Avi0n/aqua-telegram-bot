@@ -140,9 +140,6 @@ def source(bot, update):
         EnableRename = False
         minsim = '50!'
 
-        sys.stdout = codecs.getwriter('utf8')(sys.stdout.detach())
-        sys.stderr = codecs.getwriter('utf8')(sys.stderr.detach())
-
         extensions = {".jpg", ".jpeg", ".png", ".gif", ".bmp"}
         thumbSize = (150, 150)
 
@@ -182,13 +179,13 @@ def source(bot, update):
                         imageData = io.BytesIO()
                         image.save(imageData, format='PNG')
 
-                        url = 'http://saucenao.com/search.php?output_type=2&testmode=1&numres=1&minsim=' + minsim + '&dbmask=' + str(
+                        url = 'http://saucenao.com/search.php?output_type=2&testmode=1&numres=8&minsim=' + minsim + '&dbmask=' + str(
                             db_bitmask) + '&api_key=' + api_key
                         files = {'file': ("photo.jpg", imageData.getvalue())}
                         imageData.close()
 
                         processResults = True
-                        while True:
+                        while processResults is True:
                             r = requests.post(url, files=files)
                             if r.status_code != 200:
                                 if r.status_code == 403:
@@ -242,10 +239,9 @@ def source(bot, update):
                                     result_url = results['results'][0]['data']['ext_urls'][0]
 
                                     # Send result URL
-                                    if float(pic_similarity) < 70:
+                                    if float(results['results'][0]['header']['similarity']) < 70:
                                         bot.send_message(chat_id=update.message.chat_id,
-                                                text="This _might_ be the source, but I'm not sure 100% sure.\n"
-                                                    "[Sauce](" + result_url + ")" + \
+                                                text="This _might_ be it: [Sauce](" + result_url + ")" + \
                                                     "\nSimilarity: " + pic_similarity, \
                                                 parse_mode='Markdown',disable_web_page_preview=True)
                                     else:
