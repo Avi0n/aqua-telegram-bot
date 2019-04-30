@@ -132,10 +132,22 @@ def source(bot, update):
 
     if authorized_room is True and username is not None:
         # Get media's file_id
-        try:
-            media_id = update.message.reply_to_message.photo[2].file_id
-        except:
-            media_id = update.message.reply_to_message.document.file_id
+        while True:
+            try:
+                media_id = update.message.reply_to_message.photo[2].file_id
+                break
+            except Exception as e:
+                print("Not a photo")
+            try:
+                media_id = update.message.reply_to_message.document.file_id
+                break
+            except Exception as e:
+                print("Not a document")
+            try:
+                media_id = update.message.reply_to_message.video.file_id
+                break
+            except Exception as e:
+                print("Not a video")
 
         # Get the download link from Telegram
         file = bot.get_file(file_id=media_id)
