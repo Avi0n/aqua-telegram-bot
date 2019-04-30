@@ -4,3 +4,5 @@ emoji
 python-dotenv
 Pillow
 requests
+imageio
+imageio-ffmpeg
