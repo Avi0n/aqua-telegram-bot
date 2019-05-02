@@ -152,7 +152,7 @@ def source(bot, update):
         # Get the download link from Telegram
         file = bot.get_file(file_id=media_id)
         # Download the media (jpg, png, mp4)
-        file.download(custom_path="source.jpg",timeout=10)
+        file.download(timeout=10)
         # If it's an mp4, convert it to gif
         for fname in os.listdir('.'):
             if fname.endswith('.mp4'):
@@ -319,7 +319,7 @@ def source(bot, update):
         if fname.endswith('.gif'):
             os.remove('source.gif')
         elif fname.endswith('.jpg'):
-            os.remove('source.jpg')
+            os.remove(fname)
 
 
 # Respond to /addme
