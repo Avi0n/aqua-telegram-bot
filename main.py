@@ -148,6 +148,8 @@ def source(bot, update):
                 break
             except Exception as e:
                 print("Not a video")
+            finally:
+                break
 
         # Get the download link from Telegram
         file = bot.get_file(file_id=media_id)
