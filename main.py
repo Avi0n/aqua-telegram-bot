@@ -137,8 +137,9 @@ def source(bot, update):
         print(str(e))
         username = None
 
-    if update.message.chat.title == "Bot testing" or update.message.chat.title == "Debauchery Tea Party":
-        authorized_room = True
+    #if update.message.chat.title == "Bot testing" or update.message.chat.title == "Debauchery Tea Party":
+        #authorized_room = True
+    authorized_room = True
 
     if authorized_room is True and username is not None:
         # Get media's file_id
