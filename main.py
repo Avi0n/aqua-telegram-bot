@@ -23,7 +23,7 @@ load_dotenv()
 
 # Initialize logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    level=logging.DEBUG)
+                    level=logging.INFO)
 
 logger = logging.getLogger(__name__)
 
@@ -121,10 +121,36 @@ def give(bot, update):
     string_split = update.message.text.split()
     username = string_split[1]
     points = string_split[2]
-
+    from_username = update.message.from_user.username
+    
     try:
-        update_karma(username, '+', points)
+        if username == from_username:
+            bot.send_message(chat_id=update.message.chat_id, text=update.message.from_user.username +
+                             " just tried to give themselves points.")
+            bot.send_sticker(chat_id=update.message.chat_id,
+                             sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
+        elif int(points) is 0:
+            bot.send_message(chat_id=update.message.chat_id,
+                             text="pfft, you just tried to give someone 0 points.")
+            bot.send_sticker(chat_id=update.message.chat_id,
+                             sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
+        elif int(points) < -20:
+            bot.send_message(chat_id=update.message.chat_id,
+                             text="Don't you think that's a tad too many points to be taking away?")
+        elif -21 < int(points) < 0:
+            update_karma(username, '+', points)
+            bot.send_message(chat_id=update.message.chat_id,
+                             text=from_username + " took away " + points + " points from " + username + "!")
+        elif 61 > int(points) > 0:
+            update_karma(username, '+', points)
+            bot.send_message(chat_id=update.message.chat_id,
+                             text=from_username + " gave " + username + " " + points + " points!")
+        elif int(points) > 61:
+             bot.send_message(chat_id=update.message.chat_id,
+                              text="Don't you think that's a tad too many points?")
     except Exception as e:
+        bot.send_message(chat_id=update.message.chat_id,
+                         text="There was a problem. Please send the following message to @Avi0n")
         bot.send_message(chat_id=update.message.chat_id, text=str(e))
 
 # Respond to /source
