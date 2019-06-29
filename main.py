@@ -23,7 +23,7 @@ load_dotenv()
 
 # Initialize logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    level=logging.INFO)
+                    level=logging.DEBUG)
 
 logger = logging.getLogger(__name__)
 
@@ -116,6 +116,16 @@ def karma(bot, update):
     bot.send_message(chat_id=update.message.chat_id,
                      text=read_db(), parse_mode='Markdown', timeout=20)
 
+# Respond to /give
+def give(bot, update):
+    string_split = update.message.text.split()
+    username = string_split[1]
+    points = string_split[2]
+
+    try:
+        update_karma(username, '+', points)
+    except Exception as e:
+        bot.send_message(chat_id=update.message.chat_id, text=str(e))
 
 # Respond to /source
 def source(bot, update):
@@ -572,6 +582,9 @@ def main():
 
     addme_handler = CommandHandler('addme', addme)
     dispatcher.add_handler(addme_handler)
+    
+    give_handler = CommandHandler('give', give)
+    dispatcher.add_handler(give_handler)
 
     # If an emoji in the list above is found, run process_emoji()
     emoji_handler = MessageHandler(filter_emoji, process_emoji)
