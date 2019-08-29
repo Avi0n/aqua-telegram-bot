@@ -1,6 +1,7 @@
 import os
 import logging
 import MySQLdb
+import string
 from dotenv import load_dotenv
 from emoji import emojize
 from telegram.ext import (MessageHandler, CommandHandler, BaseFilter, Updater)
@@ -118,40 +119,45 @@ def karma(bot, update):
 
 # Respond to /give
 def give(bot, update):
-    string_split = update.message.text.split()
-    username = string_split[1]
-    points = string_split[2]
-    from_username = update.message.from_user.username
-    
-    try:
-        if username == from_username:
-            bot.send_message(chat_id=update.message.chat_id, text=update.message.from_user.username +
-                             " just tried to give themselves points.")
-            bot.send_sticker(chat_id=update.message.chat_id,
-                             sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
-        elif int(points) is 0:
+    # Check to see if user used the right command format
+    if '@' in update.message.text:
+        # Remove all punctuation (@) and split the string
+        string_split = update.message.text.translate(str.maketrans('', '', string.punctuation)).split()
+        username = string_split[1]
+        points = string_split[2]
+        from_username = update.message.from_user.username
+        
+        try:
+            if username == from_username:
+                bot.send_message(chat_id=update.message.chat_id, text=update.message.from_user.username +
+                                " just tried to give themselves points.")
+                bot.send_sticker(chat_id=update.message.chat_id,
+                                sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
+            elif int(points) is 0:
+                bot.send_message(chat_id=update.message.chat_id,
+                                text="pfft, you just tried to give someone 0 points.")
+                bot.send_sticker(chat_id=update.message.chat_id,
+                                sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
+            elif int(points) < -20:
+                bot.send_message(chat_id=update.message.chat_id,
+                                text="Don't you think that's a tad too many points to be taking away?")
+            elif -21 < int(points) < 0:
+                update_karma(username, '+', points)
+                bot.send_message(chat_id=update.message.chat_id,
+                                text=from_username + " took away " + points + " points from " + username + "!")
+            elif 61 > int(points) > 0:
+                update_karma(username, '+', points)
+                bot.send_message(chat_id=update.message.chat_id,
+                                text=from_username + " gave " + username + " " + points + " points!")
+            elif int(points) > 61:
+                bot.send_message(chat_id=update.message.chat_id,
+                                text="Don't you think that's a tad too many points?")
+        except Exception as e:
             bot.send_message(chat_id=update.message.chat_id,
-                             text="pfft, you just tried to give someone 0 points.")
-            bot.send_sticker(chat_id=update.message.chat_id,
-                             sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
-        elif int(points) < -20:
-            bot.send_message(chat_id=update.message.chat_id,
-                             text="Don't you think that's a tad too many points to be taking away?")
-        elif -21 < int(points) < 0:
-            update_karma(username, '+', points)
-            bot.send_message(chat_id=update.message.chat_id,
-                             text=from_username + " took away " + points + " points from " + username + "!")
-        elif 61 > int(points) > 0:
-            update_karma(username, '+', points)
-            bot.send_message(chat_id=update.message.chat_id,
-                             text=from_username + " gave " + username + " " + points + " points!")
-        elif int(points) > 61:
-             bot.send_message(chat_id=update.message.chat_id,
-                              text="Don't you think that's a tad too many points?")
-    except Exception as e:
-        bot.send_message(chat_id=update.message.chat_id,
-                         text="There was a problem. Please send the following message to @Avi0n")
-        bot.send_message(chat_id=update.message.chat_id, text=str(e))
+                            text="There was a problem. Please send the following message to @Avi0n")
+            bot.send_message(chat_id=update.message.chat_id, text=str(e))
+    else:
+        bot.send_message(chat_id=update.message.chat_id, text="The correct format is '/give @username 5'")
 
 # Respond to /source
 def source(bot, update):
@@ -471,7 +477,7 @@ def process_emoji(bot, update):
         print(message_emoji)
 
     if update.message.chat.title == "Bot testing" or update.message.chat.title == "Debauchery Tea Party":
-        # If message contains :heart:, add 3 points and forward the message to whoever liked it
+        # If message contains :heart:, add 3 points
         if emojize(":heart:", use_aliases=True) in message_emoji and username is not None:
             if update.message.from_user.username == username:
                 bot.send_message(chat_id=update.message.chat_id, text=update.message.from_user.username +
@@ -562,29 +568,12 @@ class FilterEmoji(BaseFilter):
             ":crocodile:",
             ":shower:"
         ]
-        message_emoji = ""
-        emoji_found = False
+        message_emoji = message.text
 
-        if not message.text is None:
-            message_emoji = message.text
-            print(message_emoji)
-            emoji_found = True
-            print("emoji in message.text = " + str(emoji_found))
-
-        elif not message.sticker.emoji is None:
-            message_emoji = message.sticker.emoji
-            print(message_emoji)
-            emoji_found = True
-            print("emoji in message.sticker.emoji = " + str(emoji_found))
-
-        if emoji_found is True:
-            for x in accepted_emojis:
-                if emojize(x, use_aliases=True) in message_emoji:
-                    print("Yep, that's an emoji in the message")
-                    return True
-        else:
-            print("That ain't an emoji chief.")
-            return False
+        for i in accepted_emojis:
+            if emojize(i, use_aliases=True) in message_emoji:
+                print("Yep, that's an emoji in the message")
+                return True
 
 
 def main():
