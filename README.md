@@ -1,12 +1,6 @@
 # AquaTelegramBot
 Requires Python 3 and MySQL/MariaDB  
-Python packages required:   
-*  mysqlclient
-*  python-telegram-bot
-*  emoji
-*  python-dotenv
-*  requests
-*  Pillow
+Python packages are managed by pip in requirements.txt
 
 ## Setting up a dev environment
 1.  Install [Docker](https://www.docker.com/get-started)
