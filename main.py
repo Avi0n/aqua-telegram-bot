@@ -157,7 +157,10 @@ def give(bot, update):
                             text="There was a problem. Please send the following message to @Avi0n")
             bot.send_message(chat_id=update.message.chat_id, text=str(e))
     else:
-        bot.send_message(chat_id=update.message.chat_id, text="The correct format is '/give @username 5'")
+        string_split = update.message.text.split()
+        username = string_split[1]
+        points = string_split[2]
+        bot.send_message(chat_id=update.message.chat_id, text="The correct format is '/give @" + username + " " + points + "'")
 
 # Respond to /source
 def source(bot, update):
