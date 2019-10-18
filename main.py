@@ -164,7 +164,8 @@ def give(bot, update):
 
 # Respond to /source
 def source(bot, update):
-    authorized_room = False
+    authorized_room = True
+    media_id = None
 
     try:
         username = update.message.reply_to_message.from_user.username
@@ -174,13 +175,12 @@ def source(bot, update):
 
     #if update.message.chat.title == "Bot testing" or update.message.chat.title == "Debauchery Tea Party":
         #authorized_room = True
-    authorized_room = True
 
     if authorized_room is True and username is not None:
         # Get media's file_id
         while True:
             try:
-                media_id = update.message.reply_to_message.photo[2].file_id
+                media_id = update.message.reply_to_message.photo[1].file_id
                 break
             except Exception as e:
                 print("Not a photo")
@@ -334,11 +334,9 @@ def source(bot, update):
                                                          parse_mode='Markdown', disable_web_page_preview=True)
 
                                 else:
-                                    print('miss... ' + pic_similarity)
+                                    print('miss...')
                                     bot.send_message(chat_id=update.message.chat_id,
-                                                     text="I couldn't find anything.\n" +
-                                                     "Similarity: " + pic_similarity)
-
+                                                     text="I couldn't find a source for that image")
                             else:
                                 print('no results... ;_;')
                                 bot.send_message(
