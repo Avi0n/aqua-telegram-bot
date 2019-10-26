@@ -5,7 +5,7 @@ import string
 from dotenv import load_dotenv
 from emoji import emojize
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import (MessageHandler, CommandHandler, BaseFilter, CallbackQueryHandler, Updater)
+from telegram.ext import MessageHandler, CommandHandler, BaseFilter, CallbackQueryHandler, Filters, Updater
 # Imports needed for source()
 import sys
 import io
@@ -19,6 +19,14 @@ from collections import OrderedDict
 import sys
 import imageio
 
+
+''' 
+TODO:
+- Prevent user from upvoting their own posts
+- Prevent users from being able to vote more than once
+- Allow user to take back their vote
+- Feedback when users vote/unvote
+'''
 
 # Initialize dotenv
 load_dotenv()
@@ -107,19 +115,19 @@ def update_karma(username, plus_or_minus, points):
 
 
 # Respond to /start
-def start(bot, update):
-    bot.send_message(chat_id=update.message.chat_id,
+def start(update, context):
+    context.bot.send_message(chat_id=update.message.chat_id,
                      text="Send /karma to see everyone's points.\nSend /addme to let me forward" +
                      " photos that you " + emojize(":star:", use_aliases=True) + " to you!")
 
 
 # Respond to /karma
-def karma(bot, update):
-    bot.send_message(chat_id=update.message.chat_id,
+def karma(update, context):
+    context.bot.send_message(chat_id=update.message.chat_id,
                      text=read_db(), parse_mode='Markdown', timeout=20)
 
 # Respond to /give
-def give(bot, update):
+def give(update, context):
     # Check to see if user used the right command format
     if '@' in update.message.text:
         # Remove all punctuation (@) and split the string
@@ -131,42 +139,42 @@ def give(bot, update):
 
         try:
             if username == from_username:
-                bot.send_message(chat_id=update.message.chat_id, text=update.message.from_user.username +
+                context.bot.send_message(chat_id=update.message.chat_id, text=update.message.from_user.username +
                                  " just tried to give themselves points.")
-                bot.send_sticker(chat_id=update.message.chat_id,
+                context.bot.send_sticker(chat_id=update.message.chat_id,
                                  sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
             elif int(points) is 0:
-                bot.send_message(chat_id=update.message.chat_id,
+                context.bot.send_message(chat_id=update.message.chat_id,
                                  text="pfft, you just tried to give someone 0 points.")
-                bot.send_sticker(chat_id=update.message.chat_id,
+                context.bot.send_sticker(chat_id=update.message.chat_id,
                                  sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
             elif int(points) < -20:
-                bot.send_message(chat_id=update.message.chat_id,
+                context.bot.send_message(chat_id=update.message.chat_id,
                                  text="Don't you think that's a tad too many points to be taking away?")
             elif -21 < int(points) < 0:
                 update_karma(username, '+', points)
-                bot.send_message(chat_id=update.message.chat_id,
+                context.bot.send_message(chat_id=update.message.chat_id,
                                  text=from_username + " took away " + points + " points from " + username + "!")
             elif 61 > int(points) > 0:
                 update_karma(username, '+', points)
-                bot.send_message(chat_id=update.message.chat_id,
+                context.bot.send_message(chat_id=update.message.chat_id,
                                  text=from_username + " gave " + username + " " + points + " points!")
             elif int(points) > 61:
-                bot.send_message(chat_id=update.message.chat_id,
+                context.bot.send_message(chat_id=update.message.chat_id,
                                  text="Don't you think that's a tad too many points?")
         except Exception as e:
-            bot.send_message(chat_id=update.message.chat_id,
+            context.bot.send_message(chat_id=update.message.chat_id,
                              text="There was a problem. Please send the following message to @Avi0n")
-            bot.send_message(chat_id=update.message.chat_id, text=str(e))
+            context.bot.send_message(chat_id=update.message.chat_id, text=str(e))
     else:
         string_split = update.message.text.split()
         username = string_split[1]
         points = string_split[2]
-        bot.send_message(chat_id=update.message.chat_id,
+        context.bot.send_message(chat_id=update.message.chat_id,
                          text="The correct format is '/give @" + username + " " + points + "'")
 
 # Respond to /source
-def source(bot, update):
+def source(update, context):
     authorized_room = False
 
     try:
@@ -183,7 +191,7 @@ def source(bot, update):
         # Get media's file_id
         while True:
             try:
-                media_id = update.message.reply_to_message.photo[2].file_id
+                media_id = update.message.reply_to_message.photo[-1].file_id
                 break
             except Exception as e:
                 print("Not a photo")
@@ -201,7 +209,7 @@ def source(bot, update):
                 break
 
         # Get the download link from Telegram
-        file = bot.get_file(file_id=media_id)
+        file = context.bot.get_file(file_id=media_id)
         # Download the media (jpg, png, mp4)
         file.download(timeout=10)
         # If it's an mp4, convert it to gif
@@ -299,7 +307,7 @@ def source(bot, update):
                                             print(
                                                 'Bad image or other request error. Skipping in 10 seconds...')
                                             processResults = False
-                                            bot.send_message(
+                                            context.bot.send_message(
                                                 chat_id=update.message.chat_id, text="Something went wrong.")
                                             break
                                 else:
@@ -326,43 +334,43 @@ def source(bot, update):
 
                                     # Send result URL
                                     if float(results['results'][0]['header']['similarity']) < 70:
-                                        bot.send_message(chat_id=update.message.chat_id,
+                                        context.bot.send_message(chat_id=update.message.chat_id,
                                                          text="This _might_ be it: [Sauce](" + result_url + ")" +
                                                          "\nSimilarity: " + pic_similarity,
                                                          parse_mode='Markdown', disable_web_page_preview=True)
                                     else:
-                                        bot.send_message(chat_id=update.message.chat_id,
+                                        context.bot.send_message(chat_id=update.message.chat_id,
                                                          text="[Sauce](" + result_url + ")" +
                                                          "\nSimilarity: " + pic_similarity,
                                                          parse_mode='Markdown', disable_web_page_preview=True)
 
                                 else:
                                     print('miss... ' + pic_similarity)
-                                    bot.send_message(chat_id=update.message.chat_id,
+                                    context.bot.send_message(chat_id=update.message.chat_id,
                                                      text="I couldn't find anything.\n" +
                                                      "Similarity: " + pic_similarity)
 
                             else:
                                 print('no results... ;_;')
-                                bot.send_message(
+                                context.bot.send_message(
                                     chat_id=update.message.chat_id, text="No results")
 
                             # could potentially be negative
                             if int(results['header']['long_remaining']) < 1:
                                 print('Out of searches for today :(')
-                                bot.send_message(chat_id=update.message.chat_id,
+                                context.bot.send_message(chat_id=update.message.chat_id,
                                                  text="Out of searches for today :(")
                             if int(results['header']['short_remaining']) < 1:
                                 print(
                                     'Out of searches for this 30 second period. Sleeping for 25 seconds...')
-                                bot.send_message(chat_id=update.message.chat_id,
+                                context.bot.send_message(chat_id=update.message.chat_id,
                                                  text="Out of searches for this 30 second period. Try again later.")
 
         print('Done with SauceNao search.')
     # If this else statement runs, the user is either not in an "authorized room", or they didn't reply to an image
     else:
         print("You're not authorized to use that command here.")
-        bot.send_message(chat_id=update.message.chat_id,
+        context.bot.send_message(chat_id=update.message.chat_id,
                          text="Did you forget to reply to an image?")
 
     # Cleanup downloaded media
@@ -374,7 +382,7 @@ def source(bot, update):
 
 
 # Respond to /addme
-def addme(bot, update):
+def addme(update, context):
     if not update.message.chat.title:
         username = update.message.from_user.username
         chat_id = update.message.chat_id
@@ -394,21 +402,21 @@ def addme(bot, update):
             cursor.execute(sql)
             # Commit your changes in the database
             db.commit()
-            bot.send_message(chat_id=chat_id, text="Added! Now whenever you " + emojize(":star:", use_aliases=True) +
+            context.bot.send_message(chat_id=chat_id, text="Added! Now whenever you " + emojize(":star:", use_aliases=True) +
                                                    " a photo in DTP, I'll forward it to you here! " +
                                                    emojize(":smiley:", use_aliases=True))
         except Exception as e:
             # Rollback in case there is any error
             db.rollback()
             print("Adding user's chat_id failed")
-            bot.send_message(chat_id=chat_id, text="Sorry, something went wrong. Please send the following message to " +
+            context.bot.send_message(chat_id=chat_id, text="Sorry, something went wrong. Please send the following message to " +
                                                    "@Avi0n.")
-            bot.send_message(chat_id=chat_id, text=str(e))
+            context.bot.send_message(chat_id=chat_id, text=str(e))
         finally:
             cursor.close()
             db.close()
     else:
-        bot.send_message(chat_id=update.message.chat_id, text="That doesn't work in here. Send me a PM instead "
+        context.bot.send_message(chat_id=update.message.chat_id, text="That doesn't work in here. Send me a PM instead "
                          + emojize(":wink:", use_aliases=True))
 
 
@@ -464,7 +472,7 @@ def convert_media(inputpath, targetFormat):
 
 
 # Recognize who's picture was liked and store point in database
-def process_emoji(bot, update):
+def process_emoji(update, context):
     try:
         username = update.message.reply_to_message.from_user.username
     except Exception as e:
@@ -486,9 +494,9 @@ def process_emoji(bot, update):
         # If message contains :heart:, add 3 points
         if emojize(":heart:", use_aliases=True) in message_emoji and username is not None:
             if update.message.from_user.username == username:
-                bot.send_message(chat_id=update.message.chat_id, text=update.message.from_user.username +
+                context.bot.send_message(chat_id=update.message.chat_id, text=update.message.from_user.username +
                                  " just tried to give themselves points.")
-                bot.send_sticker(chat_id=update.message.chat_id,
+                context.bot.send_sticker(chat_id=update.message.chat_id,
                                  sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
             else:
                 update_karma(username, "+", "3")
@@ -496,9 +504,9 @@ def process_emoji(bot, update):
         # If message contains :ok_hand:, add 2 points
         elif emojize(":ok_hand:", use_aliases=True) in message_emoji and username is not None:
             if update.message.from_user.username == username:
-                bot.send_message(chat_id=update.message.chat_id, text=update.message.from_user.username +
+                context.bot.send_message(chat_id=update.message.chat_id, text=update.message.from_user.username +
                                  " just tried to give themselves points.")
-                bot.send_sticker(chat_id=update.message.chat_id,
+                context.bot.send_sticker(chat_id=update.message.chat_id,
                                  sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
             else:
                 update_karma(username, "+", "2")
@@ -506,9 +514,9 @@ def process_emoji(bot, update):
         # If message contains :thumbsup:, add 1 point
         elif emojize(":thumbsup:", use_aliases=True) in message_emoji and username is not None:
             if update.message.from_user.username == username:
-                bot.send_message(chat_id=update.message.chat_id, text=update.message.from_user.username +
+                context.bot.send_message(chat_id=update.message.chat_id, text=update.message.from_user.username +
                                  " just tried to give themselves points.")
-                bot.send_sticker(chat_id=update.message.chat_id,
+                context.bot.send_sticker(chat_id=update.message.chat_id,
                                  sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
             else:
                 update_karma(username, "+", "1")
@@ -516,9 +524,9 @@ def process_emoji(bot, update):
         # If message contains :thumbsdown:, subtract 1 point
         elif emojize(":thumbsdown:", use_aliases=True) in message_emoji and username is not None:
             if update.message.from_user.username == username:
-                bot.send_message(chat_id=update.message.chat_id, text=update.message.from_user.username +
+                context.bot.send_message(chat_id=update.message.chat_id, text=update.message.from_user.username +
                                  " just tried to take away points from themselves.")
-                bot.send_sticker(chat_id=update.message.chat_id,
+                context.bot.send_sticker(chat_id=update.message.chat_id,
                                  sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
             else:
                 update_karma(username, "-", "1")
@@ -528,9 +536,9 @@ def process_emoji(bot, update):
             # Get user's personal chat_id with Aqua
             tele_chat_id = get_chat_id(update.message.from_user.username)
             # Send message
-            bot.forward_message(chat_id=tele_chat_id, from_chat_id=update.message.chat_id,
+            context.bot.forward_message(chat_id=tele_chat_id, from_chat_id=update.message.chat_id,
                                 message_id=update.message.reply_to_message.message_id)
-            bot.send_message(chat_id=update.message.chat_id,
+            context.bot.send_message(chat_id=update.message.chat_id,
                              text=update.message.reply_to_message)
 
         # If message contains :no_entry_sign: or :underage:, send lolice gif
@@ -539,20 +547,20 @@ def process_emoji(bot, update):
                 emojize(":police_car:", use_aliases=True) in message_emoji and username is not None or \
                 emojize(":oncoming_police_car:", use_aliases=True) in message_emoji and username is not None or \
                 emojize(":rotating_light:", use_aliases=True) in message_emoji and username is not None:
-            bot.send_animation(chat_id=update.message.chat_id,
+            context.bot.send_animation(chat_id=update.message.chat_id,
                                animation="CgADAQADhAADY7TZR2yn8RNCCai9Ag")
-            bot.send_message(chat_id=update.message.chat_id,
+            context.bot.send_message(chat_id=update.message.chat_id,
                              text="MODS!! MODS!!!! LOLI LEWDING REPORTED!!!")
 
         # If message contains :sweat_drops:, send Aqua Nature Beauty party trick gif
         if emojize(":sweat_drops:", use_aliases=True) in message_emoji:
-            bot.send_animation(chat_id=update.message.chat_id,
+            context.bot.send_animation(chat_id=update.message.chat_id,
                                animation="CgADAQADSwADac6YRfOLXW5UD4qJAg")
 
         # If message contains :crocodile: or :shower:, send Aqua purification gif
         if emojize(":crocodile:", use_aliases=True) in message_emoji or \
                 emojize(":shower:", use_aliases=True) in message_emoji:
-            bot.send_animation(chat_id=update.message.chat_id,
+            context.bot.send_animation(chat_id=update.message.chat_id,
                                animation="CgADAQADewADMXsJRAYOmfxivPi3Ag")
 
 
@@ -617,13 +625,13 @@ def button(update, context):
 
     # Remove emoji from counter1
     counter1 = int(''.join(i for i in counter1 if i.isdigit()))
-    print(counter1)
+
     # Remove emoji from counter2
     counter2 = int(''.join(i for i in counter2 if i.isdigit()))
-    print(counter2)
+
     # Remove emoji from counter3
     counter3 = int(''.join(i for i in counter3 if i.isdigit()))
-    print(counter3)
+
     if int(query.data) == 1:
         counter1 += 1
         update_karma(username[-1], "+", "1")
@@ -676,6 +684,8 @@ def main():
     give_handler = CommandHandler('give', give)
     updater.dispatcher.add_handler(give_handler)
 
+    # on noncommand i.e message - repost the message on Telegram
+    updater.dispatcher.add_handler(MessageHandler(Filters.photo, repost))
     updater.dispatcher.add_handler(CallbackQueryHandler(button))
 
     # If an emoji in the list above is found, run process_emoji()
