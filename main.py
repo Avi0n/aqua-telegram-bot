@@ -4,7 +4,8 @@ import MySQLdb
 import string
 from dotenv import load_dotenv
 from emoji import emojize
-from telegram.ext import (MessageHandler, CommandHandler, BaseFilter, Updater)
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import (MessageHandler, CommandHandler, BaseFilter, CallbackQueryHandler, Updater)
 # Imports needed for source()
 import sys
 import io
@@ -122,45 +123,47 @@ def give(bot, update):
     # Check to see if user used the right command format
     if '@' in update.message.text:
         # Remove all punctuation (@) and split the string
-        string_split = update.message.text.translate(str.maketrans('', '', string.punctuation)).split()
+        string_split = update.message.text.translate(
+            str.maketrans('', '', string.punctuation)).split()
         username = string_split[1]
         points = string_split[2]
         from_username = update.message.from_user.username
-        
+
         try:
             if username == from_username:
                 bot.send_message(chat_id=update.message.chat_id, text=update.message.from_user.username +
-                                " just tried to give themselves points.")
+                                 " just tried to give themselves points.")
                 bot.send_sticker(chat_id=update.message.chat_id,
-                                sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
+                                 sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
             elif int(points) is 0:
                 bot.send_message(chat_id=update.message.chat_id,
-                                text="pfft, you just tried to give someone 0 points.")
+                                 text="pfft, you just tried to give someone 0 points.")
                 bot.send_sticker(chat_id=update.message.chat_id,
-                                sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
+                                 sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
             elif int(points) < -20:
                 bot.send_message(chat_id=update.message.chat_id,
-                                text="Don't you think that's a tad too many points to be taking away?")
+                                 text="Don't you think that's a tad too many points to be taking away?")
             elif -21 < int(points) < 0:
                 update_karma(username, '+', points)
                 bot.send_message(chat_id=update.message.chat_id,
-                                text=from_username + " took away " + points + " points from " + username + "!")
+                                 text=from_username + " took away " + points + " points from " + username + "!")
             elif 61 > int(points) > 0:
                 update_karma(username, '+', points)
                 bot.send_message(chat_id=update.message.chat_id,
-                                text=from_username + " gave " + username + " " + points + " points!")
+                                 text=from_username + " gave " + username + " " + points + " points!")
             elif int(points) > 61:
                 bot.send_message(chat_id=update.message.chat_id,
-                                text="Don't you think that's a tad too many points?")
+                                 text="Don't you think that's a tad too many points?")
         except Exception as e:
             bot.send_message(chat_id=update.message.chat_id,
-                            text="There was a problem. Please send the following message to @Avi0n")
+                             text="There was a problem. Please send the following message to @Avi0n")
             bot.send_message(chat_id=update.message.chat_id, text=str(e))
     else:
         string_split = update.message.text.split()
         username = string_split[1]
         points = string_split[2]
-        bot.send_message(chat_id=update.message.chat_id, text="The correct format is '/give @" + username + " " + points + "'")
+        bot.send_message(chat_id=update.message.chat_id,
+                         text="The correct format is '/give @" + username + " " + points + "'")
 
 # Respond to /source
 def source(bot, update):
@@ -172,7 +175,7 @@ def source(bot, update):
         print(str(e))
         username = None
 
-    #if update.message.chat.title == "Bot testing" or update.message.chat.title == "Debauchery Tea Party":
+    # if update.message.chat.title == "Bot testing" or update.message.chat.title == "Debauchery Tea Party":
         #authorized_room = True
     authorized_room = True
 
@@ -579,37 +582,108 @@ class FilterEmoji(BaseFilter):
                 return True
 
 
+# Forward message that was posted by another user to the channel with emoji buttons
+def repost(update, context):
+    photo_caption = None
+
+    keyboard = [[InlineKeyboardButton('0 ' + emojize(":thumbsup:", use_aliases=True), callback_data=1),
+                 InlineKeyboardButton(
+                     '0 ' + emojize(":ok_hand:", use_aliases=True), callback_data=2),
+                 InlineKeyboardButton(
+                     '0 ' + emojize(":heart:", use_aliases=True), callback_data=3),
+                 InlineKeyboardButton(emojize(":star:", use_aliases=True), callback_data='save')]]
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    # Give credit to who originally posted the photo
+    if update.message.caption is not None:
+        photo_caption = update.message.caption + \
+                        '\n\nPosted by: ' + update.message.from_user.username
+    else:
+        photo_caption = '\n\nPosted by: ' + update.message.from_user.username
+
+    # Send message with inline keyboard
+    context.bot.send_photo(chat_id=update.message.chat.id, photo=update.message.photo[-1].file_id, caption=photo_caption,
+                           disable_notification=True, reply_to_message_id=None, reply_markup=reply_markup, timeout=20, parse_mode='HTML')
+    # Delete original message
+    context.bot.delete_message(chat_id=update.message.chat.id, message_id=update.message.message_id)
+
+
+def button(update, context):
+    query = update.callback_query
+    counter1 = query.message.reply_markup.inline_keyboard[0][0].text
+    counter2 = query.message.reply_markup.inline_keyboard[0][1].text
+    counter3 = query.message.reply_markup.inline_keyboard[0][2].text
+    username = update.message.from_user.username # User who pressed inline keyboard button
+
+    # Remove emoji from counter1
+    counter1 = int(''.join(i for i in counter1 if i.isdigit()))
+    print(counter1)
+    # Remove emoji from counter2
+    counter2 = int(''.join(i for i in counter2 if i.isdigit()))
+    print(counter2)
+    # Remove emoji from counter3
+    counter3 = int(''.join(i for i in counter3 if i.isdigit()))
+    print(counter3)
+    if int(query.data) == 1:
+        counter1 += 1
+        update_karma(username, "+", "1")
+
+    if int(query.data) == 2:
+        counter2 += 1
+        update_karma(username, "+", "2")
+
+    if int(query.data) == 3:
+        counter3 += 1
+        update_karma(username, "+", "3")
+
+    if int(query.data) == 10:
+        # Get user's personal chat_id with Aqua
+        tele_chat_id = get_chat_id(update.message.from_user.username)
+        # Send message
+        context.bot.forward_message(chat_id=tele_chat_id, from_chat_id=update.message.chat_id,
+                                    message_id=update.message.reply_to_message.message_id)
+        context.bot.send_message(chat_id=update.message.chat_id,
+                                text=update.message.reply_to_message)   
+    
+    keyboard = [[InlineKeyboardButton(str(counter1) + ' ' + emojize(":thumbsup:", use_aliases=True), callback_data=1),
+                 InlineKeyboardButton(str(counter2) + ' ' + emojize(":ok_hand:", use_aliases=True), callback_data=2),
+                 InlineKeyboardButton(str(counter3) + ' ' + emojize(":heart:", use_aliases=True), callback_data=3),
+                 InlineKeyboardButton(emojize(":star:", use_aliases=True), callback_data=10)]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    query.edit_message_reply_markup(reply_markup=reply_markup)
+
+
 def main():
-    """Start the bot"""
     # Initialize emoji filter class
     filter_emoji = FilterEmoji()
 
-    # Set Aqua bot token
-    updater = Updater(token=os.getenv("TEL_BOT_TOKEN"), request_kwargs={
-                      'read_timeout': 15, 'connect_timeout': 30})
-
-    dispatcher = updater.dispatcher
+    # Create the Updater and pass it Aqua Bot's token.
+    updater = Updater(os.getenv("TEL_BOT_TOKEN"), use_context=True)
 
     start_handler = CommandHandler('start', start)
-    dispatcher.add_handler(start_handler)
+    updater.dispatcher.add_handler(start_handler)
 
     source_handler = CommandHandler('source', source)
-    dispatcher.add_handler(source_handler)
+    updater.dispatcher.add_handler(source_handler)
 
     karma_handler = CommandHandler('karma', karma)
-    dispatcher.add_handler(karma_handler)
+    updater.dispatcher.add_handler(karma_handler)
 
     addme_handler = CommandHandler('addme', addme)
-    dispatcher.add_handler(addme_handler)
-    
+    updater.dispatcher.add_handler(addme_handler)
+
     give_handler = CommandHandler('give', give)
-    dispatcher.add_handler(give_handler)
+    updater.dispatcher.add_handler(give_handler)
+
+    updater.dispatcher.add_handler(CallbackQueryHandler(button))
 
     # If an emoji in the list above is found, run process_emoji()
     emoji_handler = MessageHandler(filter_emoji, process_emoji)
-    dispatcher.add_handler(emoji_handler)
+    updater.dispatcher.add_handler(emoji_handler)
 
-    dispatcher.add_error_handler(error)
+    updater.dispatcher.add_error_handler(error)
 
     updater.start_polling()
 
