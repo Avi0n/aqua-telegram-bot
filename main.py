@@ -587,11 +587,9 @@ def repost(update, context):
     photo_caption = None
 
     keyboard = [[InlineKeyboardButton('0 ' + emojize(":thumbsup:", use_aliases=True), callback_data=1),
-                 InlineKeyboardButton(
-                     '0 ' + emojize(":ok_hand:", use_aliases=True), callback_data=2),
-                 InlineKeyboardButton(
-                     '0 ' + emojize(":heart:", use_aliases=True), callback_data=3),
-                 InlineKeyboardButton(emojize(":star:", use_aliases=True), callback_data='save')]]
+                 InlineKeyboardButton('0 ' + emojize(":ok_hand:", use_aliases=True), callback_data=2),
+                 InlineKeyboardButton('0 ' + emojize(":heart:", use_aliases=True), callback_data=3),
+                 InlineKeyboardButton(emojize(":star:", use_aliases=True), callback_data=10)]]
 
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -614,7 +612,8 @@ def button(update, context):
     counter1 = query.message.reply_markup.inline_keyboard[0][0].text
     counter2 = query.message.reply_markup.inline_keyboard[0][1].text
     counter3 = query.message.reply_markup.inline_keyboard[0][2].text
-    username = update.message.from_user.username # User who pressed inline keyboard button
+    # Find original poster
+    username = query.message.caption.split()
 
     # Remove emoji from counter1
     counter1 = int(''.join(i for i in counter1 if i.isdigit()))
@@ -627,15 +626,15 @@ def button(update, context):
     print(counter3)
     if int(query.data) == 1:
         counter1 += 1
-        update_karma(username, "+", "1")
+        update_karma(username[-1], "+", "1")
 
     if int(query.data) == 2:
         counter2 += 1
-        update_karma(username, "+", "2")
+        update_karma(username[-1], "+", "2")
 
     if int(query.data) == 3:
         counter3 += 1
-        update_karma(username, "+", "3")
+        update_karma(username[-1], "+", "3")
 
     if int(query.data) == 10:
         # Get user's personal chat_id with Aqua
