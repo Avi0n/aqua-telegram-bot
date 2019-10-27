@@ -119,10 +119,25 @@ def start(update, context):
                              " photos that you " + emojize(":star:", use_aliases=True) + " to you!")
 
 
+# Allow user to delete their own photo
+def delete(update, context):
+    username = update.message.reply_to_message.caption.split()
+
+    # Only allow original poster to delete their own message
+    if username[-1] == update.message.from_user.username:
+        # Remove message that user replied to
+        context.bot.delete_message(chat_id=update.message.chat_id, message_id=update.message.reply_to_message.message_id)
+        # Remove the '/delete' message the user sent to keep the chat clean
+        context.bot.delete_message(chat_id=update.message.chat_id, message_id=update.message.message_id)
+    else:
+        context.bot.send_message(chat_id=update.message.chat_id, text='You can only delete your own posts.')
+
+
 # Respond to /karma
 def karma(update, context):
     context.bot.send_message(chat_id=update.message.chat_id,
                              text=read_db(), parse_mode='Markdown', timeout=20)
+
 
 # Respond to /give
 def give(update, context):
@@ -170,6 +185,12 @@ def give(update, context):
         points = string_split[2]
         context.bot.send_message(chat_id=update.message.chat_id,
                                  text="The correct format is '/give @" + username + " " + points + "'")
+
+
+# Respond to /sauce
+def sauce(update, context):
+    source(update, context)
+
 
 # Respond to /source
 def source(update, context):
@@ -549,8 +570,9 @@ def process_emoji(update, context):
             context.bot.send_message(chat_id=update.message.chat_id,
                                      text="MODS!! MODS!!!! LOLI LEWDING REPORTED!!!")
 
-        # If message contains :sweat_drops:, send Aqua Nature Beauty party trick gif
-        if emojize(":sweat_drops:", use_aliases=True) in message_emoji:
+        # If message contains :sweat_drops: or :water:, send Aqua Nature Beauty party trick gif
+        if emojize(":sweat_drops:", use_aliases=True) in message_emoji or \
+                emojize(":water:", use_aliases=True) in message_emoji:
             context.bot.send_animation(chat_id=update.message.chat_id,
                                        animation="CgADAQADSwADac6YRfOLXW5UD4qJAg")
 
@@ -576,6 +598,7 @@ class FilterEmoji(BaseFilter):
             ":oncoming_police_car:",
             ":rotating_light:",
             ":sweat_drops:",
+            ":water:",
             ":crocodile:",
             ":shower:"
         ]
@@ -598,7 +621,7 @@ def repost(update, context):
             print("User doesn't want this photo to be reposted. Skipping.")
             return
 
-    photo_caption = None
+    repost_caption = None
 
     keyboard = [[InlineKeyboardButton('0 ' + emojize(":thumbsup:", use_aliases=True), callback_data=1),
                     InlineKeyboardButton('0 ' + emojize(":ok_hand:", use_aliases=True), callback_data=2),
@@ -607,19 +630,24 @@ def repost(update, context):
 
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    # Give credit to who originally posted the photo
+    # Give credit to who originally posted the photo/video
     if update.message.caption is not None:
-        photo_caption = update.message.caption + \
+        repost_caption = update.message.caption + \
             '\n\nPosted by: ' + update.message.from_user.username
     else:
-        photo_caption = '\n\nPosted by: ' + update.message.from_user.username
+        repost_caption = '\n\nPosted by: ' + update.message.from_user.username
 
-    # Send message with inline keyboard
-    context.bot.send_photo(chat_id=update.message.chat.id, photo=update.message.photo[-1].file_id, caption=photo_caption,
-                            disable_notification=True, reply_to_message_id=None, reply_markup=reply_markup, timeout=20, parse_mode='HTML')
+    # Animations are sent less frequently, so try sending animation first. If that doesn't work, send photo
+    try:
+        # Send message with inline keyboard
+        context.bot.send_animation(chat_id=update.message.chat.id, animation=update.message.document.file_id, caption=repost_caption,
+                                disable_notification=True, reply_markup=reply_markup, timeout=20, parse_mode='HTML')
+    except:
+        # Send message with inline keyboard
+        context.bot.send_photo(chat_id=update.message.chat.id, photo=update.message.photo[-1].file_id, caption=repost_caption,
+                            disable_notification=True, reply_markup=reply_markup, timeout=20, parse_mode='HTML') 
     # Delete original message
-    context.bot.delete_message(
-        chat_id=update.message.chat.id, message_id=update.message.message_id)
+    context.bot.delete_message(chat_id=update.message.chat.id, message_id=update.message.message_id)
 
 
 def button(update, context):
@@ -705,6 +733,12 @@ def main():
     start_handler = CommandHandler('start', start)
     updater.dispatcher.add_handler(start_handler)
 
+    delete_handler = CommandHandler('delete', delete)
+    updater.dispatcher.add_handler(delete_handler)
+
+    sauce_handler = CommandHandler('sauce', sauce)
+    updater.dispatcher.add_handler(sauce_handler)
+
     source_handler = CommandHandler('source', source)
     updater.dispatcher.add_handler(source_handler)
 
@@ -717,8 +751,12 @@ def main():
     give_handler = CommandHandler('give', give)
     updater.dispatcher.add_handler(give_handler)
 
-    # on noncommand i.e message - repost the message on Telegram
+    # on noncommand i.e message - repost the photo on Telegram
     updater.dispatcher.add_handler(MessageHandler(Filters.photo, repost))
+    updater.dispatcher.add_handler(CallbackQueryHandler(button))
+
+    # on noncommand i.e message - repost the video on Telegram
+    updater.dispatcher.add_handler(MessageHandler(Filters.animation, repost))
     updater.dispatcher.add_handler(CallbackQueryHandler(button))
 
     # If an emoji in the list above is found, run process_emoji()
