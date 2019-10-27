@@ -364,15 +364,9 @@ def source(update, context):
                                                                  parse_mode='Markdown', disable_web_page_preview=True)
 
                                 else:
-                                    print('miss... ' + pic_similarity)
+                                    print('miss... ')
                                     context.bot.send_message(chat_id=update.message.chat_id,
-                                                             text="I couldn't find anything.\n" +
-                                                             "Similarity: " + pic_similarity)
-
-                            else:
-                                print('no results... ;_;')
-                                context.bot.send_message(
-                                    chat_id=update.message.chat_id, text="No results")
+                                                             text="Sorry I couldn't find the sauce for that image :(")
 
                             # could potentially be negative
                             if int(results['header']['long_remaining']) < 1:
