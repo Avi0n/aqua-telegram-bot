@@ -193,8 +193,9 @@ def sauce(update, context):
 
 
 # Respond to /source
-def source(update, context):
-    authorized_room = False
+def source(bot, update):
+    authorized_room = True
+    media_id = None
 
     try:
         username = update.message.reply_to_message.from_user.username
@@ -204,13 +205,12 @@ def source(update, context):
 
     # if update.message.chat.title == "Bot testing" or update.message.chat.title == "Debauchery Tea Party":
         #authorized_room = True
-    authorized_room = True
 
     if authorized_room is True and username is not None:
         # Get media's file_id
         while True:
             try:
-                media_id = update.message.reply_to_message.photo[-1].file_id
+                media_id = update.message.reply_to_message.photo[1].file_id
                 break
             except Exception as e:
                 print("Not a photo")
@@ -364,9 +364,13 @@ def source(update, context):
                                                                  parse_mode='Markdown', disable_web_page_preview=True)
 
                                 else:
-                                    print('miss... ')
-                                    context.bot.send_message(chat_id=update.message.chat_id,
-                                                             text="Sorry I couldn't find the sauce for that image :(")
+                                    print('miss...')
+                                    bot.send_message(chat_id=update.message.chat_id,
+                                                     text="I couldn't find a source for that image")
+                            else:
+                                print('no results... ;_;')
+                                bot.send_message(
+                                    chat_id=update.message.chat_id, text="No results")
 
                             # could potentially be negative
                             if int(results['header']['long_remaining']) < 1:
