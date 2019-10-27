@@ -4,7 +4,8 @@ import MySQLdb
 import string
 from dotenv import load_dotenv
 from emoji import emojize
-from telegram.ext import (MessageHandler, CommandHandler, BaseFilter, Updater)
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import MessageHandler, CommandHandler, BaseFilter, CallbackQueryHandler, Filters, Updater
 # Imports needed for source()
 import sys
 import io
@@ -18,6 +19,12 @@ from collections import OrderedDict
 import sys
 import imageio
 
+
+''' 
+TODO:
+- Prevent users from being able to vote more than once
+- Allow user to take back their vote
+'''
 
 # Initialize dotenv
 load_dotenv()
@@ -106,61 +113,84 @@ def update_karma(username, plus_or_minus, points):
 
 
 # Respond to /start
-def start(bot, update):
-    bot.send_message(chat_id=update.message.chat_id,
-                     text="Send /karma to see everyone's points.\nSend /addme to let me forward" +
-                     " photos that you " + emojize(":star:", use_aliases=True) + " to you!")
+def start(update, context):
+    context.bot.send_message(chat_id=update.message.chat_id,
+                             text="Send /karma to see everyone's points.\nSend /addme to let me forward" +
+                             " photos that you " + emojize(":star:", use_aliases=True) + " to you!")
+
+
+# Allow user to delete their own photo
+def delete(update, context):
+    username = update.message.reply_to_message.caption.split()
+
+    # Only allow original poster to delete their own message
+    if username[-1] == update.message.from_user.username:
+        # Remove message that user replied to
+        context.bot.delete_message(chat_id=update.message.chat_id, message_id=update.message.reply_to_message.message_id)
+        # Remove the '/delete' message the user sent to keep the chat clean
+        context.bot.delete_message(chat_id=update.message.chat_id, message_id=update.message.message_id)
+    else:
+        context.bot.send_message(chat_id=update.message.chat_id, text='You can only delete your own posts.')
 
 
 # Respond to /karma
-def karma(bot, update):
-    bot.send_message(chat_id=update.message.chat_id,
-                     text=read_db(), parse_mode='Markdown', timeout=20)
+def karma(update, context):
+    context.bot.send_message(chat_id=update.message.chat_id,
+                             text=read_db(), parse_mode='Markdown', timeout=20)
+
 
 # Respond to /give
-def give(bot, update):
+def give(update, context):
     # Check to see if user used the right command format
     if '@' in update.message.text:
         # Remove all punctuation (@) and split the string
-        string_split = update.message.text.translate(str.maketrans('', '', string.punctuation)).split()
+        string_split = update.message.text.translate(
+            str.maketrans('', '', string.punctuation)).split()
         username = string_split[1]
         points = string_split[2]
         from_username = update.message.from_user.username
-        
+
         try:
             if username == from_username:
-                bot.send_message(chat_id=update.message.chat_id, text=update.message.from_user.username +
-                                " just tried to give themselves points.")
-                bot.send_sticker(chat_id=update.message.chat_id,
-                                sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
+                context.bot.send_message(chat_id=update.message.chat_id, text=update.message.from_user.username +
+                                         " just tried to give themselves points.")
+                context.bot.send_sticker(chat_id=update.message.chat_id,
+                                         sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
             elif int(points) is 0:
-                bot.send_message(chat_id=update.message.chat_id,
-                                text="pfft, you just tried to give someone 0 points.")
-                bot.send_sticker(chat_id=update.message.chat_id,
-                                sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
+                context.bot.send_message(chat_id=update.message.chat_id,
+                                         text="pfft, you just tried to give someone 0 points.")
+                context.bot.send_sticker(chat_id=update.message.chat_id,
+                                         sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
             elif int(points) < -20:
-                bot.send_message(chat_id=update.message.chat_id,
-                                text="Don't you think that's a tad too many points to be taking away?")
+                context.bot.send_message(chat_id=update.message.chat_id,
+                                         text="Don't you think that's a tad too many points to be taking away?")
             elif -21 < int(points) < 0:
                 update_karma(username, '+', points)
-                bot.send_message(chat_id=update.message.chat_id,
-                                text=from_username + " took away " + points + " points from " + username + "!")
+                context.bot.send_message(chat_id=update.message.chat_id,
+                                         text=from_username + " took away " + points + " points from " + username + "!")
             elif 61 > int(points) > 0:
                 update_karma(username, '+', points)
-                bot.send_message(chat_id=update.message.chat_id,
-                                text=from_username + " gave " + username + " " + points + " points!")
+                context.bot.send_message(chat_id=update.message.chat_id,
+                                         text=from_username + " gave " + username + " " + points + " points!")
             elif int(points) > 61:
-                bot.send_message(chat_id=update.message.chat_id,
-                                text="Don't you think that's a tad too many points?")
+                context.bot.send_message(chat_id=update.message.chat_id,
+                                         text="Don't you think that's a tad too many points?")
         except Exception as e:
-            bot.send_message(chat_id=update.message.chat_id,
-                            text="There was a problem. Please send the following message to @Avi0n")
-            bot.send_message(chat_id=update.message.chat_id, text=str(e))
+            context.bot.send_message(chat_id=update.message.chat_id,
+                                     text="There was a problem. Please send the following message to @Avi0n")
+            context.bot.send_message(chat_id=update.message.chat_id, text=str(e))
     else:
         string_split = update.message.text.split()
         username = string_split[1]
         points = string_split[2]
-        bot.send_message(chat_id=update.message.chat_id, text="The correct format is '/give @" + username + " " + points + "'")
+        context.bot.send_message(chat_id=update.message.chat_id,
+                                 text="The correct format is '/give @" + username + " " + points + "'")
+
+
+# Respond to /sauce
+def sauce(update, context):
+    source(update, context)
+
 
 # Respond to /source
 def source(bot, update):
@@ -173,7 +203,7 @@ def source(bot, update):
         print(str(e))
         username = None
 
-    #if update.message.chat.title == "Bot testing" or update.message.chat.title == "Debauchery Tea Party":
+    # if update.message.chat.title == "Bot testing" or update.message.chat.title == "Debauchery Tea Party":
         #authorized_room = True
 
     if authorized_room is True and username is not None:
@@ -198,7 +228,7 @@ def source(bot, update):
                 break
 
         # Get the download link from Telegram
-        file = bot.get_file(file_id=media_id)
+        file = context.bot.get_file(file_id=media_id)
         # Download the media (jpg, png, mp4)
         file.download(timeout=10)
         # If it's an mp4, convert it to gif
@@ -296,7 +326,7 @@ def source(bot, update):
                                             print(
                                                 'Bad image or other request error. Skipping in 10 seconds...')
                                             processResults = False
-                                            bot.send_message(
+                                            context.bot.send_message(
                                                 chat_id=update.message.chat_id, text="Something went wrong.")
                                             break
                                 else:
@@ -323,15 +353,15 @@ def source(bot, update):
 
                                     # Send result URL
                                     if float(results['results'][0]['header']['similarity']) < 70:
-                                        bot.send_message(chat_id=update.message.chat_id,
-                                                         text="This _might_ be it: [Sauce](" + result_url + ")" +
-                                                         "\nSimilarity: " + pic_similarity,
-                                                         parse_mode='Markdown', disable_web_page_preview=True)
+                                        context.bot.send_message(chat_id=update.message.chat_id,
+                                                                 text="This _might_ be it: [Sauce](" + result_url + ")" +
+                                                                 "\nSimilarity: " + pic_similarity,
+                                                                 parse_mode='Markdown', disable_web_page_preview=True)
                                     else:
-                                        bot.send_message(chat_id=update.message.chat_id,
-                                                         text="[Sauce](" + result_url + ")" +
-                                                         "\nSimilarity: " + pic_similarity,
-                                                         parse_mode='Markdown', disable_web_page_preview=True)
+                                        context.bot.send_message(chat_id=update.message.chat_id,
+                                                                 text="[Sauce](" + result_url + ")" +
+                                                                 "\nSimilarity: " + pic_similarity,
+                                                                 parse_mode='Markdown', disable_web_page_preview=True)
 
                                 else:
                                     print('miss...')
@@ -345,20 +375,20 @@ def source(bot, update):
                             # could potentially be negative
                             if int(results['header']['long_remaining']) < 1:
                                 print('Out of searches for today :(')
-                                bot.send_message(chat_id=update.message.chat_id,
-                                                 text="Out of searches for today :(")
+                                context.bot.send_message(chat_id=update.message.chat_id,
+                                                         text="Out of searches for today :(")
                             if int(results['header']['short_remaining']) < 1:
                                 print(
                                     'Out of searches for this 30 second period. Sleeping for 25 seconds...')
-                                bot.send_message(chat_id=update.message.chat_id,
-                                                 text="Out of searches for this 30 second period. Try again later.")
+                                context.bot.send_message(chat_id=update.message.chat_id,
+                                                         text="Out of searches for this 30 second period. Try again later.")
 
         print('Done with SauceNao search.')
     # If this else statement runs, the user is either not in an "authorized room", or they didn't reply to an image
     else:
         print("You're not authorized to use that command here.")
-        bot.send_message(chat_id=update.message.chat_id,
-                         text="Did you forget to reply to an image?")
+        context.bot.send_message(chat_id=update.message.chat_id,
+                                 text="Did you forget to reply to an image?")
 
     # Cleanup downloaded media
     for fname in os.listdir('.'):
@@ -369,7 +399,7 @@ def source(bot, update):
 
 
 # Respond to /addme
-def addme(bot, update):
+def addme(update, context):
     if not update.message.chat.title:
         username = update.message.from_user.username
         chat_id = update.message.chat_id
@@ -389,22 +419,21 @@ def addme(bot, update):
             cursor.execute(sql)
             # Commit your changes in the database
             db.commit()
-            bot.send_message(chat_id=chat_id, text="Added! Now whenever you " + emojize(":star:", use_aliases=True) +
-                                                   " a photo in DTP, I'll forward it to you here! " +
-                                                   emojize(":smiley:", use_aliases=True))
+            context.bot.send_message(chat_id=chat_id, text="Added! Now whenever you " + emojize(":star:", use_aliases=True) +
+                                     " a photo in DTP, I'll forward it to you here! " + emojize(":smiley:", use_aliases=True))
         except Exception as e:
             # Rollback in case there is any error
             db.rollback()
             print("Adding user's chat_id failed")
-            bot.send_message(chat_id=chat_id, text="Sorry, something went wrong. Please send the following message to " +
-                                                   "@Avi0n.")
-            bot.send_message(chat_id=chat_id, text=str(e))
+            context.bot.send_message(chat_id=chat_id, 
+                                    text="Sorry, something went wrong. Please send the following message to @Avi0n.")
+            context.bot.send_message(chat_id=chat_id, text=str(e))
         finally:
             cursor.close()
             db.close()
     else:
-        bot.send_message(chat_id=update.message.chat_id, text="That doesn't work in here. Send me a PM instead "
-                         + emojize(":wink:", use_aliases=True))
+        context.bot.send_message(chat_id=update.message.chat_id, text="That doesn't work in here. Send me a PM instead "
+                                 + emojize(":wink:", use_aliases=True))
 
 
 # Get user's personal chat_id with Aqua
@@ -459,7 +488,7 @@ def convert_media(inputpath, targetFormat):
 
 
 # Recognize who's picture was liked and store point in database
-def process_emoji(bot, update):
+def process_emoji(update, context):
     try:
         username = update.message.reply_to_message.from_user.username
     except Exception as e:
@@ -481,40 +510,40 @@ def process_emoji(bot, update):
         # If message contains :heart:, add 3 points
         if emojize(":heart:", use_aliases=True) in message_emoji and username is not None:
             if update.message.from_user.username == username:
-                bot.send_message(chat_id=update.message.chat_id, text=update.message.from_user.username +
-                                 " just tried to give themselves points.")
-                bot.send_sticker(chat_id=update.message.chat_id,
-                                 sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
+                context.bot.send_message(chat_id=update.message.chat_id, text=update.message.from_user.username +
+                                         " just tried to give themselves points.")
+                context.bot.send_sticker(chat_id=update.message.chat_id,
+                                         sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
             else:
                 update_karma(username, "+", "3")
 
         # If message contains :ok_hand:, add 2 points
         elif emojize(":ok_hand:", use_aliases=True) in message_emoji and username is not None:
             if update.message.from_user.username == username:
-                bot.send_message(chat_id=update.message.chat_id, text=update.message.from_user.username +
-                                 " just tried to give themselves points.")
-                bot.send_sticker(chat_id=update.message.chat_id,
-                                 sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
+                context.bot.send_message(chat_id=update.message.chat_id, text=update.message.from_user.username +
+                                         " just tried to give themselves points.")
+                context.bot.send_sticker(chat_id=update.message.chat_id,
+                                         sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
             else:
                 update_karma(username, "+", "2")
 
         # If message contains :thumbsup:, add 1 point
         elif emojize(":thumbsup:", use_aliases=True) in message_emoji and username is not None:
             if update.message.from_user.username == username:
-                bot.send_message(chat_id=update.message.chat_id, text=update.message.from_user.username +
-                                 " just tried to give themselves points.")
-                bot.send_sticker(chat_id=update.message.chat_id,
-                                 sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
+                context.bot.send_message(chat_id=update.message.chat_id, text=update.message.from_user.username +
+                                         " just tried to give themselves points.")
+                context.bot.send_sticker(chat_id=update.message.chat_id,
+                                         sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
             else:
                 update_karma(username, "+", "1")
 
         # If message contains :thumbsdown:, subtract 1 point
         elif emojize(":thumbsdown:", use_aliases=True) in message_emoji and username is not None:
             if update.message.from_user.username == username:
-                bot.send_message(chat_id=update.message.chat_id, text=update.message.from_user.username +
-                                 " just tried to take away points from themselves.")
-                bot.send_sticker(chat_id=update.message.chat_id,
-                                 sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
+                context.bot.send_message(chat_id=update.message.chat_id, text=update.message.from_user.username +
+                                         " just tried to take away points from themselves.")
+                context.bot.send_sticker(chat_id=update.message.chat_id,
+                                         sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
             else:
                 update_karma(username, "-", "1")
 
@@ -523,10 +552,10 @@ def process_emoji(bot, update):
             # Get user's personal chat_id with Aqua
             tele_chat_id = get_chat_id(update.message.from_user.username)
             # Send message
-            bot.forward_message(chat_id=tele_chat_id, from_chat_id=update.message.chat_id,
-                                message_id=update.message.reply_to_message.message_id)
-            bot.send_message(chat_id=update.message.chat_id,
-                             text=update.message.reply_to_message)
+            context.bot.forward_message(chat_id=tele_chat_id, from_chat_id=update.message.chat_id,
+                                        message_id=update.message.reply_to_message.message_id)
+            context.bot.send_message(chat_id=update.message.chat_id,
+                                     text=update.message.reply_to_message)
 
         # If message contains :no_entry_sign: or :underage:, send lolice gif
         if emojize(":no_entry_sign:", use_aliases=True) in message_emoji and username is not None or \
@@ -534,21 +563,22 @@ def process_emoji(bot, update):
                 emojize(":police_car:", use_aliases=True) in message_emoji and username is not None or \
                 emojize(":oncoming_police_car:", use_aliases=True) in message_emoji and username is not None or \
                 emojize(":rotating_light:", use_aliases=True) in message_emoji and username is not None:
-            bot.send_animation(chat_id=update.message.chat_id,
-                               animation="CgADAQADhAADY7TZR2yn8RNCCai9Ag")
-            bot.send_message(chat_id=update.message.chat_id,
-                             text="MODS!! MODS!!!! LOLI LEWDING REPORTED!!!")
+            context.bot.send_animation(chat_id=update.message.chat_id,
+                                       animation="CgADAQADhAADY7TZR2yn8RNCCai9Ag")
+            context.bot.send_message(chat_id=update.message.chat_id,
+                                     text="MODS!! MODS!!!! LOLI LEWDING REPORTED!!!")
 
-        # If message contains :sweat_drops:, send Aqua Nature Beauty party trick gif
-        if emojize(":sweat_drops:", use_aliases=True) in message_emoji:
-            bot.send_animation(chat_id=update.message.chat_id,
-                               animation="CgADAQADSwADac6YRfOLXW5UD4qJAg")
+        # If message contains :sweat_drops: or :water:, send Aqua Nature Beauty party trick gif
+        if emojize(":sweat_drops:", use_aliases=True) in message_emoji or \
+                emojize(":water:", use_aliases=True) in message_emoji:
+            context.bot.send_animation(chat_id=update.message.chat_id,
+                                       animation="CgADAQADSwADac6YRfOLXW5UD4qJAg")
 
         # If message contains :crocodile: or :shower:, send Aqua purification gif
         if emojize(":crocodile:", use_aliases=True) in message_emoji or \
                 emojize(":shower:", use_aliases=True) in message_emoji:
-            bot.send_animation(chat_id=update.message.chat_id,
-                               animation="CgADAQADewADMXsJRAYOmfxivPi3Ag")
+            context.bot.send_animation(chat_id=update.message.chat_id,
+                                       animation="CgADAQADewADMXsJRAYOmfxivPi3Ag")
 
 
 # Look for certain emojis to reply to
@@ -566,6 +596,7 @@ class FilterEmoji(BaseFilter):
             ":oncoming_police_car:",
             ":rotating_light:",
             ":sweat_drops:",
+            ":water:",
             ":crocodile:",
             ":shower:"
         ]
@@ -577,37 +608,160 @@ class FilterEmoji(BaseFilter):
                 return True
 
 
+# Forward message that was posted by another user to the channel with emoji buttons
+def repost(update, context):
+    # Check to see if user doesn't want their photo to be deleted
+    if update.message.caption is not None:
+        if 'aquano' in update.message.caption.replace(' ', '').lower():
+            print("User doesn't want this photo to be reposted. Skipping.")
+            return
+        elif 'noaqua' in update.message.caption.replace(' ', '').lower():
+            print("User doesn't want this photo to be reposted. Skipping.")
+            return
+
+    repost_caption = None
+
+    keyboard = [[InlineKeyboardButton('0 ' + emojize(":thumbsup:", use_aliases=True), callback_data=1),
+                    InlineKeyboardButton('0 ' + emojize(":ok_hand:", use_aliases=True), callback_data=2),
+                    InlineKeyboardButton('0 ' + emojize(":heart:", use_aliases=True), callback_data=3),
+                    InlineKeyboardButton(emojize(":star:", use_aliases=True), callback_data=10)]]
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    # Give credit to who originally posted the photo/video
+    if update.message.caption is not None:
+        repost_caption = update.message.caption + \
+            '\n\nPosted by: ' + update.message.from_user.username
+    else:
+        repost_caption = '\n\nPosted by: ' + update.message.from_user.username
+
+    # Animations are sent less frequently, so try sending animation first. If that doesn't work, send photo
+    try:
+        # Send message with inline keyboard
+        context.bot.send_animation(chat_id=update.message.chat.id, animation=update.message.document.file_id, caption=repost_caption,
+                                disable_notification=True, reply_markup=reply_markup, timeout=20, parse_mode='HTML')
+    except:
+        # Send message with inline keyboard
+        context.bot.send_photo(chat_id=update.message.chat.id, photo=update.message.photo[-1].file_id, caption=repost_caption,
+                            disable_notification=True, reply_markup=reply_markup, timeout=20, parse_mode='HTML') 
+    # Delete original message
+    context.bot.delete_message(chat_id=update.message.chat.id, message_id=update.message.message_id)
+
+
+def button(update, context):
+    query = update.callback_query
+    counter1 = query.message.reply_markup.inline_keyboard[0][0].text
+    counter2 = query.message.reply_markup.inline_keyboard[0][1].text
+    counter3 = query.message.reply_markup.inline_keyboard[0][2].text
+    # Find original poster
+    username = query.message.caption.split()
+
+    # Remove emoji from counter1
+    counter1 = int(''.join(i for i in counter1 if i.isdigit()))
+
+    # Remove emoji from counter2
+    counter2 = int(''.join(i for i in counter2 if i.isdigit()))
+
+    # Remove emoji from counter3
+    counter3 = int(''.join(i for i in counter3 if i.isdigit()))
+
+    if int(query.data) == 1:
+        # Prevent users from voting on their own posts
+        if query.from_user.username == username[-1]:
+            context.bot.send_message(chat_id=query.message.chat_id, text=query.from_user.username +
+                                     " just tried to give themselves points.")
+            context.bot.send_sticker(chat_id=query.message.chat_id,
+                                     sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
+        else:
+            counter1 += 1
+            context.bot.answer_callback_query(callback_query_id=query.id, text='You ' + emojize(
+                ":thumbsup:", use_aliases=True) + ' this.', show_alert=False, timeout=None)
+            update_karma(username[-1], "+", "1")
+
+    if int(query.data) == 2:
+        if query.from_user.username == username[-1]:
+            context.bot.send_message(chat_id=query.message.chat_id, text=query.from_user.username +
+                                     " just tried to give themselves points.")
+            context.bot.send_sticker(chat_id=query.message.chat_id,
+                                     sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
+        else:
+            counter2 += 1
+            context.bot.answer_callback_query(callback_query_id=query.id, text='You ' + emojize(
+                ":ok_hand:", use_aliases=True) + ' this.', show_alert=False, timeout=None)
+            update_karma(username[-1], "+", "2")
+
+    if int(query.data) == 3:
+        if query.from_user.username == username[-1]:
+            context.bot.send_message(chat_id=query.message.chat_id, text=query.from_user.username +
+                                     " just tried to give themselves points.")
+            context.bot.send_sticker(chat_id=query.message.chat_id,
+                                     sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
+        else:
+            counter3 += 1
+            context.bot.answer_callback_query(callback_query_id=query.id, text='You ' + emojize(
+                ":heart:", use_aliases=True) + ' this.', show_alert=False, timeout=None)
+            update_karma(username[-1], "+", "3")
+
+    # Forward message that user star'd
+    if int(query.data) == 10:
+        # Get user's personal chat_id with Aqua
+        tele_chat_id = get_chat_id(query.from_user.username)
+        # Send message
+        context.bot.forward_message(chat_id=tele_chat_id, from_chat_id=query.message.chat_id,
+                                    message_id=query.message.message_id)
+
+    keyboard = [[InlineKeyboardButton(str(counter1) + ' ' + emojize(":thumbsup:", use_aliases=True), callback_data=1),
+                 InlineKeyboardButton(
+                     str(counter2) + ' ' + emojize(":ok_hand:", use_aliases=True), callback_data=2),
+                 InlineKeyboardButton(
+                     str(counter3) + ' ' + emojize(":heart:", use_aliases=True), callback_data=3),
+                 InlineKeyboardButton(emojize(":star:", use_aliases=True), callback_data=10)]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    query.edit_message_reply_markup(reply_markup=reply_markup)
+
+
 def main():
-    """Start the bot"""
     # Initialize emoji filter class
     filter_emoji = FilterEmoji()
 
-    # Set Aqua bot token
-    updater = Updater(token=os.getenv("TEL_BOT_TOKEN"), request_kwargs={
-                      'read_timeout': 15, 'connect_timeout': 30})
-
-    dispatcher = updater.dispatcher
+    # Create the Updater and pass it Aqua Bot's token.
+    updater = Updater(os.getenv("TEL_BOT_TOKEN"), use_context=True)
 
     start_handler = CommandHandler('start', start)
-    dispatcher.add_handler(start_handler)
+    updater.dispatcher.add_handler(start_handler)
+
+    delete_handler = CommandHandler('delete', delete)
+    updater.dispatcher.add_handler(delete_handler)
+
+    sauce_handler = CommandHandler('sauce', sauce)
+    updater.dispatcher.add_handler(sauce_handler)
 
     source_handler = CommandHandler('source', source)
-    dispatcher.add_handler(source_handler)
+    updater.dispatcher.add_handler(source_handler)
 
     karma_handler = CommandHandler('karma', karma)
-    dispatcher.add_handler(karma_handler)
+    updater.dispatcher.add_handler(karma_handler)
 
     addme_handler = CommandHandler('addme', addme)
-    dispatcher.add_handler(addme_handler)
-    
+    updater.dispatcher.add_handler(addme_handler)
+
     give_handler = CommandHandler('give', give)
-    dispatcher.add_handler(give_handler)
+    updater.dispatcher.add_handler(give_handler)
+
+    # on noncommand i.e message - repost the photo on Telegram
+    updater.dispatcher.add_handler(MessageHandler(Filters.photo, repost))
+    updater.dispatcher.add_handler(CallbackQueryHandler(button))
+
+    # on noncommand i.e message - repost the video on Telegram
+    updater.dispatcher.add_handler(MessageHandler(Filters.animation, repost))
+    updater.dispatcher.add_handler(CallbackQueryHandler(button))
 
     # If an emoji in the list above is found, run process_emoji()
     emoji_handler = MessageHandler(filter_emoji, process_emoji)
-    dispatcher.add_handler(emoji_handler)
+    updater.dispatcher.add_handler(emoji_handler)
 
-    dispatcher.add_error_handler(error)
+    updater.dispatcher.add_error_handler(error)
 
     updater.start_polling()
 
