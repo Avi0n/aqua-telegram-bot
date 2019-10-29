@@ -647,7 +647,7 @@ def repost(update, context):
         else:
             # Delete original message
             context.bot.delete_message(chat_id=update.message.chat.id, message_id=update.message.message_id)
-            # Don't set send_error to False in case the user sent a video (try photo first since that's what is sent most of the time)
+            send_error = False
         # Try sending document animation
         try:
             # Send message with inline keyboard
@@ -662,9 +662,9 @@ def repost(update, context):
         # Try sending video animation
         try:
             # Send message with inline keyboard
-            context.bot.send_animation(chat_id=update.message.chat.id, video=update.message.video[-1].file_id, caption=repost_caption,
+            context.bot.send_video(chat_id=update.message.chat.id, video=update.message.video.file_id, caption=repost_caption,
                                 disable_notification=False, reply_markup=reply_markup, timeout=20, parse_mode='HTML')
-        except:
+        except Exception as e:
             print('Not a video video')
         else:
             # Delete original message
