@@ -643,7 +643,7 @@ def repost(update, context):
     # Try sending video animation
     except:
         # Send message with inline keyboard
-        context.bot.send_animation(chat_id=update.message.chat.id, photo=update.message.video[-1].file_id, caption=repost_caption,
+        context.bot.send_animation(chat_id=update.message.chat.id, animation=update.message.video[-1].file_id, caption=repost_caption,
                             disable_notification=False, reply_markup=reply_markup, timeout=20, parse_mode='HTML')
     # Try sending photo
     except:
