@@ -635,15 +635,21 @@ def repost(update, context):
     else:
         repost_caption = '\n\nPosted by: ' + update.message.from_user.username
 
-    # Animations are sent less frequently, so try sending animation first. If that doesn't work, send photo
+    # Try sending document animation
     try:
         # Send message with inline keyboard
         context.bot.send_animation(chat_id=update.message.chat.id, animation=update.message.document.file_id, caption=repost_caption,
-                                disable_notification=True, reply_markup=reply_markup, timeout=20, parse_mode='HTML')
+                                disable_notification=False, reply_markup=reply_markup, timeout=20, parse_mode='HTML')
+    # Try sending video animation
+    except:
+        # Send message with inline keyboard
+        context.bot.send_animation(chat_id=update.message.chat.id, photo=update.message.video[-1].file_id, caption=repost_caption,
+                            disable_notification=False, reply_markup=reply_markup, timeout=20, parse_mode='HTML')
+    # Try sending photo
     except:
         # Send message with inline keyboard
         context.bot.send_photo(chat_id=update.message.chat.id, photo=update.message.photo[-1].file_id, caption=repost_caption,
-                            disable_notification=True, reply_markup=reply_markup, timeout=20, parse_mode='HTML') 
+                            disable_notification=False, reply_markup=reply_markup, timeout=20, parse_mode='HTML')
     # Delete original message
     context.bot.delete_message(chat_id=update.message.chat.id, message_id=update.message.message_id)
 
