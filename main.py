@@ -641,7 +641,7 @@ def repost(update, context):
         context.bot.send_animation(chat_id=update.message.chat.id, animation=update.message.document.file_id, caption=repost_caption,
                                 disable_notification=False, reply_markup=reply_markup, timeout=20, parse_mode='HTML')
     # Try sending video animation
-    except:
+    except AttributeError:
         # Send message with inline keyboard
         context.bot.send_animation(chat_id=update.message.chat.id, animation=update.message.video[-1].file_id, caption=repost_caption,
                             disable_notification=False, reply_markup=reply_markup, timeout=20, parse_mode='HTML')
