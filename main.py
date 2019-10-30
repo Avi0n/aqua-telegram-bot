@@ -637,24 +637,6 @@ def repost(update, context):
 
     send_error = True
     while send_error is True:
-        # Try sending document animation
-        try:
-            # Send message with inline keyboard
-            context.bot.send_animation(chat_id=update.message.chat.id, animation=update.message.document.file_id, caption=repost_caption,
-                                    disable_notification=False, reply_markup=reply_markup, timeout=20, parse_mode='HTML')
-        except:
-            print('Not a document video')
-        else:
-            send_error = False
-        # Try sending video animation
-        try:
-            # Send message with inline keyboard
-            context.bot.send_animation(chat_id=update.message.chat.id, animation=update.message.video[-1].file_id, caption=repost_caption,
-                                disable_notification=False, reply_markup=reply_markup, timeout=20, parse_mode='HTML')
-        except:
-            print('Not a video video')
-        else:
-            send_error = False
         # Try sending photo
         try:
             # Send message with inline keyboard
@@ -663,13 +645,34 @@ def repost(update, context):
         except:
             print('Not a photo')
         else:
+            # Delete original message
+            context.bot.delete_message(chat_id=update.message.chat.id, message_id=update.message.message_id)
+            # Don't set send_error to False in case the user sent a video (try photo first since that's what is sent most of the time)
+        # Try sending document animation
+        try:
+            # Send message with inline keyboard
+            context.bot.send_animation(chat_id=update.message.chat.id, animation=update.message.document.file_id, caption=repost_caption,
+                                    disable_notification=False, reply_markup=reply_markup, timeout=20, parse_mode='HTML')
+        except:
+            print('Not a document video')
+        else:
+            # Delete original message
+            context.bot.delete_message(chat_id=update.message.chat.id, message_id=update.message.message_id)
+            send_error = False
+        # Try sending video animation
+        try:
+            # Send message with inline keyboard
+            context.bot.send_animation(chat_id=update.message.chat.id, video=update.message.video[-1].file_id, caption=repost_caption,
+                                disable_notification=False, reply_markup=reply_markup, timeout=20, parse_mode='HTML')
+        except:
+            print('Not a video video')
+        else:
+            # Delete original message
+            context.bot.delete_message(chat_id=update.message.chat.id, message_id=update.message.message_id)
             send_error = False
 
         # Set send_error to False so we don't stay in the loop forever
         send_error = False
-
-    # Delete original message
-    context.bot.delete_message(chat_id=update.message.chat.id, message_id=update.message.message_id)
 
 
 def button(update, context):
