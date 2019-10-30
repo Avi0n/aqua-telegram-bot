@@ -636,7 +636,7 @@ def repost(update, context):
         repost_caption = '\n\nPosted by: ' + update.message.from_user.username
 
     send_error = True
-    while send_error = True:
+    while send_error is True:
         # Try sending document animation
         try:
             # Send message with inline keyboard
