@@ -635,21 +635,45 @@ def repost(update, context):
     else:
         repost_caption = '\n\nPosted by: ' + update.message.from_user.username
 
-    # Try sending document animation
-    try:
-        # Send message with inline keyboard
-        context.bot.send_animation(chat_id=update.message.chat.id, animation=update.message.document.file_id, caption=repost_caption,
+    send_error = True
+    while send_error = True:
+        # Try sending document animation
+        try:
+            # Send message with inline keyboard
+            context.bot.send_animation(chat_id=update.message.chat.id, animation=update.message.document.file_id, caption=repost_caption,
+                                    disable_notification=False, reply_markup=reply_markup, timeout=20, parse_mode='HTML')
+        except Exception as e:
+            context.bot.send_message(chat_id=update.message.chat_id,
+                                        text="There was a problem. Please send the following message to @Avi0n")
+            context.bot.send_message(chat_id=update.message.chat_id, text=str(e))
+        else:
+            send_error = False
+        # Try sending video animation
+        try:
+            # Send message with inline keyboard
+            context.bot.send_animation(chat_id=update.message.chat.id, animation=update.message.video[-1].file_id, caption=repost_caption,
                                 disable_notification=False, reply_markup=reply_markup, timeout=20, parse_mode='HTML')
-    # Try sending video animation
-    except AttributeError:
-        # Send message with inline keyboard
-        context.bot.send_animation(chat_id=update.message.chat.id, animation=update.message.video[-1].file_id, caption=repost_caption,
-                            disable_notification=False, reply_markup=reply_markup, timeout=20, parse_mode='HTML')
-    # Try sending photo
-    except:
-        # Send message with inline keyboard
-        context.bot.send_photo(chat_id=update.message.chat.id, photo=update.message.photo[-1].file_id, caption=repost_caption,
-                            disable_notification=False, reply_markup=reply_markup, timeout=20, parse_mode='HTML')
+        except Exception as e:
+            context.bot.send_message(chat_id=update.message.chat_id,
+                                        text="There was a problem. Please send the following message to @Avi0n")
+            context.bot.send_message(chat_id=update.message.chat_id, text=str(e))
+        else:
+            send_error = False
+        # Try sending photo
+        try:
+            # Send message with inline keyboard
+            context.bot.send_photo(chat_id=update.message.chat.id, photo=update.message.photo[-1].file_id, caption=repost_caption,
+                                disable_notification=False, reply_markup=reply_markup, timeout=20, parse_mode='HTML')
+        except Exception as e:
+            context.bot.send_message(chat_id=update.message.chat_id,
+                                        text="There was a problem. Please send the following message to @Avi0n")
+            context.bot.send_message(chat_id=update.message.chat_id, text=str(e))
+        else:
+            send_error = False
+
+        # Set send_error to False so we don't stay in the loop forever
+        send_error = False
+
     # Delete original message
     context.bot.delete_message(chat_id=update.message.chat.id, message_id=update.message.message_id)
 
