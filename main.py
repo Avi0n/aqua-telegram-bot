@@ -642,10 +642,8 @@ def repost(update, context):
             # Send message with inline keyboard
             context.bot.send_animation(chat_id=update.message.chat.id, animation=update.message.document.file_id, caption=repost_caption,
                                     disable_notification=False, reply_markup=reply_markup, timeout=20, parse_mode='HTML')
-        except Exception as e:
-            context.bot.send_message(chat_id=update.message.chat_id,
-                                        text="There was a problem. Please send the following message to @Avi0n")
-            context.bot.send_message(chat_id=update.message.chat_id, text=str(e))
+        except:
+            print('Not a document video')
         else:
             send_error = False
         # Try sending video animation
@@ -653,10 +651,8 @@ def repost(update, context):
             # Send message with inline keyboard
             context.bot.send_animation(chat_id=update.message.chat.id, animation=update.message.video[-1].file_id, caption=repost_caption,
                                 disable_notification=False, reply_markup=reply_markup, timeout=20, parse_mode='HTML')
-        except Exception as e:
-            context.bot.send_message(chat_id=update.message.chat_id,
-                                        text="There was a problem. Please send the following message to @Avi0n")
-            context.bot.send_message(chat_id=update.message.chat_id, text=str(e))
+        except:
+            print('Not a video video')
         else:
             send_error = False
         # Try sending photo
@@ -664,10 +660,8 @@ def repost(update, context):
             # Send message with inline keyboard
             context.bot.send_photo(chat_id=update.message.chat.id, photo=update.message.photo[-1].file_id, caption=repost_caption,
                                 disable_notification=False, reply_markup=reply_markup, timeout=20, parse_mode='HTML')
-        except Exception as e:
-            context.bot.send_message(chat_id=update.message.chat_id,
-                                        text="There was a problem. Please send the following message to @Avi0n")
-            context.bot.send_message(chat_id=update.message.chat_id, text=str(e))
+        except:
+            print('Not a photo')
         else:
             send_error = False
 
@@ -785,6 +779,10 @@ def main():
 
     # on noncommand i.e message - repost the video on Telegram
     updater.dispatcher.add_handler(MessageHandler(Filters.animation, repost))
+    updater.dispatcher.add_handler(CallbackQueryHandler(button))
+
+    # on noncommand i.e message - repost the video on Telegram
+    updater.dispatcher.add_handler(MessageHandler(Filters.video, repost))
     updater.dispatcher.add_handler(CallbackQueryHandler(button))
 
     # If an emoji in the list above is found, run process_emoji()
