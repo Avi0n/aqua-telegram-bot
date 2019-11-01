@@ -126,11 +126,14 @@ def delete(update, context):
     # Only allow original poster to delete their own message
     if username[-1] == update.message.from_user.username:
         # Remove message that user replied to
-        context.bot.delete_message(chat_id=update.message.chat_id, message_id=update.message.reply_to_message.message_id)
+        context.bot.delete_message(
+            chat_id=update.message.chat_id, message_id=update.message.reply_to_message.message_id)
         # Remove the '/delete' message the user sent to keep the chat clean
-        context.bot.delete_message(chat_id=update.message.chat_id, message_id=update.message.message_id)
+        context.bot.delete_message(
+            chat_id=update.message.chat_id, message_id=update.message.message_id)
     else:
-        context.bot.send_message(chat_id=update.message.chat_id, text='You can only delete your own posts.')
+        context.bot.send_message(
+            chat_id=update.message.chat_id, text='You can only delete your own posts.')
 
 
 # Respond to /karma
@@ -178,7 +181,8 @@ def give(update, context):
         except Exception as e:
             context.bot.send_message(chat_id=update.message.chat_id,
                                      text="There was a problem. Please send the following message to @Avi0n")
-            context.bot.send_message(chat_id=update.message.chat_id, text=str(e))
+            context.bot.send_message(
+                chat_id=update.message.chat_id, text=str(e))
     else:
         string_split = update.message.text.split()
         username = string_split[1]
@@ -425,8 +429,8 @@ def addme(update, context):
             # Rollback in case there is any error
             db.rollback()
             print("Adding user's chat_id failed")
-            context.bot.send_message(chat_id=chat_id, 
-                                    text="Sorry, something went wrong. Please send the following message to @Avi0n.")
+            context.bot.send_message(chat_id=chat_id,
+                                     text="Sorry, something went wrong. Please send the following message to @Avi0n.")
             context.bot.send_message(chat_id=chat_id, text=str(e))
         finally:
             cursor.close()
@@ -622,9 +626,13 @@ def repost(update, context):
     repost_caption = None
 
     keyboard = [[InlineKeyboardButton('0 ' + emojize(":thumbsup:", use_aliases=True), callback_data=1),
-                    InlineKeyboardButton('0 ' + emojize(":ok_hand:", use_aliases=True), callback_data=2),
-                    InlineKeyboardButton('0 ' + emojize(":heart:", use_aliases=True), callback_data=3),
-                    InlineKeyboardButton(emojize(":star:", use_aliases=True), callback_data=10)]]
+                 InlineKeyboardButton(
+                     '0 ' + emojize(":ok_hand:", use_aliases=True), callback_data=2),
+                 InlineKeyboardButton(
+                     '0 ' + emojize(":heart:", use_aliases=True), callback_data=3),
+                 InlineKeyboardButton(
+                     emojize(":star:", use_aliases=True), callback_data=10),
+                 InlineKeyboardButton('Votes', callback_data=11)]]
 
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -641,34 +649,37 @@ def repost(update, context):
         try:
             # Send message with inline keyboard
             context.bot.send_photo(chat_id=update.message.chat.id, photo=update.message.photo[-1].file_id, caption=repost_caption,
-                                disable_notification=False, reply_markup=reply_markup, timeout=20, parse_mode='HTML')
+                                   disable_notification=False, reply_markup=reply_markup, timeout=20, parse_mode='HTML')
         except:
             print('Not a photo')
         else:
             # Delete original message
-            context.bot.delete_message(chat_id=update.message.chat.id, message_id=update.message.message_id)
+            context.bot.delete_message(
+                chat_id=update.message.chat.id, message_id=update.message.message_id)
             send_error = False
         # Try sending document animation
         try:
             # Send message with inline keyboard
             context.bot.send_animation(chat_id=update.message.chat.id, animation=update.message.document.file_id, caption=repost_caption,
-                                    disable_notification=False, reply_markup=reply_markup, timeout=20, parse_mode='HTML')
+                                       disable_notification=False, reply_markup=reply_markup, timeout=20, parse_mode='HTML')
         except:
             print('Not a document video')
         else:
             # Delete original message
-            context.bot.delete_message(chat_id=update.message.chat.id, message_id=update.message.message_id)
+            context.bot.delete_message(
+                chat_id=update.message.chat.id, message_id=update.message.message_id)
             send_error = False
         # Try sending video animation
         try:
             # Send message with inline keyboard
             context.bot.send_video(chat_id=update.message.chat.id, video=update.message.video.file_id, caption=repost_caption,
-                                disable_notification=False, reply_markup=reply_markup, timeout=20, parse_mode='HTML')
-        except Exception as e:
+                                   disable_notification=False, reply_markup=reply_markup, timeout=20, parse_mode='HTML')
+        except:
             print('Not a video video')
         else:
             # Delete original message
-            context.bot.delete_message(chat_id=update.message.chat.id, message_id=update.message.message_id)
+            context.bot.delete_message(
+                chat_id=update.message.chat.id, message_id=update.message.message_id)
             send_error = False
 
         # Set send_error to False so we don't stay in the loop forever
@@ -731,18 +742,28 @@ def button(update, context):
 
     # Forward message that user star'd
     if int(query.data) == 10:
-        # Get user's personal chat_id with Aqua
-        tele_chat_id = get_chat_id(query.from_user.username)
-        # Send message
-        context.bot.forward_message(chat_id=tele_chat_id, from_chat_id=query.message.chat_id,
-                                    message_id=query.message.message_id)
+        try:
+            # Get user's personal chat_id with Aqua
+            tele_chat_id = get_chat_id(query.from_user.username)
+            # Send message
+            context.bot.forward_message(chat_id=tele_chat_id, from_chat_id=query.message.chat_id,
+                                        message_id=query.message.message_id)
+            context.bot.answer_callback_query(
+                callback_query_id=query.id, text='Saved!', show_alert=False, timeout=None)
+        except:
+            context.bot.answer_callback_query(
+                callback_query_id=query.id, text="Error. Have you PM'd me the '/addme' command?", show_alert=True, timeout=None)
+
+    # Show popup showing who voted on the picture/video
+    if int(query.data) == 11:
+        context.bot.answer_callback_query(
+            callback_query_id=query.id, text='Popup test', show_alert=True, timeout=None)
 
     keyboard = [[InlineKeyboardButton(str(counter1) + ' ' + emojize(":thumbsup:", use_aliases=True), callback_data=1),
-                 InlineKeyboardButton(
-                     str(counter2) + ' ' + emojize(":ok_hand:", use_aliases=True), callback_data=2),
-                 InlineKeyboardButton(
-                     str(counter3) + ' ' + emojize(":heart:", use_aliases=True), callback_data=3),
-                 InlineKeyboardButton(emojize(":star:", use_aliases=True), callback_data=10)]]
+                 InlineKeyboardButton(str(counter2) + ' ' + emojize(":ok_hand:", use_aliases=True), callback_data=2),
+                 InlineKeyboardButton(str(counter3) + ' ' + emojize(":heart:", use_aliases=True), callback_data=3),
+                 InlineKeyboardButton(emojize(":star:", use_aliases=True), callback_data=10),
+                 InlineKeyboardButton('Votes', callback_data=11)]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     query.edit_message_reply_markup(reply_markup=reply_markup)
