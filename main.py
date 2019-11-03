@@ -168,7 +168,6 @@ def update_message_karma(message_id, username, emoji_points):
     sql = "SELECT * FROM message_karma WHERE message_id = " + \
         str(message_id) + ";"
     try:
-        print("entered first try. message_id=" + str(message_id))
         # Execute the SQL command
         cursor.execute(sql)
         # Fetch all the rows in a list of lists.
@@ -176,7 +175,6 @@ def update_message_karma(message_id, username, emoji_points):
     except Exception as e:
         print("Error: " + str(e))
     if result is None:
-        print("entered if")
         # Insert new row with message_id, username, and emoji point values
         sql = "INSERT INTO message_karma VALUES (" + str(message_id) + ", '" + username + \
             "', " + str(thumb_points) + ", " + str(ok_points) + ", " + str(heart_points) + ");"
@@ -193,7 +191,6 @@ def update_message_karma(message_id, username, emoji_points):
             cursor.close()
             db.close()
     else:
-        print("entered else")
         # Update emoji points that user has given a specific message_id
         sql = "UPDATE message_karma SET " + emoji_symbol + " = " + str(emoji_points) + \
             " WHERE message_id = " + \
@@ -857,33 +854,25 @@ def button(update, context):
         context.bot.send_sticker(
             chat_id=query.message.chat_id, sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
 
-    # Otherwise make toast saying "You (emoji) this"
-    elif int(query.data) is 1:
-        toast_emoji = 'thumbsup'
-        context.bot.answer_callback_query(callback_query_id=query.id, text='You ' + emojize(
-            ":" + toast_emoji + ":", use_aliases=True) + ' this.', show_alert=False, timeout=None)
-    elif int(query.data) is 2:
-        toast_emoji = 'ok_hand'
-        context.bot.answer_callback_query(callback_query_id=query.id, text='You ' + emojize(
-            ":" + toast_emoji + ":", use_aliases=True) + ' this.', show_alert=False, timeout=None)
-    elif int(query.data) is 3:
-        toast_emoji = 'heart'
-        context.bot.answer_callback_query(callback_query_id=query.id, text='You ' + emojize(
-            ":" + toast_emoji + ":", use_aliases=True) + ' this.', show_alert=False, timeout=None)
-
     # Update with the appropriate amount of karma
-    if int(query.data) == 1:
+    elif int(query.data) == 1:
         update_user_karma(username[-1], "+", query.data)
         update_message_karma(query.message.message_id, query.from_user.username, query.data)
         counter1 += 1
+        context.bot.answer_callback_query(callback_query_id=query.id, text='You ' + emojize(
+            ":thumbsup:", use_aliases=True) + ' this.', show_alert=False, timeout=None)
     elif int(query.data) == 2:
         update_user_karma(username[-1], "+", query.data)
         update_message_karma(query.message.message_id, query.from_user.username, query.data)
         counter2 += 1
+        context.bot.answer_callback_query(callback_query_id=query.id, text='You ' + emojize(
+            ":ok_hand:", use_aliases=True) + ' this.', show_alert=False, timeout=None)
     elif int(query.data) == 3:
         update_user_karma(username[-1], "+", query.data)
         update_message_karma(query.message.message_id, query.from_user.username, query.data)
         counter3 += 1
+        context.bot.answer_callback_query(callback_query_id=query.id, text='You ' + emojize(
+            ":heart:", use_aliases=True) + ' this.', show_alert=False, timeout=None)
 
     # Forward message that user star'd
     elif int(query.data) == 10:
