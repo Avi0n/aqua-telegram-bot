@@ -222,7 +222,7 @@ def get_message_karma(message_id):
     return_message = ""
     # SELECT SUM(thumbsup + ok_hand + heart) FROM message_karma WHERE message_id=2337 AND username='Avi0n' 
     sql = "SELECT username, SUM(thumbsup + ok_hand + heart) AS karma FROM message_karma WHERE message_id = " + \
-            str(message_id) + " ORDER BY username;"
+            str(message_id) + " GROUP BY username ORDER BY username;"
     try:
         print("message_id: " + str(message_id))
         # Execute the SQL command
@@ -364,7 +364,7 @@ def sauce(update, context):
 
 
 # Respond to /source
-def source(bot, update):
+def source(update, context):
     authorized_room = True
     media_id = None
 
