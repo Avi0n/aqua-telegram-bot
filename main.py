@@ -166,7 +166,7 @@ def update_message_karma(message_id, username, emoji_points):
         heart_points = 3
 
     sql = "SELECT * FROM message_karma WHERE message_id = " + \
-        str(message_id) + ";"
+        str(message_id) + " AND username = '" + username + "';"
     try:
         # Execute the SQL command
         cursor.execute(sql)
