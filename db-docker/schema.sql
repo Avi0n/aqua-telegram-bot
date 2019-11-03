@@ -29,6 +29,22 @@ CREATE TABLE `user_chat_id` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `message_karma`
+--
+
+DROP TABLE IF EXISTS `message_karma`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `message_karma` (
+  `message_id` int(11) NOT NULL,
+  `username` varchar(20) DEFAULT NULL,
+  `thumbsup` tinyint(4) NOT NULL,
+  `ok_hand` tinyint(4) NOT NULL,
+  `heart` tinyint(4) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `user_karma`
 --
 
