@@ -41,7 +41,8 @@ def error(update, context):
     logger.warning('Update "%s" caused error "%s"', update, context.error)
 
 
-def read_db():
+# Retrieve user's karma from the database
+def get_user_karma():
     # Set MySQL settings
     db = MySQLdb.connect(host=os.getenv("MYSQL_HOST"),
                          user=os.getenv("MYSQL_USER"),
@@ -79,14 +80,15 @@ def read_db():
 
     except Exception as e:
         return_message += "Error"
-        print("read_db() error: " + str(e))
+        print("get_user_karma() error: " + str(e))
     finally:
         cursor.close()
         db.close()
     return return_message
 
 
-def update_karma(username, plus_or_minus, points):
+# Increment the total karma for a specific user
+def update_user_karma(username, plus_or_minus, points):
     # Set MySQL settings
     db = MySQLdb.connect(host=os.getenv("MYSQL_HOST"),
                          user=os.getenv("MYSQL_USER"),
@@ -107,6 +109,174 @@ def update_karma(username, plus_or_minus, points):
         # Rollback in case there is any error
         db.rollback()
         print("update_karma error: " + str(e))
+    finally:
+        cursor.close()
+        db.close()
+
+'''
+# Check the toggle state of an emoji
+def check_for_previous_vote(message_id, username, emoji_symbol):
+    # Set MySQL settings
+    db = MySQLdb.connect(host=os.getenv("MYSQL_HOST"),
+                         user=os.getenv("MYSQL_USER"),
+                         passwd=os.getenv("MYSQL_PASS"),
+                         db=os.getenv("DATABASE"))
+    # prepare a cursor object using cursor() method
+    cursor = db.cursor()
+
+    sql = "SELECT " + emoji_symbol + " FROM message_karma WHERE message_id = " + \
+            str(message_id) + " AND username = '" + username + "';"
+    try:
+        # Execute the SQL command
+        cursor.execute(sql)
+        # Fetch all the rows in a list of lists.
+        result = cursor.fetchone()
+    except Exception as e:
+        print("Error: " + str(e))
+    finally:
+        cursor.close()
+        db.close()
+    if int(result) is not 0:
+        return True
+    else:
+        return False
+'''
+
+def update_message_karma(message_id, username, emoji_points):
+    # Set MySQL settings
+    db = MySQLdb.connect(host=os.getenv("MYSQL_HOST"),
+                         user=os.getenv("MYSQL_USER"),
+                         passwd=os.getenv("MYSQL_PASS"),
+                         db=os.getenv("DATABASE"))
+    # prepare a cursor object using cursor() method
+    cursor = db.cursor()
+
+    thumb_points = 0
+    ok_points = 0
+    heart_points = 0
+    # Figure out which column to update
+    if int(emoji_points) is 1:
+        emoji_symbol = 'thumbsup'
+        thumb_points = 1
+    elif int(emoji_points) is 2:
+        emoji_symbol = 'ok_hand'
+        ok_points = 2
+    elif int(emoji_points) is 3:
+        emoji_symbol = 'heart'
+        heart_points = 3
+
+    sql = "SELECT * FROM message_karma WHERE message_id = " + \
+        str(message_id) + ";"
+    try:
+        print("entered first try. message_id=" + str(message_id))
+        # Execute the SQL command
+        cursor.execute(sql)
+        # Fetch all the rows in a list of lists.
+        result = cursor.fetchone()
+    except Exception as e:
+        print("Error: " + str(e))
+    if result is None:
+        print("entered if")
+        # Insert new row with message_id, username, and emoji point values
+        sql = "INSERT INTO message_karma VALUES (" + str(message_id) + ", '" + username + \
+            "', " + str(thumb_points) + ", " + str(ok_points) + ", " + str(heart_points) + ");"
+        try:
+            # Execute the SQL command
+            cursor.execute(sql)
+            # Commit your changes in the database
+            db.commit()
+        except Exception as e:
+            # Rollback in case there is any error
+            db.rollback()
+            print("update_message_karma insert error: " + str(e))
+        finally:
+            cursor.close()
+            db.close()
+    else:
+        print("entered else")
+        # Update emoji points that user has given a specific message_id
+        sql = "UPDATE message_karma SET " + emoji_symbol + " = " + str(emoji_points) + \
+            " WHERE message_id = " + \
+            str(message_id) + " AND username = '" + username + "';"
+        try:
+            # Execute the SQL command
+            cursor.execute(sql)
+            # Commit your changes in the database
+            db.commit()
+        except Exception as e:
+            # Rollback in case there is any error
+            db.rollback()
+            print("update_message_karma error: " + str(e))
+        finally:
+            cursor.close()
+            db.close()
+
+
+# Get total karma per user for a specific message
+def get_message_karma(message_id):
+    # Set MySQL settings
+    db = MySQLdb.connect(host=os.getenv("MYSQL_HOST"),
+                         user=os.getenv("MYSQL_USER"),
+                         passwd=os.getenv("MYSQL_PASS"),
+                         db=os.getenv("DATABASE"))
+    # prepare a cursor object using cursor() method
+    cursor = db.cursor()
+
+    return_message = ""
+    # SELECT SUM(thumbsup + ok_hand + heart) FROM message_karma WHERE message_id=2337 AND username='Avi0n' 
+    sql = "SELECT username, SUM(thumbsup + ok_hand + heart) AS karma FROM message_karma WHERE message_id = " + \
+            str(message_id) + " ORDER BY username;"
+    try:
+        print("message_id: " + str(message_id))
+        # Execute the SQL command
+        cursor.execute(sql)
+        # Fetch all the rows in a list of lists.
+        results = cursor.fetchall()
+
+        # Find length of longest username and karma
+        longest_username_length = 0
+        longest_karma_length = 0
+        for row in results:
+            longest_username_length = max(longest_username_length, len(row[0]))
+            longest_karma_length = max(longest_karma_length, len(str(row[1])))
+
+        # Add each user and karma as its own row
+        for row in results:
+            username = row[0]
+            karma = row[1]
+            return_message += username + (" " * (longest_username_length - len(username))) + \
+                "   " + (" " * (longest_karma_length -
+                                len(str(karma)))) + str(karma) + "\n"
+
+    except Exception as e:
+        return_message += "Error"
+        print("get_message_karma() error: " + str(e))
+    finally:
+        cursor.close()
+        db.close()
+    return return_message
+
+
+# Get user's personal chat_id with Aqua
+def get_chat_id(tele_user):
+    # Set MySQL settings
+    db = MySQLdb.connect(host=os.getenv("MYSQL_HOST"),
+                         user=os.getenv("MYSQL_USER"),
+                         passwd=os.getenv("MYSQL_PASS"),
+                         db=os.getenv("DATABASE"))
+    # prepare a cursor object using cursor() method
+    cursor = db.cursor()
+
+    sql = "SELECT chat_id FROM user_chat_id WHERE username = '" + \
+        str(tele_user) + "';"
+    try:
+        # Execute the SQL command
+        cursor.execute(sql)
+        # Fetch all the rows in a list of lists.
+        result = cursor.fetchone()
+        return result[0]
+    except Exception as e:
+        print("Error: " + str(e))
     finally:
         cursor.close()
         db.close()
@@ -139,7 +309,7 @@ def delete(update, context):
 # Respond to /karma
 def karma(update, context):
     context.bot.send_message(chat_id=update.message.chat_id,
-                             text=read_db(), parse_mode='Markdown', timeout=20)
+                             text=get_user_karma(), parse_mode='Markdown', timeout=20)
 
 
 # Respond to /give
@@ -168,11 +338,11 @@ def give(update, context):
                 context.bot.send_message(chat_id=update.message.chat_id,
                                          text="Don't you think that's a tad too many points to be taking away?")
             elif -21 < int(points) < 0:
-                update_karma(username, '+', points)
+                update_user_karma(username, '+', points)
                 context.bot.send_message(chat_id=update.message.chat_id,
                                          text=from_username + " took away " + points + " points from " + username + "!")
             elif 61 > int(points) > 0:
-                update_karma(username, '+', points)
+                update_user_karma(username, '+', points)
                 context.bot.send_message(chat_id=update.message.chat_id,
                                          text=from_username + " gave " + username + " " + points + " points!")
             elif int(points) > 61:
@@ -440,31 +610,6 @@ def addme(update, context):
                                  + emojize(":wink:", use_aliases=True))
 
 
-# Get user's personal chat_id with Aqua
-def get_chat_id(tele_user):
-    # Set MySQL settings
-    db = MySQLdb.connect(host=os.getenv("MYSQL_HOST"),
-                         user=os.getenv("MYSQL_USER"),
-                         passwd=os.getenv("MYSQL_PASS"),
-                         db=os.getenv("DATABASE"))
-    # prepare a cursor object using cursor() method
-    cursor = db.cursor()
-
-    sql = "SELECT chat_id FROM user_chat_id WHERE username = '" + \
-        str(tele_user) + "';"
-    try:
-        # Execute the SQL command
-        cursor.execute(sql)
-        # Fetch all the rows in a list of lists.
-        result = cursor.fetchone()
-        return result[0]
-    except Exception as e:
-        print("forward_photo() error: " + str(e))
-    finally:
-        cursor.close()
-        db.close()
-
-
 # Convert mp4 to gif. Copy paste from:
 # https://gist.github.com/michaelosthege/cd3e0c3c556b70a79deba6855deb2cc8
 class TargetFormat(object):
@@ -491,7 +636,7 @@ def convert_media(inputpath, targetFormat):
     print("Done converting.")
 
 
-# Recognize who's picture was liked and store point in database
+# Recognize whose picture was liked and store point in database
 def process_emoji(update, context):
     try:
         username = update.message.reply_to_message.from_user.username
@@ -519,7 +664,7 @@ def process_emoji(update, context):
                 context.bot.send_sticker(chat_id=update.message.chat_id,
                                          sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
             else:
-                update_karma(username, "+", "3")
+                update_user_karma(username, "+", "3")
 
         # If message contains :ok_hand:, add 2 points
         elif emojize(":ok_hand:", use_aliases=True) in message_emoji and username is not None:
@@ -529,7 +674,7 @@ def process_emoji(update, context):
                 context.bot.send_sticker(chat_id=update.message.chat_id,
                                          sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
             else:
-                update_karma(username, "+", "2")
+                update_user_karma(username, "+", "2")
 
         # If message contains :thumbsup:, add 1 point
         elif emojize(":thumbsup:", use_aliases=True) in message_emoji and username is not None:
@@ -539,7 +684,7 @@ def process_emoji(update, context):
                 context.bot.send_sticker(chat_id=update.message.chat_id,
                                          sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
             else:
-                update_karma(username, "+", "1")
+                update_user_karma(username, "+", "1")
 
         # If message contains :thumbsdown:, subtract 1 point
         elif emojize(":thumbsdown:", use_aliases=True) in message_emoji and username is not None:
@@ -549,7 +694,7 @@ def process_emoji(update, context):
                 context.bot.send_sticker(chat_id=update.message.chat_id,
                                          sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
             else:
-                update_karma(username, "-", "1")
+                update_user_karma(username, "-", "1")
 
         # If message contains :star:, forward message that the user replied to with :star:
         if emojize(":star:", use_aliases=True) in message_emoji and username is not None:
@@ -612,6 +757,19 @@ class FilterEmoji(BaseFilter):
                 return True
 
 
+def make_keyboard(counter1, counter2, counter3):
+    keyboard = [[InlineKeyboardButton(str(counter1) + ' ' + emojize(":thumbsup:", use_aliases=True), callback_data=1),
+                 InlineKeyboardButton(
+                     str(counter2) + ' ' + emojize(":ok_hand:", use_aliases=True), callback_data=2),
+                 InlineKeyboardButton(
+                     str(counter3) + ' ' + emojize(":heart:", use_aliases=True), callback_data=3),
+                 InlineKeyboardButton(
+                     emojize(":star:", use_aliases=True), callback_data=10),
+                 InlineKeyboardButton('Votes', callback_data=11)]]
+
+    return InlineKeyboardMarkup(keyboard)
+
+
 # Forward message that was posted by another user to the channel with emoji buttons
 def repost(update, context):
     # Check to see if user doesn't want their photo to be deleted
@@ -624,17 +782,7 @@ def repost(update, context):
             return
 
     repost_caption = None
-
-    keyboard = [[InlineKeyboardButton('0 ' + emojize(":thumbsup:", use_aliases=True), callback_data=1),
-                 InlineKeyboardButton(
-                     '0 ' + emojize(":ok_hand:", use_aliases=True), callback_data=2),
-                 InlineKeyboardButton(
-                     '0 ' + emojize(":heart:", use_aliases=True), callback_data=3),
-                 InlineKeyboardButton(
-                     emojize(":star:", use_aliases=True), callback_data=10),
-                 InlineKeyboardButton('Votes', callback_data=11)]]
-
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    keyboard_buttons = make_keyboard(0, 0, 0)
 
     # Give credit to who originally posted the photo/video
     if update.message.caption is not None:
@@ -649,7 +797,7 @@ def repost(update, context):
         try:
             # Send message with inline keyboard
             context.bot.send_photo(chat_id=update.message.chat.id, photo=update.message.photo[-1].file_id, caption=repost_caption,
-                                   disable_notification=False, reply_markup=reply_markup, timeout=20, parse_mode='HTML')
+                                   disable_notification=False, reply_markup=keyboard_buttons, timeout=20, parse_mode='HTML')
         except:
             print('Not a photo')
         else:
@@ -661,7 +809,7 @@ def repost(update, context):
         try:
             # Send message with inline keyboard
             context.bot.send_animation(chat_id=update.message.chat.id, animation=update.message.document.file_id, caption=repost_caption,
-                                       disable_notification=False, reply_markup=reply_markup, timeout=20, parse_mode='HTML')
+                                       disable_notification=False, reply_markup=keyboard_buttons, timeout=20, parse_mode='HTML')
         except:
             print('Not a document video')
         else:
@@ -673,7 +821,7 @@ def repost(update, context):
         try:
             # Send message with inline keyboard
             context.bot.send_video(chat_id=update.message.chat.id, video=update.message.video.file_id, caption=repost_caption,
-                                   disable_notification=False, reply_markup=reply_markup, timeout=20, parse_mode='HTML')
+                                   disable_notification=False, reply_markup=keyboard_buttons, timeout=20, parse_mode='HTML')
         except:
             print('Not a video video')
         else:
@@ -702,46 +850,43 @@ def button(update, context):
 
     # Remove emoji from counter3
     counter3 = int(''.join(i for i in counter3 if i.isdigit()))
+    # Prevent users from voting on their own posts
+    if query.from_user.username == username[-1]:
+        context.bot.send_message(chat_id=query.message.chat_id,
+                                 text=query.from_user.username + " just tried to give themselves points.")
+        context.bot.send_sticker(
+            chat_id=query.message.chat_id, sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
 
+    # Otherwise make toast saying "You (emoji) this"
+    elif int(query.data) is 1:
+        toast_emoji = 'thumbsup'
+        context.bot.answer_callback_query(callback_query_id=query.id, text='You ' + emojize(
+            ":" + toast_emoji + ":", use_aliases=True) + ' this.', show_alert=False, timeout=None)
+    elif int(query.data) is 2:
+        toast_emoji = 'ok_hand'
+        context.bot.answer_callback_query(callback_query_id=query.id, text='You ' + emojize(
+            ":" + toast_emoji + ":", use_aliases=True) + ' this.', show_alert=False, timeout=None)
+    elif int(query.data) is 3:
+        toast_emoji = 'heart'
+        context.bot.answer_callback_query(callback_query_id=query.id, text='You ' + emojize(
+            ":" + toast_emoji + ":", use_aliases=True) + ' this.', show_alert=False, timeout=None)
+
+    # Update with the appropriate amount of karma
     if int(query.data) == 1:
-        # Prevent users from voting on their own posts
-        if query.from_user.username == username[-1]:
-            context.bot.send_message(chat_id=query.message.chat_id, text=query.from_user.username +
-                                     " just tried to give themselves points.")
-            context.bot.send_sticker(chat_id=query.message.chat_id,
-                                     sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
-        else:
-            counter1 += 1
-            context.bot.answer_callback_query(callback_query_id=query.id, text='You ' + emojize(
-                ":thumbsup:", use_aliases=True) + ' this.', show_alert=False, timeout=None)
-            update_karma(username[-1], "+", "1")
-
-    if int(query.data) == 2:
-        if query.from_user.username == username[-1]:
-            context.bot.send_message(chat_id=query.message.chat_id, text=query.from_user.username +
-                                     " just tried to give themselves points.")
-            context.bot.send_sticker(chat_id=query.message.chat_id,
-                                     sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
-        else:
-            counter2 += 1
-            context.bot.answer_callback_query(callback_query_id=query.id, text='You ' + emojize(
-                ":ok_hand:", use_aliases=True) + ' this.', show_alert=False, timeout=None)
-            update_karma(username[-1], "+", "2")
-
-    if int(query.data) == 3:
-        if query.from_user.username == username[-1]:
-            context.bot.send_message(chat_id=query.message.chat_id, text=query.from_user.username +
-                                     " just tried to give themselves points.")
-            context.bot.send_sticker(chat_id=query.message.chat_id,
-                                     sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
-        else:
-            counter3 += 1
-            context.bot.answer_callback_query(callback_query_id=query.id, text='You ' + emojize(
-                ":heart:", use_aliases=True) + ' this.', show_alert=False, timeout=None)
-            update_karma(username[-1], "+", "3")
+        update_user_karma(username[-1], "+", query.data)
+        update_message_karma(query.message.message_id, query.from_user.username, query.data)
+        counter1 += 1
+    elif int(query.data) == 2:
+        update_user_karma(username[-1], "+", query.data)
+        update_message_karma(query.message.message_id, query.from_user.username, query.data)
+        counter2 += 1
+    elif int(query.data) == 3:
+        update_user_karma(username[-1], "+", query.data)
+        update_message_karma(query.message.message_id, query.from_user.username, query.data)
+        counter3 += 1
 
     # Forward message that user star'd
-    if int(query.data) == 10:
+    elif int(query.data) == 10:
         try:
             # Get user's personal chat_id with Aqua
             tele_chat_id = get_chat_id(query.from_user.username)
@@ -755,18 +900,12 @@ def button(update, context):
                 callback_query_id=query.id, text="Error. Have you PM'd me the '/addme' command?", show_alert=True, timeout=None)
 
     # Show popup showing who voted on the picture/video
-    if int(query.data) == 11:
+    elif int(query.data) == 11:
         context.bot.answer_callback_query(
-            callback_query_id=query.id, text='Popup test', show_alert=True, timeout=None)
+            callback_query_id=query.id, text=get_message_karma(query.message.message_id), show_alert=True, timeout=None)
 
-    keyboard = [[InlineKeyboardButton(str(counter1) + ' ' + emojize(":thumbsup:", use_aliases=True), callback_data=1),
-                 InlineKeyboardButton(str(counter2) + ' ' + emojize(":ok_hand:", use_aliases=True), callback_data=2),
-                 InlineKeyboardButton(str(counter3) + ' ' + emojize(":heart:", use_aliases=True), callback_data=3),
-                 InlineKeyboardButton(emojize(":star:", use_aliases=True), callback_data=10),
-                 InlineKeyboardButton('Votes', callback_data=11)]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-
-    query.edit_message_reply_markup(reply_markup=reply_markup)
+    keyboard_buttons = make_keyboard(counter1, counter2, counter3)
+    query.edit_message_reply_markup(reply_markup=keyboard_buttons)
 
 
 def main():
