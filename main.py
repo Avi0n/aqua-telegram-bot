@@ -779,8 +779,8 @@ def button(update, context):
     elif query.message.chat.title == os.getenv("GROUP2"):
         database = os.getenv("DATABASE2")
 
-    user_selfvoted = False
-    while user_selfvoted is False:
+    stay_in = True
+    while stay_in is True:
         # Forward message that user star'd
         if int(query.data) == 10:
             try:
@@ -791,14 +791,17 @@ def button(update, context):
                                             message_id=query.message.message_id)
                 context.bot.answer_callback_query(
                     callback_query_id=query.id, text='Saved!', show_alert=False, timeout=None)
+                stay_in = False
             except:
                 context.bot.answer_callback_query(
                     callback_query_id=query.id, text="Error. Have you PM'd me the '/addme' command?", show_alert=True, timeout=None)
+                stay_in = False
 
         # Show popup showing who voted on the picture/video
         elif int(query.data) == 11:
             context.bot.answer_callback_query(
                 callback_query_id=query.id, text=get_message_karma(database, query.message.message_id), show_alert=True, timeout=None)
+            stay_in = False
 
         # Prevent users from voting on their own posts
         elif query.from_user.username == username[-1]:
@@ -806,7 +809,7 @@ def button(update, context):
                                     text=query.from_user.username + " just tried to give themselves points.")
             context.bot.send_sticker(
                 chat_id=query.message.chat_id, sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
-            user_selfvoted = True
+            stay_in = False
         # Update with the appropriate amount of karma
         elif int(query.data) == 1:
             update_user_karma(database, username[-1], "+", query.data)
@@ -814,18 +817,21 @@ def button(update, context):
             counter1 += 1
             context.bot.answer_callback_query(callback_query_id=query.id, text='You ' + emojize(
                 ":thumbsup:", use_aliases=True) + ' this.', show_alert=False, timeout=None)
+            stay_in = False
         elif int(query.data) == 2:
             update_user_karma(database, username[-1], "+", query.data)
             update_message_karma(database, query.message.message_id, query.from_user.username, query.data)
             counter2 += 1
             context.bot.answer_callback_query(callback_query_id=query.id, text='You ' + emojize(
                 ":ok_hand:", use_aliases=True) + ' this.', show_alert=False, timeout=None)
+            stay_in = False
         elif int(query.data) == 3:
             update_user_karma(database, username[-1], "+", query.data)
             update_message_karma(database, query.message.message_id, query.from_user.username, query.data)
             counter3 += 1
             context.bot.answer_callback_query(callback_query_id=query.id, text='You ' + emojize(
                 ":heart:", use_aliases=True) + ' this.', show_alert=False, timeout=None)
+            stay_in = False
 
     keyboard_buttons = make_keyboard(counter1, counter2, counter3)
     query.edit_message_reply_markup(reply_markup=keyboard_buttons)
