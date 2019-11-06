@@ -1,7 +1,5 @@
 FROM mariadb
 
-MAINTAINER Avi0n
-
 ENV MYSQL_DATABASE=dtp_karma \
     MYSQL_ROOT_PASSWORD=mysql_password
 
