@@ -463,22 +463,21 @@ def source(update, context):
         username = None
 
     if authorized_room is True and username is not None:
-        type_found = False
         # Get media's file_id
-        while type_found is False:
+        while True:
             try:
                 media_id = update.message.reply_to_message.photo[1].file_id
-                type_found = True
+                break
             except Exception as e:
                 print("Not a photo")
             try:
                 media_id = update.message.reply_to_message.document.file_id
-                type_found = True
+                break
             except Exception as e:
                 print("Not a document")
             try:
                 media_id = update.message.reply_to_message.video.file_id
-                type_found = True
+                break
             except Exception as e:
                 print("Not a video")
             finally:
