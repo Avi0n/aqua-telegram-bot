@@ -247,7 +247,6 @@ def get_message_karma(database, message_id):
     sql = "SELECT username, SUM(thumbsup + ok_hand + heart) AS karma FROM message_karma WHERE message_id = " + \
             str(message_id) + " GROUP BY username ORDER BY username;"
     try:
-        print("message_id: " + str(message_id))
         # Execute the SQL command
         cursor.execute(sql)
         # Fetch all the rows in a list of lists.
@@ -267,7 +266,6 @@ def get_message_karma(database, message_id):
             return_message += username + (" " * (longest_username_length - len(username))) + \
                 "   " + (" " * (longest_karma_length -
                                 len(str(karma)))) + str(karma) + "\n"
-
     except Exception as e:
         return_message += "Error"
         print("get_message_karma() error: " + str(e))
@@ -429,7 +427,7 @@ def addme(update, context):
             except Exception as e:
                 # Rollback in case there is any error
                 db.rollback()
-                print("Adding user's chat_id failed")
+                print("Adding user's chat_id failed. " + str(e))
                 context.bot.send_message(chat_id=chat_id,
                                         text="Sorry, something went wrong. Please send the following message to @Avi0n.")
                 context.bot.send_message(chat_id=chat_id, text=str(e))
