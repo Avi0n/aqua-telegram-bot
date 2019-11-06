@@ -215,7 +215,7 @@ def update_message_karma(database, message_id, username, emoji_points):
             db.close()
     else:
         # Update emoji points that user has given a specific message_id
-        sql = "UPDATE message_karma SET " + emoji_symbol + " = " + str(emoji_points) + \
+        sql = "UPDATE message_karma SET " + emoji_symbol + " = " + emoji_symbol + " + " + str(emoji_points) + \
             " WHERE message_id = " + \
             str(message_id) + " AND username = '" + username + "';"
         try:
