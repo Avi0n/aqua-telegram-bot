@@ -714,8 +714,7 @@ def repost(update, context):
     else:
         repost_caption = '\n\nPosted by: ' + update.message.from_user.username
 
-    send_error = True
-    while send_error is True:
+    while True:
         # Try sending photo
         try:
             # Send message with inline keyboard
@@ -725,9 +724,8 @@ def repost(update, context):
             print('Not a photo')
         else:
             # Delete original message
-            context.bot.delete_message(
-                chat_id=update.message.chat.id, message_id=update.message.message_id)
-            send_error = False
+            context.bot.delete_message(chat_id=update.message.chat.id, message_id=update.message.message_id)
+            break
         # Try sending document animation
         try:
             # Send message with inline keyboard
@@ -737,9 +735,8 @@ def repost(update, context):
             print('Not a document video')
         else:
             # Delete original message
-            context.bot.delete_message(
-                chat_id=update.message.chat.id, message_id=update.message.message_id)
-            send_error = False
+            context.bot.delete_message(chat_id=update.message.chat.id, message_id=update.message.message_id)
+            break
         # Try sending video animation
         try:
             # Send message with inline keyboard
@@ -749,12 +746,10 @@ def repost(update, context):
             print('Not a video video')
         else:
             # Delete original message
-            context.bot.delete_message(
-                chat_id=update.message.chat.id, message_id=update.message.message_id)
-            send_error = False
-
-        # Set send_error to False so we don't stay in the loop forever
-        send_error = False
+            context.bot.delete_message(chat_id=update.message.chat.id, message_id=update.message.message_id)
+            break
+        finally:
+            break
 
 
 def button(update, context):
