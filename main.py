@@ -332,6 +332,8 @@ def karma(update, context):
         database = os.getenv("DATABASE1")
     elif update.message.chat.title == os.getenv("GROUP2"):
         database = os.getenv("DATABASE2")
+    elif update.message.chat.title == os.getenv("GROUP3"):
+        database = os.getenv("DATABASE3")
     context.bot.send_message(chat_id=update.message.chat_id,
                              text=get_user_karma(database), parse_mode='Markdown', timeout=20)
 
@@ -340,10 +342,12 @@ def karma(update, context):
 def give(update, context):
     database = ''
     # Find out which database to use
-    if context.update.message.chat.title is os.getenv("GROUP1"):
+    if update.message.chat.title == os.getenv("GROUP1"):
         database = os.getenv("DATABASE1")
-    elif context.update.message.chat.title is os.getenv("GROUP2"):
+    elif update.message.chat.title == os.getenv("GROUP2"):
         database = os.getenv("DATABASE2")
+    elif update.message.chat.title == os.getenv("GROUP3"):
+        database = os.getenv("DATABASE3")
 
     # Check to see if user used the right command format
     if '@' in update.message.text:
