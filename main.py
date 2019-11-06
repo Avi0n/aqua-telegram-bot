@@ -42,12 +42,12 @@ def error(update, context):
 
 
 # Retrieve user's karma from the database
-def get_user_karma():
+def get_user_karma(database):
     # Set MySQL settings
     db = MySQLdb.connect(host=os.getenv("MYSQL_HOST"),
                          user=os.getenv("MYSQL_USER"),
                          passwd=os.getenv("MYSQL_PASS"),
-                         db=os.getenv("DATABASE"))
+                         db=database)
     # prepare a cursor object using cursor() method
     cursor = db.cursor()
 
@@ -79,7 +79,7 @@ def get_user_karma():
         return_message += "\n```" + emojize(":v:", use_aliases=True)
 
     except Exception as e:
-        return_message += "Error"
+        return_message += "Error: " + str(e)
         print("get_user_karma() error: " + str(e))
     finally:
         cursor.close()
@@ -88,30 +88,53 @@ def get_user_karma():
 
 
 # Increment the total karma for a specific user
-def update_user_karma(username, plus_or_minus, points):
+def update_user_karma(database, username, plus_or_minus, points):
     # Set MySQL settings
     db = MySQLdb.connect(host=os.getenv("MYSQL_HOST"),
                          user=os.getenv("MYSQL_USER"),
                          passwd=os.getenv("MYSQL_PASS"),
-                         db=os.getenv("DATABASE"))
+                         db=database)
     # prepare a cursor object using cursor() method
     cursor = db.cursor()
 
-    # Prepare SQL query to UPDATE required records
-    sql = "UPDATE user_karma SET karma = karma" + plus_or_minus + \
-        points + " WHERE username = '" + username + "';"
+    sql = "SELECT * FROM user_karma WHERE username = '" + username + "';"
     try:
         # Execute the SQL command
         cursor.execute(sql)
-        # Commit your changes in the database
-        db.commit()
+        # Fetch all the rows in a list of lists.
+        result = cursor.fetchone()
     except Exception as e:
-        # Rollback in case there is any error
-        db.rollback()
-        print("update_karma error: " + str(e))
-    finally:
-        cursor.close()
-        db.close()
+        print("Error: " + str(e))
+    if result is None:
+        # Add username to the database along with the points that were just added
+        sql = "INSERT INTO user_karma VALUES ('" + username + "', " + points + ");"
+        try:
+            # Execute the SQL command
+            cursor.execute(sql)
+            # Commit your changes in the database
+            db.commit()
+        except Exception as e:
+            # Rollback in case there is any error
+            db.rollback()
+            print("update_karma error: " + str(e))
+        finally:
+            cursor.close()
+            db.close()
+    else:
+        sql = "UPDATE user_karma SET karma = karma" + plus_or_minus + \
+            points + " WHERE username = '" + username + "';"
+        try:
+            # Execute the SQL command
+            cursor.execute(sql)
+            # Commit your changes in the database
+            db.commit()
+        except Exception as e:
+            # Rollback in case there is any error
+            db.rollback()
+            print("update_karma error: " + str(e))
+        finally:
+            cursor.close()
+            db.close()
 
 '''
 # Check the toggle state of an emoji
@@ -120,7 +143,7 @@ def check_for_previous_vote(message_id, username, emoji_symbol):
     db = MySQLdb.connect(host=os.getenv("MYSQL_HOST"),
                          user=os.getenv("MYSQL_USER"),
                          passwd=os.getenv("MYSQL_PASS"),
-                         db=os.getenv("DATABASE"))
+                         db=database)
     # prepare a cursor object using cursor() method
     cursor = db.cursor()
 
@@ -142,12 +165,12 @@ def check_for_previous_vote(message_id, username, emoji_symbol):
         return False
 '''
 
-def update_message_karma(message_id, username, emoji_points):
+def update_message_karma(database, message_id, username, emoji_points):
     # Set MySQL settings
     db = MySQLdb.connect(host=os.getenv("MYSQL_HOST"),
                          user=os.getenv("MYSQL_USER"),
                          passwd=os.getenv("MYSQL_PASS"),
-                         db=os.getenv("DATABASE"))
+                         db=database)
     # prepare a cursor object using cursor() method
     cursor = db.cursor()
 
@@ -210,12 +233,12 @@ def update_message_karma(message_id, username, emoji_points):
 
 
 # Get total karma per user for a specific message
-def get_message_karma(message_id):
+def get_message_karma(database, message_id):
     # Set MySQL settings
     db = MySQLdb.connect(host=os.getenv("MYSQL_HOST"),
                          user=os.getenv("MYSQL_USER"),
                          passwd=os.getenv("MYSQL_PASS"),
-                         db=os.getenv("DATABASE"))
+                         db=database)
     # prepare a cursor object using cursor() method
     cursor = db.cursor()
 
@@ -260,7 +283,7 @@ def get_chat_id(tele_user):
     db = MySQLdb.connect(host=os.getenv("MYSQL_HOST"),
                          user=os.getenv("MYSQL_USER"),
                          passwd=os.getenv("MYSQL_PASS"),
-                         db=os.getenv("DATABASE"))
+                         db=os.getenv("DATABASE1"))
     # prepare a cursor object using cursor() method
     cursor = db.cursor()
 
@@ -305,12 +328,25 @@ def delete(update, context):
 
 # Respond to /karma
 def karma(update, context):
+    database = ''
+    # Find out which database to use
+    if update.message.chat.title == os.getenv("GROUP1"):
+        database = os.getenv("DATABASE1")
+    elif update.message.chat.title == os.getenv("GROUP2"):
+        database = os.getenv("DATABASE2")
     context.bot.send_message(chat_id=update.message.chat_id,
-                             text=get_user_karma(), parse_mode='Markdown', timeout=20)
+                             text=get_user_karma(database), parse_mode='Markdown', timeout=20)
 
 
 # Respond to /give
 def give(update, context):
+    database = ''
+    # Find out which database to use
+    if context.update.message.chat.title is os.getenv("GROUP1"):
+        database = os.getenv("DATABASE1")
+    elif context.update.message.chat.title is os.getenv("GROUP2"):
+        database = os.getenv("DATABASE2")
+
     # Check to see if user used the right command format
     if '@' in update.message.text:
         # Remove all punctuation (@) and split the string
@@ -335,11 +371,11 @@ def give(update, context):
                 context.bot.send_message(chat_id=update.message.chat_id,
                                          text="Don't you think that's a tad too many points to be taking away?")
             elif -21 < int(points) < 0:
-                update_user_karma(username, '+', points)
+                update_user_karma(database, username, '+', points)
                 context.bot.send_message(chat_id=update.message.chat_id,
                                          text=from_username + " took away " + points + " points from " + username + "!")
             elif 61 > int(points) > 0:
-                update_user_karma(username, '+', points)
+                update_user_karma(database, username, '+', points)
                 context.bot.send_message(chat_id=update.message.chat_id,
                                          text=from_username + " gave " + username + " " + points + " points!")
             elif int(points) > 61:
@@ -358,6 +394,56 @@ def give(update, context):
                                  text="The correct format is '/give @" + username + " " + points + "'")
 
 
+# Respond to /addme
+def addme(update, context):
+    # Make sure the /addme command is being sent in a PM
+    if not update.message.chat.title:
+        username = update.message.from_user.username
+        chat_id = update.message.chat_id
+        # Set MySQL settings
+        db = MySQLdb.connect(host=os.getenv("MYSQL_HOST"),
+                             user=os.getenv("MYSQL_USER"),
+                             passwd=os.getenv("MYSQL_PASS"),
+                             db=os.getenv("DATABASE1"))
+        # prepare a cursor object using cursor() method
+        cursor = db.cursor()
+
+        sql = "SELECT * FROM user_chat_id WHERE username = '" + str(username) + "';"
+        try:
+            # Execute the SQL command
+            cursor.execute(sql)
+            # Fetch all the rows in a list of lists.
+            result = cursor.fetchone()
+        except Exception as e:
+            print("Error: " + str(e))
+        if result is None:
+            # Add user's chat_id with Aqua to database
+            sql = "INSERT INTO user_chat_id VALUES (" + str(chat_id) + ", '" + str(username) + "');"
+            try:
+                # Execute the SQL command
+                cursor.execute(sql)
+                # Commit your changes in the database
+                db.commit()
+                context.bot.send_message(chat_id=chat_id, text="Added! Now whenever you " + emojize(":star:", use_aliases=True) +
+                                        " a photo, I'll forward it to you here! " + emojize(":smiley:", use_aliases=True))
+            except Exception as e:
+                # Rollback in case there is any error
+                db.rollback()
+                print("Adding user's chat_id failed")
+                context.bot.send_message(chat_id=chat_id,
+                                        text="Sorry, something went wrong. Please send the following message to @Avi0n.")
+                context.bot.send_message(chat_id=chat_id, text=str(e))
+            finally:
+                cursor.close()
+                db.close()
+        else:
+            context.bot.send_message(chat_id=chat_id, 
+                                    text="You've already been added! " + emojize(":star:", use_aliases=True) + " away :)")
+    else:
+        context.bot.send_message(chat_id=update.message.chat_id, text="That doesn't work in here. Send me a PM instead "
+                                 + emojize(":wink:", use_aliases=True))
+
+
 # Respond to /sauce
 def sauce(update, context):
     source(update, context)
@@ -373,9 +459,6 @@ def source(update, context):
     except Exception as e:
         print(str(e))
         username = None
-
-    # if update.message.chat.title == "Bot testing" or update.message.chat.title == "Debauchery Tea Party":
-        #authorized_room = True
 
     if authorized_room is True and username is not None:
         # Get media's file_id
@@ -536,11 +619,11 @@ def source(update, context):
 
                                 else:
                                     print('miss...')
-                                    bot.send_message(chat_id=update.message.chat_id,
+                                    context.bot.send_message(chat_id=update.message.chat_id,
                                                      text="I couldn't find a source for that image")
                             else:
                                 print('no results... ;_;')
-                                bot.send_message(
+                                context.bot.send_message(
                                     chat_id=update.message.chat_id, text="No results")
 
                             # could potentially be negative
@@ -569,44 +652,6 @@ def source(update, context):
             os.remove(fname)
 
 
-# Respond to /addme
-def addme(update, context):
-    if not update.message.chat.title:
-        username = update.message.from_user.username
-        chat_id = update.message.chat_id
-        # Set MySQL settings
-        db = MySQLdb.connect(host=os.getenv("MYSQL_HOST"),
-                             user=os.getenv("MYSQL_USER"),
-                             passwd=os.getenv("MYSQL_PASS"),
-                             db=os.getenv("DATABASE"))
-        # prepare a cursor object using cursor() method
-        cursor = db.cursor()
-
-        # Add user's chat_id with Aqua to database if it doesn't already exist
-        sql = "UPDATE user_chat_id SET chat_id = " + \
-            str(chat_id) + " WHERE username = '" + str(username) + "';"
-        try:
-            # Execute the SQL command
-            cursor.execute(sql)
-            # Commit your changes in the database
-            db.commit()
-            context.bot.send_message(chat_id=chat_id, text="Added! Now whenever you " + emojize(":star:", use_aliases=True) +
-                                     " a photo in DTP, I'll forward it to you here! " + emojize(":smiley:", use_aliases=True))
-        except Exception as e:
-            # Rollback in case there is any error
-            db.rollback()
-            print("Adding user's chat_id failed")
-            context.bot.send_message(chat_id=chat_id,
-                                     text="Sorry, something went wrong. Please send the following message to @Avi0n.")
-            context.bot.send_message(chat_id=chat_id, text=str(e))
-        finally:
-            cursor.close()
-            db.close()
-    else:
-        context.bot.send_message(chat_id=update.message.chat_id, text="That doesn't work in here. Send me a PM instead "
-                                 + emojize(":wink:", use_aliases=True))
-
-
 # Convert mp4 to gif. Copy paste from:
 # https://gist.github.com/michaelosthege/cd3e0c3c556b70a79deba6855deb2cc8
 class TargetFormat(object):
@@ -631,127 +676,6 @@ def convert_media(inputpath, targetFormat):
     print("\r\nFinalizing conversion...")
     writer.close()
     print("Done converting.")
-
-
-# Recognize whose picture was liked and store point in database
-def process_emoji(update, context):
-    try:
-        username = update.message.reply_to_message.from_user.username
-    except Exception as e:
-        print(str(e))
-        username = None
-
-    # Assign emoji in message or sticker to a variable
-    message_emoji = ""
-
-    if not update.message.text is None:
-        message_emoji = update.message.text
-        print(message_emoji)
-
-    elif not update.message.sticker.emoji is None:
-        message_emoji = update.message.sticker.emoji
-        print(message_emoji)
-
-    if update.message.chat.title == "Bot testing" or update.message.chat.title == "Debauchery Tea Party":
-        # If message contains :heart:, add 3 points
-        if emojize(":heart:", use_aliases=True) in message_emoji and username is not None:
-            if update.message.from_user.username == username:
-                context.bot.send_message(chat_id=update.message.chat_id, text=update.message.from_user.username +
-                                         " just tried to give themselves points.")
-                context.bot.send_sticker(chat_id=update.message.chat_id,
-                                         sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
-            else:
-                update_user_karma(username, "+", "3")
-
-        # If message contains :ok_hand:, add 2 points
-        elif emojize(":ok_hand:", use_aliases=True) in message_emoji and username is not None:
-            if update.message.from_user.username == username:
-                context.bot.send_message(chat_id=update.message.chat_id, text=update.message.from_user.username +
-                                         " just tried to give themselves points.")
-                context.bot.send_sticker(chat_id=update.message.chat_id,
-                                         sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
-            else:
-                update_user_karma(username, "+", "2")
-
-        # If message contains :thumbsup:, add 1 point
-        elif emojize(":thumbsup:", use_aliases=True) in message_emoji and username is not None:
-            if update.message.from_user.username == username:
-                context.bot.send_message(chat_id=update.message.chat_id, text=update.message.from_user.username +
-                                         " just tried to give themselves points.")
-                context.bot.send_sticker(chat_id=update.message.chat_id,
-                                         sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
-            else:
-                update_user_karma(username, "+", "1")
-
-        # If message contains :thumbsdown:, subtract 1 point
-        elif emojize(":thumbsdown:", use_aliases=True) in message_emoji and username is not None:
-            if update.message.from_user.username == username:
-                context.bot.send_message(chat_id=update.message.chat_id, text=update.message.from_user.username +
-                                         " just tried to take away points from themselves.")
-                context.bot.send_sticker(chat_id=update.message.chat_id,
-                                         sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
-            else:
-                update_user_karma(username, "-", "1")
-
-        # If message contains :star:, forward message that the user replied to with :star:
-        if emojize(":star:", use_aliases=True) in message_emoji and username is not None:
-            # Get user's personal chat_id with Aqua
-            tele_chat_id = get_chat_id(update.message.from_user.username)
-            # Send message
-            context.bot.forward_message(chat_id=tele_chat_id, from_chat_id=update.message.chat_id,
-                                        message_id=update.message.reply_to_message.message_id)
-            context.bot.send_message(chat_id=update.message.chat_id,
-                                     text=update.message.reply_to_message)
-
-        # If message contains :no_entry_sign: or :underage:, send lolice gif
-        if emojize(":no_entry_sign:", use_aliases=True) in message_emoji and username is not None or \
-                emojize(":underage:", use_aliases=True) in message_emoji and username is not None or \
-                emojize(":police_car:", use_aliases=True) in message_emoji and username is not None or \
-                emojize(":oncoming_police_car:", use_aliases=True) in message_emoji and username is not None or \
-                emojize(":rotating_light:", use_aliases=True) in message_emoji and username is not None:
-            context.bot.send_animation(chat_id=update.message.chat_id,
-                                       animation="CgADAQADhAADY7TZR2yn8RNCCai9Ag")
-            context.bot.send_message(chat_id=update.message.chat_id,
-                                     text="MODS!! MODS!!!! LOLI LEWDING REPORTED!!!")
-
-        # If message contains :sweat_drops: or :water:, send Aqua Nature Beauty party trick gif
-        if emojize(":sweat_drops:", use_aliases=True) in message_emoji or \
-                emojize(":water:", use_aliases=True) in message_emoji:
-            context.bot.send_animation(chat_id=update.message.chat_id,
-                                       animation="CgADAQADSwADac6YRfOLXW5UD4qJAg")
-
-        # If message contains :crocodile: or :shower:, send Aqua purification gif
-        if emojize(":crocodile:", use_aliases=True) in message_emoji or \
-                emojize(":shower:", use_aliases=True) in message_emoji:
-            context.bot.send_animation(chat_id=update.message.chat_id,
-                                       animation="CgADAQADewADMXsJRAYOmfxivPi3Ag")
-
-
-# Look for certain emojis to reply to
-class FilterEmoji(BaseFilter):
-    def filter(self, message):
-        accepted_emojis = [
-            ":thumbsup:",
-            ":ok_hand:",
-            ":heart:",
-            ":thumbsdown:",
-            ":star:",
-            ":no_entry_sign:",
-            ":underage:",
-            ":police_car:",
-            ":oncoming_police_car:",
-            ":rotating_light:",
-            ":sweat_drops:",
-            ":water:",
-            ":crocodile:",
-            ":shower:"
-        ]
-        message_emoji = message.text
-
-        for i in accepted_emojis:
-            if emojize(i, use_aliases=True) in message_emoji:
-                print("Yep, that's an emoji in the message")
-                return True
 
 
 def make_keyboard(counter1, counter2, counter3):
@@ -833,6 +757,7 @@ def repost(update, context):
 
 def button(update, context):
     query = update.callback_query
+    database = ''
     counter1 = query.message.reply_markup.inline_keyboard[0][0].text
     counter2 = query.message.reply_markup.inline_keyboard[0][1].text
     counter3 = query.message.reply_markup.inline_keyboard[0][2].text
@@ -847,6 +772,12 @@ def button(update, context):
 
     # Remove emoji from counter3
     counter3 = int(''.join(i for i in counter3 if i.isdigit()))
+
+    # Find room name and assign correct database
+    if query.message.chat.title == os.getenv("GROUP1"):
+        database = os.getenv("DATABASE1")
+    elif query.message.chat.title == os.getenv("GROUP2"):
+        database = os.getenv("DATABASE2")
 
     # Forward message that user star'd
     if int(query.data) == 10:
@@ -865,7 +796,7 @@ def button(update, context):
     # Show popup showing who voted on the picture/video
     elif int(query.data) == 11:
         context.bot.answer_callback_query(
-            callback_query_id=query.id, text=get_message_karma(query.message.message_id), show_alert=True, timeout=None)
+            callback_query_id=query.id, text=get_message_karma(database, query.message.message_id), show_alert=True, timeout=None)
 
     # Prevent users from voting on their own posts
     elif query.from_user.username == username[-1]:
@@ -875,20 +806,20 @@ def button(update, context):
             chat_id=query.message.chat_id, sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
     # Update with the appropriate amount of karma
     elif int(query.data) == 1:
-        update_user_karma(username[-1], "+", query.data)
-        update_message_karma(query.message.message_id, query.from_user.username, query.data)
+        update_user_karma(database, username[-1], "+", query.data)
+        update_message_karma(database, query.message.message_id, query.from_user.username, query.data)
         counter1 += 1
         context.bot.answer_callback_query(callback_query_id=query.id, text='You ' + emojize(
             ":thumbsup:", use_aliases=True) + ' this.', show_alert=False, timeout=None)
     elif int(query.data) == 2:
-        update_user_karma(username[-1], "+", query.data)
-        update_message_karma(query.message.message_id, query.from_user.username, query.data)
+        update_user_karma(database, username[-1], "+", query.data)
+        update_message_karma(database, query.message.message_id, query.from_user.username, query.data)
         counter2 += 1
         context.bot.answer_callback_query(callback_query_id=query.id, text='You ' + emojize(
             ":ok_hand:", use_aliases=True) + ' this.', show_alert=False, timeout=None)
     elif int(query.data) == 3:
-        update_user_karma(username[-1], "+", query.data)
-        update_message_karma(query.message.message_id, query.from_user.username, query.data)
+        update_user_karma(database, username[-1], "+", query.data)
+        update_message_karma(database, query.message.message_id, query.from_user.username, query.data)
         counter3 += 1
         context.bot.answer_callback_query(callback_query_id=query.id, text='You ' + emojize(
             ":heart:", use_aliases=True) + ' this.', show_alert=False, timeout=None)
@@ -898,9 +829,6 @@ def button(update, context):
 
 
 def main():
-    # Initialize emoji filter class
-    filter_emoji = FilterEmoji()
-
     # Create the Updater and pass it Aqua Bot's token.
     updater = Updater(os.getenv("TEL_BOT_TOKEN"), use_context=True)
 
@@ -936,10 +864,6 @@ def main():
     # on noncommand i.e message - repost the video on Telegram
     updater.dispatcher.add_handler(MessageHandler(Filters.video, repost))
     updater.dispatcher.add_handler(CallbackQueryHandler(button))
-
-    # If an emoji in the list above is found, run process_emoji()
-    emoji_handler = MessageHandler(filter_emoji, process_emoji)
-    updater.dispatcher.add_handler(emoji_handler)
 
     updater.dispatcher.add_error_handler(error)
 
