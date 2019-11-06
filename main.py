@@ -781,7 +781,7 @@ def button(update, context):
     elif query.message.chat.title == os.getenv("GROUP3"):
         database = os.getenv("DATABASE3")
 
-    if query.data == 10 or if query.data == 11:
+    if query.data == 10 or query.data == 11:
         # Show popup showing who voted on the picture/video
         if int(query.data) == 11:
             context.bot.answer_callback_query(
