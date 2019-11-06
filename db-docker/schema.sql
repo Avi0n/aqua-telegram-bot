@@ -15,6 +15,9 @@
 /*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
+
+CREATE DATABASE dtp_karma;
+USE dtp_karma;
 --
 -- Table structure for table `user_chat_id`
 --
@@ -25,7 +28,7 @@ DROP TABLE IF EXISTS `user_chat_id`;
 CREATE TABLE `user_chat_id` (
   `chat_id` int(11) DEFAULT NULL,
   `username` varchar(255) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -41,7 +44,7 @@ CREATE TABLE `message_karma` (
   `thumbsup` tinyint(4) NOT NULL,
   `ok_hand` tinyint(4) NOT NULL,
   `heart` tinyint(4) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -54,10 +57,44 @@ DROP TABLE IF EXISTS `user_karma`;
 CREATE TABLE `user_karma` (
   `username` varchar(255) NOT NULL,
   `karma` int(11) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
-/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
+
+-- Create 2nd table for 2nd Telegram room
+CREATE DATABASE djb_karma;
+USE djb_karma;
+
+--
+-- Table structure for table `message_karma`
+--
+
+DROP TABLE IF EXISTS `message_karma`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `message_karma` (
+  `message_id` int(11) NOT NULL,
+  `username` varchar(20) DEFAULT NULL,
+  `thumbsup` tinyint(4) NOT NULL,
+  `ok_hand` tinyint(4) NOT NULL,
+  `heart` tinyint(4) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `user_karma`
+--
+
+DROP TABLE IF EXISTS `user_karma`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `user_karma` (
+  `username` varchar(255) NOT NULL,
+  `karma` int(11) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 /*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
@@ -65,11 +102,4 @@ CREATE TABLE `user_karma` (
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
-INSERT INTO user_karma VALUES 
-('Avi0n',4),
-('Krumble',50);
-
-INSERT INTO user_chat_id VALUES
-(0,'Avi0n'),
-(0,'Krumble');
 -- Dump completed on 2019-04-17 22:49:13
