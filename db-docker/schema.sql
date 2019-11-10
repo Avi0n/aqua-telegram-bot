@@ -94,6 +94,40 @@ CREATE TABLE `user_karma` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+
+-- Create 3rd table for 3rd Telegram room
+CREATE DATABASE dcr_karma;
+USE dcr_karma;
+
+--
+-- Table structure for table `message_karma`
+--
+
+DROP TABLE IF EXISTS `message_karma`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `message_karma` (
+  `message_id` int(11) NOT NULL,
+  `username` varchar(20) DEFAULT NULL,
+  `thumbsup` tinyint(4) NOT NULL,
+  `ok_hand` tinyint(4) NOT NULL,
+  `heart` tinyint(4) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `user_karma`
+--
+
+DROP TABLE IF EXISTS `user_karma`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `user_karma` (
+  `username` varchar(255) NOT NULL,
+  `karma` int(11) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
