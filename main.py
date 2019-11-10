@@ -136,6 +136,7 @@ def update_user_karma(database, username, plus_or_minus, points):
             cursor.close()
             db.close()
 
+
 '''
 # Check the toggle state of an emoji
 def check_for_previous_vote(message_id, username, emoji_symbol):
@@ -164,6 +165,7 @@ def check_for_previous_vote(message_id, username, emoji_symbol):
     else:
         return False
 '''
+
 
 def update_message_karma(database, message_id, username, emoji_points):
     # Set MySQL settings
@@ -200,7 +202,8 @@ def update_message_karma(database, message_id, username, emoji_points):
     if result is None:
         # Insert new row with message_id, username, and emoji point values
         sql = "INSERT INTO message_karma VALUES (" + str(message_id) + ", '" + username + \
-            "', " + str(thumb_points) + ", " + str(ok_points) + ", " + str(heart_points) + ");"
+            "', " + str(thumb_points) + ", " + str(ok_points) + \
+            ", " + str(heart_points) + ");"
         try:
             # Execute the SQL command
             cursor.execute(sql)
@@ -232,6 +235,33 @@ def update_message_karma(database, message_id, username, emoji_points):
             db.close()
 
 
+# Check total karma for specific emoji for a specific message
+def check_emoji_points(database, message_id):
+    # Set MySQL settings
+    db = MySQLdb.connect(host=os.getenv("MYSQL_HOST"),
+                         user=os.getenv("MYSQL_USER"),
+                         passwd=os.getenv("MYSQL_PASS"),
+                         db=database)
+    # prepare a cursor object using cursor() method
+    cursor = db.cursor()
+
+    #return_message = ""
+
+    sql = "SELECT SUM(thumbsup), SUM(ok_hand), SUM(heart) FROM message_karma WHERE message_id = " + \
+        str(message_id) + ";"
+    try:
+        # Execute the SQL command
+        cursor.execute(sql)
+        # Fetch all the rows in a list of lists.
+        result = cursor.fetchone()
+    except Exception as e:
+        print("Error: " + str(e))
+    finally:
+        cursor.close()
+        db.close()
+    return result
+
+
 # Get total karma per user for a specific message
 def get_message_karma(database, message_id):
     # Set MySQL settings
@@ -242,10 +272,10 @@ def get_message_karma(database, message_id):
     # prepare a cursor object using cursor() method
     cursor = db.cursor()
 
-    return_message = ""
-    # SELECT SUM(thumbsup + ok_hand + heart) FROM message_karma WHERE message_id=2337 AND username='Avi0n' 
+    return_message = "Votes\n\n"
+    # SELECT SUM(thumbsup + ok_hand + heart) FROM message_karma WHERE message_id=2337 AND username='Avi0n'
     sql = "SELECT username, SUM(thumbsup + ok_hand + heart) AS karma FROM message_karma WHERE message_id = " + \
-            str(message_id) + " GROUP BY username ORDER BY username;"
+        str(message_id) + " GROUP BY username ORDER BY username;"
     try:
         # Execute the SQL command
         cursor.execute(sql)
@@ -303,7 +333,7 @@ def get_chat_id(tele_user):
 # Respond to /start
 def start(update, context):
     context.bot.send_message(chat_id=update.message.chat_id,
-                             text="Send /karma to see everyone's points.\nSend /addme to let me forward" +
+                             text="Send /karma to see everyone's points.\nSend /addme to let me forward" + \
                              " photos that you " + emojize(":star:", use_aliases=True) + " to you!")
 
 
@@ -427,20 +457,20 @@ def addme(update, context):
                 # Commit your changes in the database
                 db.commit()
                 context.bot.send_message(chat_id=chat_id, text="Added! Now whenever you " + emojize(":star:", use_aliases=True) +
-                                        " a photo, I'll forward it to you here! " + emojize(":smiley:", use_aliases=True))
+                                         " a photo, I'll forward it to you here! " + emojize(":smiley:", use_aliases=True))
             except Exception as e:
                 # Rollback in case there is any error
                 db.rollback()
                 print("Adding user's chat_id failed. " + str(e))
                 context.bot.send_message(chat_id=chat_id,
-                                        text="Sorry, something went wrong. Please send the following message to @Avi0n.")
+                                         text="Sorry, something went wrong. Please send the following message to @Avi0n.")
                 context.bot.send_message(chat_id=chat_id, text=str(e))
             finally:
                 cursor.close()
                 db.close()
         else:
-            context.bot.send_message(chat_id=chat_id, 
-                                    text="You've already been added! " + emojize(":star:", use_aliases=True) + " away :)")
+            context.bot.send_message(chat_id=chat_id,
+                                     text="You've already been added! " + emojize(":star:", use_aliases=True) + " away :)")
     else:
         context.bot.send_message(chat_id=update.message.chat_id, text="That doesn't work in here. Send me a PM instead "
                                  + emojize(":wink:", use_aliases=True))
@@ -622,7 +652,7 @@ def source(update, context):
                                 else:
                                     print('miss...')
                                     context.bot.send_message(chat_id=update.message.chat_id,
-                                                     text="I couldn't find a source for that image")
+                                                             text="I couldn't find a source for that image")
                             else:
                                 print('no results... ;_;')
                                 context.bot.send_message(
@@ -755,20 +785,8 @@ def repost(update, context):
 def button(update, context):
     query = update.callback_query
     database = ''
-    counter1 = query.message.reply_markup.inline_keyboard[0][0].text
-    counter2 = query.message.reply_markup.inline_keyboard[0][1].text
-    counter3 = query.message.reply_markup.inline_keyboard[0][2].text
     # Find original poster
     username = query.message.caption.split()
-
-    # Remove emoji from counter1
-    counter1 = int(''.join(i for i in counter1 if i.isdigit()))
-
-    # Remove emoji from counter2
-    counter2 = int(''.join(i for i in counter2 if i.isdigit()))
-
-    # Remove emoji from counter3
-    counter3 = int(''.join(i for i in counter3 if i.isdigit()))
 
     # Find room name and assign correct database
     if query.message.chat.title == os.getenv("GROUP1"):
@@ -801,31 +819,36 @@ def button(update, context):
         # Prevent users from voting on their own posts
         if query.from_user.username == username[-1]:
             context.bot.send_message(chat_id=query.message.chat_id,
-                                    text=query.from_user.username + " just tried to give themselves points.")
+                                     text=query.from_user.username + " just tried to give themselves points.")
             context.bot.send_sticker(
                 chat_id=query.message.chat_id, sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
             self_vote = True
-        # Update with the appropriate amount of karma
-        elif int(query.data) == 1:
-            update_user_karma(database, username[-1], "+", query.data)
-            update_message_karma(database, query.message.message_id, query.from_user.username, query.data)
-            counter1 += 1
-            context.bot.answer_callback_query(callback_query_id=query.id, text='You ' + emojize(
-                ":thumbsup:", use_aliases=True) + ' this.', show_alert=False, timeout=None)
-        elif int(query.data) == 2:
-            update_user_karma(database, username[-1], "+", query.data)
-            update_message_karma(database, query.message.message_id, query.from_user.username, query.data)
-            counter2 += 1
-            context.bot.answer_callback_query(callback_query_id=query.id, text='You ' + emojize(
-                ":ok_hand:", use_aliases=True) + ' this.', show_alert=False, timeout=None)
-        elif int(query.data) == 3:
-            update_user_karma(database, username[-1], "+", query.data)
-            update_message_karma(database, query.message.message_id, query.from_user.username, query.data)
-            counter3 += 1
-            context.bot.answer_callback_query(callback_query_id=query.id, text='You ' + emojize(
-                ":heart:", use_aliases=True) + ' this.', show_alert=False, timeout=None)
+        # Update database with emoji point data
+        else:
+            try:
+                update_user_karma(database, username[-1], "+", query.data)
+                update_message_karma(
+                    database, query.message.message_id, query.from_user.username, query.data)
+                emoji_points = check_emoji_points(
+                    database, query.message.message_id)
+
+                # Check to see which emoji user pressed
+                if int(query.data) == 1:
+                    context.bot.answer_callback_query(callback_query_id=query.id, text='You ' + emojize(
+                        ":thumbsup:", use_aliases=True) + ' this.', show_alert=False, timeout=None)
+                elif int(query.data) == 2:
+                    context.bot.answer_callback_query(callback_query_id=query.id, text='You ' + emojize(
+                        ":ok_hand:", use_aliases=True) + ' this.', show_alert=False, timeout=None)
+                elif int(query.data) == 3:
+                    context.bot.answer_callback_query(callback_query_id=query.id, text='You ' + emojize(
+                        ":heart:", use_aliases=True) + ' this.', show_alert=False, timeout=None)
+            except Exception as e:
+                print(str(e))
+                context.bot.answer_callback_query(callback_query_id=query.id, text='Error. ' + str(e), 
+                                                show_alert=False, timeout=None)
         if self_vote is False:
-            keyboard_buttons = make_keyboard(counter1, counter2, counter3)
+            # Update emoji points. Divide by 2 and 3 for ok_hand and heart to get the correct number of votes
+            keyboard_buttons = make_keyboard(emoji_points[0], emoji_points[1] / 2, emoji_points[2] / 3)
             query.edit_message_reply_markup(reply_markup=keyboard_buttons)
 
 
