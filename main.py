@@ -79,8 +79,11 @@ def get_user_karma(database):
         return_message += "\n```" + emojize(":v:", use_aliases=True)
 
     except Exception as e:
-        return_message += "Error: " + str(e)
-        print("get_user_karma() error: " + str(e))
+        if '1046' in str(e):
+            return_message = 'The database options are:  \n- DTP  \n- DJB  \n- DCR'
+        else:
+            return_message += 'Error: ' + str(e)
+            print('get_user_karma() error: ' + str(e))
     finally:
         cursor.close()
         db.close()
@@ -357,15 +360,29 @@ def delete(update, context):
 # Respond to /karma
 def karma(update, context):
     database = ''
-    # Find out which database to use
-    if update.message.chat.title == os.getenv("GROUP1"):
+    # Find out which database to use. If the chat is private, watch for user specified database
+    if update.message.chat.type == 'private':
+        string_split = update.message.text.split()
+        try:
+            test_for_null = string_split[1]
+            if string_split[1] == 'DTP':
+                database = os.getenv("DATABASE1")
+            elif string_split[1] == 'DJB':
+                database = os.getenv("DATABASE2")
+            elif string_split[1] == 'DCR':
+                database = os.getenv("DATABASE3")
+        except:
+            test_for_null = True
+    # If not a private chat, check the room name to match to a database
+    elif update.message.chat.title == os.getenv("GROUP1"):
         database = os.getenv("DATABASE1")
     elif update.message.chat.title == os.getenv("GROUP2"):
         database = os.getenv("DATABASE2")
     elif update.message.chat.title == os.getenv("GROUP3"):
         database = os.getenv("DATABASE3")
+
     context.bot.send_message(chat_id=update.message.chat_id,
-                             text=get_user_karma(database), parse_mode='Markdown', timeout=20)
+                            text=get_user_karma(database), parse_mode='Markdown', timeout=20)
 
 
 # Respond to /give
@@ -796,24 +813,23 @@ def button(update, context):
     elif query.message.chat.title == os.getenv("GROUP3"):
         database = os.getenv("DATABASE3")
 
-    if int(query.data) == 10 or int(query.data) == 11:
-        # Show popup showing who voted on the picture/video
-        if int(query.data) == 11:
+    # Show popup showing who voted on the picture/video
+    if int(query.data) == 11:
+        context.bot.answer_callback_query(
+            callback_query_id=query.id, text=get_message_karma(database, query.message.message_id), show_alert=True, timeout=None)
+    # Forward message that user star'd
+    elif int(query.data) == 10:
+        try:
+            # Get user's personal chat_id with Aqua
+            tele_chat_id = get_chat_id(query.from_user.username)
+            # Send message
+            context.bot.forward_message(chat_id=tele_chat_id, from_chat_id=query.message.chat_id,
+                                        message_id=query.message.message_id)
             context.bot.answer_callback_query(
-                callback_query_id=query.id, text=get_message_karma(database, query.message.message_id), show_alert=True, timeout=None)
-        # Forward message that user star'd
-        elif int(query.data) == 10:
-            try:
-                # Get user's personal chat_id with Aqua
-                tele_chat_id = get_chat_id(query.from_user.username)
-                # Send message
-                context.bot.forward_message(chat_id=tele_chat_id, from_chat_id=query.message.chat_id,
-                                            message_id=query.message.message_id)
-                context.bot.answer_callback_query(
-                    callback_query_id=query.id, text='Saved!', show_alert=False, timeout=None)
-            except:
-                context.bot.answer_callback_query(
-                    callback_query_id=query.id, text="Error. Have you PM'd me the '/addme' command?", show_alert=True, timeout=None)
+                callback_query_id=query.id, text='Saved!', show_alert=False, timeout=None)
+        except:
+            context.bot.answer_callback_query(
+                callback_query_id=query.id, text="Error. Have you PM'd me the '/addme' command?", show_alert=True, timeout=None)
     else:
         self_vote = False
         # Prevent users from voting on their own posts
@@ -827,10 +843,8 @@ def button(update, context):
         else:
             try:
                 update_user_karma(database, username[-1], "+", query.data)
-                update_message_karma(
-                    database, query.message.message_id, query.from_user.username, query.data)
-                emoji_points = check_emoji_points(
-                    database, query.message.message_id)
+                update_message_karma(database, query.message.message_id, query.from_user.username, query.data)
+                emoji_points = check_emoji_points(database, query.message.message_id)
 
                 # Check to see which emoji user pressed
                 if int(query.data) == 1:
