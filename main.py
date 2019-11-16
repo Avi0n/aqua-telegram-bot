@@ -80,7 +80,7 @@ def get_user_karma(database):
 
     except Exception as e:
         if '1046' in str(e):
-            return_message = 'The databases options are:  \n- DTP  \n- DJB  \n- DCR'
+            return_message = 'The database options are:  \n- DTP  \n- DJB  \n- DCR'
         else:
             return_message += 'Error: ' + str(e)
             print('get_user_karma() error: ' + str(e))
@@ -371,8 +371,8 @@ def karma(update, context):
                 database = os.getenv("DATABASE2")
             elif string_split[1] == 'DCR':
                 database = os.getenv("DATABASE3")
-        except Exception as e:
-            print('Error: ' + str(e))
+        except:
+            test_for_null = True
     # If not a private chat, check the room name to match to a database
     elif update.message.chat.title == os.getenv("GROUP1"):
         database = os.getenv("DATABASE1")
