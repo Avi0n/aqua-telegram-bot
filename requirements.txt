@@ -1,4 +1,4 @@
-mysqlclient
+pymysql
 python-telegram-bot
 ujson
 emoji

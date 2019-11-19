@@ -1,6 +1,7 @@
 import os
 import logging
-import MySQLdb
+#import MySQLdb
+import pymysql
 import string
 from dotenv import load_dotenv
 from emoji import emojize
@@ -38,7 +39,7 @@ def error(update, context):
 # Retrieve user's karma from the database
 def get_user_karma(database):
     # Set MySQL settings
-    db = MySQLdb.connect(host=os.getenv("MYSQL_HOST"),
+    db = pymysql.connect(host=os.getenv("MYSQL_HOST"),
                          user=os.getenv("MYSQL_USER"),
                          passwd=os.getenv("MYSQL_PASS"),
                          db=database)
@@ -87,7 +88,7 @@ def get_user_karma(database):
 # Increment the total karma for a specific user
 def update_user_karma(database, username, plus_or_minus, points):
     # Set MySQL settings
-    db = MySQLdb.connect(host=os.getenv("MYSQL_HOST"),
+    db = pymysql.connect(host=os.getenv("MYSQL_HOST"),
                          user=os.getenv("MYSQL_USER"),
                          passwd=os.getenv("MYSQL_PASS"),
                          db=database)
@@ -138,7 +139,7 @@ def update_user_karma(database, username, plus_or_minus, points):
 # Check the toggle state of an emoji
 def check_for_previous_vote(message_id, username, emoji_symbol):
     # Set MySQL settings
-    db = MySQLdb.connect(host=os.getenv("MYSQL_HOST"),
+    db = pymysql.connect(host=os.getenv("MYSQL_HOST"),
                          user=os.getenv("MYSQL_USER"),
                          passwd=os.getenv("MYSQL_PASS"),
                          db=database)
@@ -166,7 +167,7 @@ def check_for_previous_vote(message_id, username, emoji_symbol):
 
 def update_message_karma(database, message_id, username, emoji_points):
     # Set MySQL settings
-    db = MySQLdb.connect(host=os.getenv("MYSQL_HOST"),
+    db = pymysql.connect(host=os.getenv("MYSQL_HOST"),
                          user=os.getenv("MYSQL_USER"),
                          passwd=os.getenv("MYSQL_PASS"),
                          db=database)
@@ -235,7 +236,7 @@ def update_message_karma(database, message_id, username, emoji_points):
 # Check total karma for specific emoji for a specific message
 def check_emoji_points(database, message_id):
     # Set MySQL settings
-    db = MySQLdb.connect(host=os.getenv("MYSQL_HOST"),
+    db = pymysql.connect(host=os.getenv("MYSQL_HOST"),
                          user=os.getenv("MYSQL_USER"),
                          passwd=os.getenv("MYSQL_PASS"),
                          db=database)
@@ -262,7 +263,7 @@ def check_emoji_points(database, message_id):
 # Get total karma per user for a specific message
 def get_message_karma(database, message_id):
     # Set MySQL settings
-    db = MySQLdb.connect(host=os.getenv("MYSQL_HOST"),
+    db = pymysql.connect(host=os.getenv("MYSQL_HOST"),
                          user=os.getenv("MYSQL_USER"),
                          passwd=os.getenv("MYSQL_PASS"),
                          db=database)
@@ -305,7 +306,7 @@ def get_message_karma(database, message_id):
 # Get user's personal chat_id with Aqua
 def get_chat_id(tele_user):
     # Set MySQL settings
-    db = MySQLdb.connect(host=os.getenv("MYSQL_HOST"),
+    db = pymysql.connect(host=os.getenv("MYSQL_HOST"),
                          user=os.getenv("MYSQL_USER"),
                          passwd=os.getenv("MYSQL_PASS"),
                          db=os.getenv("DATABASE1"))
@@ -441,7 +442,7 @@ def addme(update, context):
         username = update.message.from_user.username
         chat_id = update.message.chat_id
         # Set MySQL settings
-        db = MySQLdb.connect(host=os.getenv("MYSQL_HOST"),
+        db = pymysql.connect(host=os.getenv("MYSQL_HOST"),
                              user=os.getenv("MYSQL_USER"),
                              passwd=os.getenv("MYSQL_PASS"),
                              db=os.getenv("DATABASE1"))
