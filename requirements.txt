@@ -1,5 +1,6 @@
-mysqlclient
+pymysql
 python-telegram-bot
+ujson
 emoji
 python-dotenv
 Pillow
