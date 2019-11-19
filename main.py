@@ -359,30 +359,28 @@ def delete(update, context):
 
 # Respond to /karma
 def karma(update, context):
-    database = ''
     # Find out which database to use. If the chat is private, watch for user specified database
     if update.message.chat.type == 'private':
-        string_split = update.message.text.split()
-        try:
-            test_for_null = string_split[1]
-            if string_split[1] == 'DTP':
-                database = os.getenv("DATABASE1")
-            elif string_split[1] == 'DJB':
-                database = os.getenv("DATABASE2")
-            elif string_split[1] == 'DCR':
-                database = os.getenv("DATABASE3")
-        except:
-            test_for_null = True
-    # If not a private chat, check the room name to match to a database
-    elif update.message.chat.title == os.getenv("GROUP1"):
-        database = os.getenv("DATABASE1")
-    elif update.message.chat.title == os.getenv("GROUP2"):
-        database = os.getenv("DATABASE2")
-    elif update.message.chat.title == os.getenv("GROUP3"):
-        database = os.getenv("DATABASE3")
+        keyboard = [[InlineKeyboardButton("DTP", callback_data='20'),
+                    InlineKeyboardButton("DJB", callback_data='21')],
 
-    context.bot.send_message(chat_id=update.message.chat_id,
-                            text=get_user_karma(database), parse_mode='Markdown', timeout=20)
+                    [InlineKeyboardButton("DCR", callback_data='22')]]
+
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
+        update.message.reply_text('Please choose:', reply_markup=reply_markup)
+
+    else:
+        # If not a private chat, check the room name to match to a database
+        if update.message.chat.title == os.getenv("GROUP1"):
+            database = os.getenv("DATABASE1")
+        elif update.message.chat.title == os.getenv("GROUP2"):
+            database = os.getenv("DATABASE2")
+        elif update.message.chat.title == os.getenv("GROUP3"):
+            database = os.getenv("DATABASE3")
+
+        context.bot.send_message(chat_id=update.message.chat_id,
+                                text=get_user_karma(database), parse_mode='Markdown', timeout=20)
 
 
 # Respond to /give
@@ -729,12 +727,9 @@ def convert_media(inputpath, targetFormat):
 
 def make_keyboard(counter1, counter2, counter3):
     keyboard = [[InlineKeyboardButton(str(counter1) + ' ' + emojize(":thumbsup:", use_aliases=True), callback_data=1),
-                 InlineKeyboardButton(
-                     str(counter2) + ' ' + emojize(":ok_hand:", use_aliases=True), callback_data=2),
-                 InlineKeyboardButton(
-                     str(counter3) + ' ' + emojize(":heart:", use_aliases=True), callback_data=3),
-                 InlineKeyboardButton(
-                     emojize(":star:", use_aliases=True), callback_data=10),
+                 InlineKeyboardButton(str(counter2) + ' ' + emojize(":ok_hand:", use_aliases=True), callback_data=2),
+                 InlineKeyboardButton(str(counter3) + ' ' + emojize(":heart:", use_aliases=True), callback_data=3),
+                 InlineKeyboardButton(emojize(":star:", use_aliases=True), callback_data=10),
                  InlineKeyboardButton('Votes', callback_data=11)]]
 
     return InlineKeyboardMarkup(keyboard)
@@ -801,69 +796,80 @@ def repost(update, context):
 
 def button(update, context):
     query = update.callback_query
-    database = ''
-    # Find original poster
-    username = query.message.caption.split()
-
-    # Find room name and assign correct database
-    if query.message.chat.title == os.getenv("GROUP1"):
-        database = os.getenv("DATABASE1")
-    elif query.message.chat.title == os.getenv("GROUP2"):
-        database = os.getenv("DATABASE2")
-    elif query.message.chat.title == os.getenv("GROUP3"):
-        database = os.getenv("DATABASE3")
-
-    # Show popup showing who voted on the picture/video
-    if int(query.data) == 11:
-        context.bot.answer_callback_query(
-            callback_query_id=query.id, text=get_message_karma(database, query.message.message_id), show_alert=True, timeout=None)
-    # Forward message that user star'd
-    elif int(query.data) == 10:
-        try:
-            # Get user's personal chat_id with Aqua
-            tele_chat_id = get_chat_id(query.from_user.username)
-            # Send message
-            context.bot.forward_message(chat_id=tele_chat_id, from_chat_id=query.message.chat_id,
-                                        message_id=query.message.message_id)
-            context.bot.answer_callback_query(
-                callback_query_id=query.id, text='Saved!', show_alert=False, timeout=None)
-        except:
-            context.bot.answer_callback_query(
-                callback_query_id=query.id, text="Error. Have you PM'd me the '/addme' command?", show_alert=True, timeout=None)
+    if query.message.chat.type == 'private':
+        if int(query.data) == 20:
+            query.edit_message_text(text=get_user_karma(os.getenv("DATABASE1")), parse_mode='Markdown', timeout=20)
+        elif int(query.data) == 21:
+            query.edit_message_text(chat_id=update.message.chat_id,
+                            text=get_user_karma(os.getenv("DATABASE2")), parse_mode='Markdown', timeout=20)
+        elif int(query.data) == 22:
+            query.edit_message_text(chat_id=update.message.chat_id,
+                            text=get_user_karma(os.getenv("DATABASE3")), parse_mode='Markdown', timeout=20)
     else:
-        self_vote = False
-        # Prevent users from voting on their own posts
-        if query.from_user.username == username[-1]:
-            context.bot.send_message(chat_id=query.message.chat_id,
-                                     text=query.from_user.username + " just tried to give themselves points.")
-            context.bot.send_sticker(
-                chat_id=query.message.chat_id, sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
-            self_vote = True
-        # Update database with emoji point data
-        else:
-            try:
-                update_user_karma(database, username[-1], "+", query.data)
-                update_message_karma(database, query.message.message_id, query.from_user.username, query.data)
-                emoji_points = check_emoji_points(database, query.message.message_id)
+        database = ''
 
-                # Check to see which emoji user pressed
-                if int(query.data) == 1:
-                    context.bot.answer_callback_query(callback_query_id=query.id, text='You ' + emojize(
-                        ":thumbsup:", use_aliases=True) + ' this.', show_alert=False, timeout=None)
-                elif int(query.data) == 2:
-                    context.bot.answer_callback_query(callback_query_id=query.id, text='You ' + emojize(
-                        ":ok_hand:", use_aliases=True) + ' this.', show_alert=False, timeout=None)
-                elif int(query.data) == 3:
-                    context.bot.answer_callback_query(callback_query_id=query.id, text='You ' + emojize(
-                        ":heart:", use_aliases=True) + ' this.', show_alert=False, timeout=None)
-            except Exception as e:
-                print(str(e))
-                context.bot.answer_callback_query(callback_query_id=query.id, text='Error. ' + str(e), 
-                                                show_alert=False, timeout=None)
-        if self_vote is False:
-            # Update emoji points. Divide by 2 and 3 for ok_hand and heart to get the correct number of votes
-            keyboard_buttons = make_keyboard(emoji_points[0], emoji_points[1] / 2, emoji_points[2] / 3)
-            query.edit_message_reply_markup(reply_markup=keyboard_buttons)
+        # Find original poster
+        username = query.message.caption.split()
+
+        # Find room name and assign correct database
+        if query.message.chat.title == os.getenv("GROUP1"):
+            database = os.getenv("DATABASE1")
+        elif query.message.chat.title == os.getenv("GROUP2"):
+            database = os.getenv("DATABASE2")
+        elif query.message.chat.title == os.getenv("GROUP3"):
+            database = os.getenv("DATABASE3")
+
+        # Show popup showing who voted on the picture/video
+        if int(query.data) == 11:
+            context.bot.answer_callback_query(
+                callback_query_id=query.id, text=get_message_karma(database, query.message.message_id), show_alert=True, timeout=None)
+        # Forward message that user star'd
+        elif int(query.data) == 10:
+            try:
+                # Get user's personal chat_id with Aqua
+                tele_chat_id = get_chat_id(query.from_user.username)
+                # Send message
+                context.bot.forward_message(chat_id=tele_chat_id, from_chat_id=query.message.chat_id,
+                                            message_id=query.message.message_id)
+                context.bot.answer_callback_query(
+                    callback_query_id=query.id, text='Saved!', show_alert=False, timeout=None)
+            except:
+                context.bot.answer_callback_query(
+                    callback_query_id=query.id, text="Error. Have you PM'd me the '/addme' command?", show_alert=True, timeout=None)
+        else:
+            self_vote = False
+            # Prevent users from voting on their own posts
+            if query.from_user.username == username[-1]:
+                context.bot.send_message(chat_id=query.message.chat_id,
+                                        text=query.from_user.username + " just tried to give themselves points.")
+                context.bot.send_sticker(
+                    chat_id=query.message.chat_id, sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
+                self_vote = True
+            # Update database with emoji point data
+            else:
+                try:
+                    update_user_karma(database, username[-1], "+", query.data)
+                    update_message_karma(database, query.message.message_id, query.from_user.username, query.data)
+                    emoji_points = check_emoji_points(database, query.message.message_id)
+
+                    # Check to see which emoji user pressed
+                    if int(query.data) == 1:
+                        context.bot.answer_callback_query(callback_query_id=query.id, text='You ' + emojize(
+                            ":thumbsup:", use_aliases=True) + ' this.', show_alert=False, timeout=None)
+                    elif int(query.data) == 2:
+                        context.bot.answer_callback_query(callback_query_id=query.id, text='You ' + emojize(
+                            ":ok_hand:", use_aliases=True) + ' this.', show_alert=False, timeout=None)
+                    elif int(query.data) == 3:
+                        context.bot.answer_callback_query(callback_query_id=query.id, text='You ' + emojize(
+                            ":heart:", use_aliases=True) + ' this.', show_alert=False, timeout=None)
+                except Exception as e:
+                    print(str(e))
+                    context.bot.answer_callback_query(callback_query_id=query.id, text='Error. ' + str(e), 
+                                                    show_alert=False, timeout=None)
+            if self_vote is False:
+                # Update emoji points. Divide by 2 and 3 for ok_hand and heart to get the correct number of votes
+                keyboard_buttons = make_keyboard(emoji_points[0], emoji_points[1] / 2, emoji_points[2] / 3)
+                query.edit_message_reply_markup(reply_markup=keyboard_buttons)
 
 
 def main():
