@@ -363,7 +363,6 @@ def karma(update, context):
     if update.message.chat.type == 'private':
         keyboard = [[InlineKeyboardButton("DTP", callback_data='20'),
                     InlineKeyboardButton("DJB", callback_data='21')],
-
                     [InlineKeyboardButton("DCR", callback_data='22')]]
 
         reply_markup = InlineKeyboardMarkup(keyboard)
@@ -800,11 +799,9 @@ def button(update, context):
         if int(query.data) == 20:
             query.edit_message_text(text=get_user_karma(os.getenv("DATABASE1")), parse_mode='Markdown', timeout=20)
         elif int(query.data) == 21:
-            query.edit_message_text(chat_id=update.message.chat_id,
-                            text=get_user_karma(os.getenv("DATABASE2")), parse_mode='Markdown', timeout=20)
+            query.edit_message_text(text=get_user_karma(os.getenv("DATABASE2")), parse_mode='Markdown', timeout=20)
         elif int(query.data) == 22:
-            query.edit_message_text(chat_id=update.message.chat_id,
-                            text=get_user_karma(os.getenv("DATABASE3")), parse_mode='Markdown', timeout=20)
+            query.edit_message_text(text=get_user_karma(os.getenv("DATABASE3")), parse_mode='Markdown', timeout=20)
     else:
         database = ''
 
