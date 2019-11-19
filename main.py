@@ -1,6 +1,5 @@
 import os
 import logging
-#import MySQLdb
 import pymysql
 import string
 from dotenv import load_dotenv
@@ -866,11 +865,11 @@ def button(update, context):
 
 def main():
     # Create the Updater and pass it Aqua Bot's token.
-    updater = Updater(os.getenv("TEL_BOT_TOKEN"), use_context=True)
+    updater = Updater(os.getenv("TEL_BOT_TOKEN"), workers=100, use_context=True)
 
-    # Create webhook. Comment the following 2 lines if you don't want to use webhooks
-    updater.start_webhook(listen='0.0.0.0', port=5001, url_path=os.getenv("TEL_BOT_TOKEN"))
-    updater.bot.set_webhook(url='https://' + os.getenv("DOMAIN") + '/' + os.getenv("TEL_BOT_TOKEN"))
+    # Create webhook. Comment the following line if you don't want to use webhooks
+    updater.start_webhook(listen='0.0.0.0', port=5001, url_path=os.getenv("TEL_BOT_TOKEN"),
+                          webhook_url='https://' + os.getenv("DOMAIN") + '/' + os.getenv("TEL_BOT_TOKEN"))
 
     # Create handlers
     start_handler = CommandHandler('start', start)
