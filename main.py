@@ -20,12 +20,6 @@ import sys
 import imageio
 
 
-''' 
-TODO:
-- Prevent users from being able to vote more than once
-- Allow user to take back their vote
-'''
-
 # Initialize dotenv
 load_dotenv()
 
@@ -73,8 +67,8 @@ def get_user_karma(database):
             username = row[0]
             karma = row[1]
             return_message += username + (" " * (longest_username_length - len(username))) + \
-                "   " + (" " * (longest_karma_length -
-                                len(str(karma)))) + str(karma) + "\n"
+                                 "   " + (" " * (longest_karma_length -
+                                                 len(str(karma)))) + str(karma) + "\n"
 
         return_message += "\n```" + emojize(":v:", use_aliases=True)
 
@@ -861,8 +855,8 @@ def button(update, context):
                             ":heart:", use_aliases=True) + ' this.', show_alert=False, timeout=None)
                 except Exception as e:
                     print(str(e))
-                    context.bot.answer_callback_query(callback_query_id=query.id, text='Error. ' + str(e), 
-                                                    show_alert=False, timeout=None)
+                    context.bot.answer_callback_query(callback_query_id=query.id, text='Error. ' + str(e),
+                                                      show_alert=False, timeout=None)
             if self_vote is False:
                 # Update emoji points. Divide by 2 and 3 for ok_hand and heart to get the correct number of votes
                 keyboard_buttons = make_keyboard(emoji_points[0], emoji_points[1] / 2, emoji_points[2] / 3)
@@ -873,6 +867,11 @@ def main():
     # Create the Updater and pass it Aqua Bot's token.
     updater = Updater(os.getenv("TEL_BOT_TOKEN"), use_context=True)
 
+    # Create webhook. Comment the following 2 lines if you don't want to use webhooks
+    updater.start_webhook(listen='0.0.0.0', port=5001, url_path=os.getenv("TEL_BOT_TOKEN"))
+    updater.bot.set_webhook(url='https://' + os.getenv("DOMAIN") + '/' + os.getenv("TEL_BOT_TOKEN"))
+
+    # Create handlers
     start_handler = CommandHandler('start', start)
     updater.dispatcher.add_handler(start_handler)
 
@@ -908,7 +907,8 @@ def main():
 
     updater.dispatcher.add_error_handler(error)
 
-    updater.start_polling()
+    # Uncomment if you don't want to use webhooks
+    #updater.start_polling()
 
     updater.idle()
 
