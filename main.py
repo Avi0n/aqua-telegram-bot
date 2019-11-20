@@ -390,9 +390,8 @@ def give(update, context):
     # Check to see if user used the right command format
     if '@' in update.message.text:
         # Remove all punctuation (@) and split the string
-        string_split = update.message.text.translate(
-            str.maketrans('', '', string.punctuation)).split()
-        username = string_split[1]
+        string_split = update.message.text.split()
+        username = string_split[1].translate(str.maketrans('', '', string.punctuation))
         points = string_split[2]
         from_username = update.message.from_user.username
 
@@ -411,7 +410,7 @@ def give(update, context):
                 context.bot.send_message(chat_id=update.message.chat_id,
                                          text="Don't you think that's a tad too many points to be taking away?")
             elif -21 < int(points) < 0:
-                update_user_karma(database, username, '+', points)
+                update_user_karma(database, username, '-', points)
                 context.bot.send_message(chat_id=update.message.chat_id,
                                          text=from_username + " took away " + points + " points from " + username + "!")
             elif 61 > int(points) > 0:
