@@ -393,6 +393,7 @@ def give(update, context):
         string_split = update.message.text.split()
         username = string_split[1].translate(str.maketrans('', '', string.punctuation))
         points = string_split[2]
+        points_no_punc = points.translate(str.maketrans('', '', string.punctuation))
         from_username = update.message.from_user.username
 
         try:
@@ -410,11 +411,11 @@ def give(update, context):
                 context.bot.send_message(chat_id=update.message.chat_id,
                                          text="Don't you think that's a tad too many points to be taking away?")
             elif -21 < int(points) < 0:
-                update_user_karma(database, username, '-', points)
+                update_user_karma(database, username, '-', points_no_punc)
                 context.bot.send_message(chat_id=update.message.chat_id,
                                          text=from_username + " took away " + points + " points from " + username + "!")
             elif 61 > int(points) > 0:
-                update_user_karma(database, username, '+', points)
+                update_user_karma(database, username, '+', points_no_punc)
                 context.bot.send_message(chat_id=update.message.chat_id,
                                          text=from_username + " gave " + username + " " + points + " points!")
             elif int(points) > 61:
