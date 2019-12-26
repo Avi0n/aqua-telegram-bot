@@ -16,12 +16,14 @@ Aqua currently supports the following commands:
 *  /addme: Adds user's personal chat ID to the database so that Aqua can send them PMs   
 
 ## Getting Started
-You'll need Docker and docker-compose
+You'll need git, Docker, and docker-compose
 1.  Install [Docker](https://www.docker.com/get-started)
 2.  If you're using Linux, [install Docker Compose](https://docs.docker.com/compose/install/) (macOS and Windows installations of Docker come with Compose)
-3.  Using the Telegram bot [@BotFather](https://t.me/BotFather), create a new bot and disable Group Privacy. Copy the API Token of your new bot
-4.  (Optional) Go to [SauceNao.com](https://saucenao.com/user.php) and create a new user account. Create a new API key
-5.  Copy .env.example and rename it to .env
-6.  Edit .env to include your bot API token, Telegram group chat names, and your SauceNao token. I also suggest changing the mysql root password.
-6.  Run `docker-compose up`
-7.  Add your new bot to the group chat and have fun!
+3.  Clone this repo by running `git clone https://gitlab.com/Avi0n/aqua-telegram-bot.git`
+4.  Using the Telegram bot [@BotFather](https://t.me/BotFather), create a new bot and disable Group Privacy. Copy the API Token of your new bot
+5.  (Optional) Go to [SauceNao.com](https://saucenao.com/user.php) and create a new user account. Create a new API key
+6.  Copy .env.example and rename it to .env
+7.  Edit .env to include your bot API token, Telegram group chat names, and your SauceNao token. I also suggest changing the mysql root password.
+8. (Optional) Edit docker-compose.yml to your liking
+9.  Run `docker-compose up`
+10.  Add your new bot to the group chat and have fun!
