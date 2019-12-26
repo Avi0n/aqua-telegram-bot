@@ -1,7 +1,17 @@
 # AquaTelegramBot
+This bot is a fun little karma system for a Telegram group. The bot re-posts any picture you send to the chat room with inline emojis which you can use to vote with. 👍 is 1 point, 👌 is 2 points, and ❤️ is 3 points. Here are a couple pictures to give you a feel for what it does:   
+https://imgur.com/a/aRS72Vf   
+Why is it called Aqua? Because this bot was originally thought to be pretty useless, just like the goddess from KonoSuba.    
+
 Requires Python 3 and MySQL/MariaDB  
 Python packages are managed by pip in requirements.txt   
 At the moment, Aqua supports up to 3 different Telegram rooms. This was a conscious design decision because I did not want unauthorized rooms to be able to use the bot.
+
+Aqua currently supports the following commands:
+*  /karma: Shows the current number of points users in the group chat have
+*  /delete: Deletes the photo that /delete was used on
+*  /source: Finds the source of an image/gif (currently only works with images drawn in the anime style)
+*  /addme: Adds user's personal chat ID to the database so that Aqua can send them PMs   
 
 ## Getting Started
 You'll need Docker and docker-compose
