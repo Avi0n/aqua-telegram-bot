@@ -6,7 +6,7 @@ Why is it called Aqua? Because this bot was originally thought to be pretty usel
 I used this project to learn more about API's and Python so the code is messy and I probably did a lot of dumb stuff. If you want to fix something or add a feature, I'm open to pull requests!   
 
 Requires [PyPy 3](https://www.pypy.org/) and MySQL/MariaDB  
-Python packages are managed by pip in requirements.txt   
+Python dependencies are managed by pip in requirements.txt   
 At the moment, Aqua supports up to 3 different Telegram rooms. This was a conscious design decision because I did not want my instance of the bot to be shared and used by unauthorized rooms.
 
 Aqua currently supports the following commands:
