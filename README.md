@@ -3,9 +3,9 @@ This bot is a fun little karma system for a Telegram group. The bot re-posts any
 https://imgur.com/a/aRS72Vf   
 Why is it called Aqua? Because this bot was originally thought to be pretty useless, just like the goddess from KonoSuba.    
 
-Requires Python 3 and MySQL/MariaDB  
+Requires [PyPy 3](https://www.pypy.org/) and MySQL/MariaDB  
 Python packages are managed by pip in requirements.txt   
-At the moment, Aqua supports up to 3 different Telegram rooms. This was a conscious design decision because I did not want unauthorized rooms to be able to use the bot.
+At the moment, Aqua supports up to 3 different Telegram rooms. This was a conscious design decision because I did not want my instance of the bot to be shared and used by unauthorized rooms.
 
 Aqua currently supports the following commands:
 *  /karma: Shows the current number of points users in the group chat have
@@ -21,5 +21,5 @@ You'll need Docker and docker-compose
 4.  (Optional) Go to [SauceNao.com](https://saucenao.com/user.php) and create a new user account. Create a new API key
 5.  Copy .env.example and rename it to .env
 6.  Edit .env to include your bot API token, Telegram group chat names, and your SauceNao token. I also suggest changing the mysql root password.
-6.  Run `sudo docker-compose up`
+6.  Run `docker-compose up`
 7.  Add your new bot to the group chat and have fun!
