@@ -1,6 +1,7 @@
 # AquaTelegramBot
 Requires Python 3 and MySQL/MariaDB  
-Python packages are managed by pip in requirements.txt
+Python packages are managed by pip in requirements.txt   
+At the moment, Aqua supports up to 3 different Telegram rooms. This was a conscious design decision because I did not want unauthorized rooms to be able to use the bot.
 
 ## Getting Started
 You'll need Docker and docker-compose
