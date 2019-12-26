@@ -25,5 +25,6 @@ You'll need git, Docker, and docker-compose
 6.  Copy .env.example and rename it to .env
 7.  Edit .env to include your bot API token, Telegram group chat names, and your SauceNao token. I also suggest changing the mysql root password.
 8. (Optional) Edit docker-compose.yml to your liking
-9.  Run `docker-compose up`
-10.  Add your new bot to the group chat and have fun!
+9. (Optional) Edit schema.sql to edit the database names to your liking
+10.  Run `docker-compose up -d`
+11.  Add your new bot to the group chat and have fun!
