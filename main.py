@@ -867,9 +867,9 @@ def main():
     # Create the Updater and pass it Aqua Bot's token.
     updater = Updater(os.getenv("TEL_BOT_TOKEN"), workers=100, use_context=True)
 
-    # Create webhook. Comment the following line if you don't want to use webhooks
-    updater.start_webhook(listen='0.0.0.0', port=5001, url_path=os.getenv("TEL_BOT_TOKEN"),
-                          webhook_url='https://' + os.getenv("DOMAIN") + '/' + os.getenv("TEL_BOT_TOKEN"))
+    # Create webhook. Uncomment the following lines if you want to use webhooks
+    #updater.start_webhook(listen='0.0.0.0', port=5001, url_path=os.getenv("TEL_BOT_TOKEN"),
+    #                      webhook_url='https://' + os.getenv("DOMAIN") + '/' + os.getenv("TEL_BOT_TOKEN"))
 
     # Create handlers
     start_handler = CommandHandler('start', start)
@@ -907,8 +907,8 @@ def main():
 
     updater.dispatcher.add_error_handler(error)
 
-    # Uncomment if you don't want to use webhooks
-    #updater.start_polling()
+    # Comment if you want to use webhooks
+    updater.start_polling()
 
     updater.idle()
 
