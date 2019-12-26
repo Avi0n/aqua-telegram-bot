@@ -1,6 +1,6 @@
 -- MySQL dump 10.17  Distrib 10.3.14-MariaDB, for debian-linux-gnu (x86_64)
 --
--- Host: localhost    Database: dtp_karma
+-- Host: localhost    Database: room1
 -- ------------------------------------------------------
 -- Server version	10.3.14-MariaDB-1:10.3.14+maria~cosmic
 
@@ -16,8 +16,8 @@
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 
-CREATE DATABASE dtp_karma;
-USE dtp_karma;
+CREATE DATABASE IF NOT EXISTS room1;
+USE room1;
 --
 -- Table structure for table `user_chat_id`
 --
@@ -62,8 +62,8 @@ CREATE TABLE `user_karma` (
 
 
 -- Create 2nd table for 2nd Telegram room
-CREATE DATABASE djb_karma;
-USE djb_karma;
+CREATE DATABASE room2;
+USE room2;
 
 --
 -- Table structure for table `message_karma`
@@ -96,8 +96,8 @@ CREATE TABLE `user_karma` (
 
 
 -- Create 3rd table for 3rd Telegram room
-CREATE DATABASE dcr_karma;
-USE dcr_karma;
+CREATE DATABASE room3;
+USE room3;
 
 --
 -- Table structure for table `message_karma`

@@ -25,7 +25,7 @@ load_dotenv()
 
 # Initialize logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    level=logging.INFO)
+                    level=logging.os.getenv("BOT_LOG_LEVEL"))
 
 logger = logging.getLogger(__name__)
 
@@ -355,9 +355,9 @@ def delete(update, context):
 def karma(update, context):
     # Find out which database to use. If the chat is private, watch for user specified database
     if update.message.chat.type == 'private':
-        keyboard = [[InlineKeyboardButton("DTP", callback_data='20'),
-                    InlineKeyboardButton("DJB", callback_data='21')],
-                    [InlineKeyboardButton("DCR", callback_data='22')]]
+        keyboard = [[InlineKeyboardButton(os.getenv("GROUP1"), callback_data='20'),
+                    InlineKeyboardButton(os.getenv("GROUP2"), callback_data='21')],
+                    [InlineKeyboardButton(os.getenv("GROUP3"), callback_data='22')]]
 
         reply_markup = InlineKeyboardMarkup(keyboard)
 
