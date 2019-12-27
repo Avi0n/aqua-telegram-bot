@@ -1,6 +1,6 @@
 pymysql
 python-telegram-bot
-ujson
+flake8
 emoji
 python-dotenv
 Pillow
