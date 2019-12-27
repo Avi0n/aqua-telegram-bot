@@ -1,10 +1,6 @@
 import os
 import logging
 import string
-from dotenv import load_dotenv
-from emoji import emojize
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import MessageHandler, CommandHandler, CallbackQueryHandler, Filters, Updater
 # Imports needed for source()
 import sys
 import io
@@ -17,6 +13,10 @@ from collections import OrderedDict
 # Import needed for convert_media()
 import imageio
 import pymysql
+from dotenv import load_dotenv
+from emoji import emojize
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import MessageHandler, CommandHandler, CallbackQueryHandler, Filters, Updater
 
 
 # Initialize dotenv
@@ -734,7 +734,7 @@ def repost(update, context):
         if 'aquano' in update.message.caption.replace(' ', '').lower():
             print("User doesn't want this photo to be reposted. Skipping.")
             return
-        elif 'noaqua' in update.message.caption.replace(' ', '').lower():
+        if 'noaqua' in update.message.caption.replace(' ', '').lower():
             print("User doesn't want this photo to be reposted. Skipping.")
             return
 
