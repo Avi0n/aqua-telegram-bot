@@ -16,4 +16,4 @@ pylint:
   stage: Static Analysis
   allow_failure: true
   script:
-  - pylint -d C0301 bild/main.py
+  - pylint -d C0301 main.py
