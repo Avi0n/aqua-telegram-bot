@@ -729,12 +729,24 @@ def make_keyboard(counter1, counter2, counter3):
 
 # Forward message that was posted by another user to the channel with emoji buttons
 def repost(update, context):
+    # If user posts a photo/video in a private chat with the bot, ignore it
+    if update.message.chat.type == 'private':
+        return
+
+    # If user is replying to a message, store the id to use later
+    reply_message_id = None
+    try:
+        if update.message.reply_to_message.message_id is not None:
+            reply_message_id = update.message.reply_to_message.message_id
+    except:
+        print('Not a reply')
+
     # Check to see if user doesn't want their photo to be deleted
     if update.message.caption is not None:
         if 'aquano' in update.message.caption.replace(' ', '').lower():
             print("User doesn't want this photo to be reposted. Skipping.")
             return
-        if 'noaqua' in update.message.caption.replace(' ', '').lower():
+        elif 'noaqua' in update.message.caption.replace(' ', '').lower():
             print("User doesn't want this photo to be reposted. Skipping.")
             return
 
@@ -753,37 +765,37 @@ def repost(update, context):
         try:
             # Send message with inline keyboard
             context.bot.send_photo(chat_id=update.message.chat.id, photo=update.message.photo[-1].file_id, caption=repost_caption,
-                                   disable_notification=False, reply_markup=keyboard_buttons, timeout=20, parse_mode='HTML')
+                                   reply_to_message_id=reply_message_id, reply_markup=keyboard_buttons, timeout=20, parse_mode='HTML')
         except:
             print('Not a photo')
         else:
             # Delete original message
             context.bot.delete_message(chat_id=update.message.chat.id, message_id=update.message.message_id)
-            break
+            return
         # Try sending document animation
         try:
             # Send message with inline keyboard
             context.bot.send_animation(chat_id=update.message.chat.id, animation=update.message.document.file_id, caption=repost_caption,
-                                       disable_notification=False, reply_markup=keyboard_buttons, timeout=20, parse_mode='HTML')
+                                       reply_to_message_id=reply_message_id, reply_markup=keyboard_buttons, timeout=20, parse_mode='HTML')
         except:
             print('Not a document video')
         else:
             # Delete original message
             context.bot.delete_message(chat_id=update.message.chat.id, message_id=update.message.message_id)
-            break
+            return
         # Try sending video animation
         try:
             # Send message with inline keyboard
             context.bot.send_video(chat_id=update.message.chat.id, video=update.message.video.file_id, caption=repost_caption,
-                                   disable_notification=False, reply_markup=keyboard_buttons, timeout=20, parse_mode='HTML')
+                                   reply_to_message_id=reply_message_id, reply_markup=keyboard_buttons, timeout=20, parse_mode='HTML')
         except:
             print('Not a video video')
         else:
             # Delete original message
             context.bot.delete_message(chat_id=update.message.chat.id, message_id=update.message.message_id)
-            break
+            return
         finally:
-            break
+            return
 
 
 def button(update, context):
