@@ -44,7 +44,17 @@ def get_user_karma(database):
     # prepare a cursor object using cursor() method
     cursor = db.cursor()
 
-    return_message = "Karma in " + database + ":\n"
+    # Add chat group name to the results of /karma
+    groupname = ""
+    if database == os.getenv("DATABASE1"):
+        groupname = os.getenv("GROUP1")
+    if database == os.getenv("DATABASE2"):
+        groupname = os.getenv("GROUP2")
+    if database == os.getenv("DATABASE3"):
+        groupname = os.getenv("GROUP3")
+
+    return_message = groupname + ":\n"
+
     sql = "SELECT * FROM user_karma WHERE karma <> 0 ORDER BY username;"
     try:
         # Execute the SQL command
