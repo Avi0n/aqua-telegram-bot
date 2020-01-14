@@ -44,7 +44,7 @@ def get_user_karma(database):
     # prepare a cursor object using cursor() method
     cursor = db.cursor()
 
-    return_message = ""
+    return_message = "Karma in " + database + ":\n"
     sql = "SELECT * FROM user_karma WHERE karma <> 0 ORDER BY username;"
     try:
         # Execute the SQL command
