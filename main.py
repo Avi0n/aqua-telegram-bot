@@ -1,11 +1,6 @@
 import os
 import logging
-import pymysql
 import string
-from dotenv import load_dotenv
-from emoji import emojize
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import MessageHandler, CommandHandler, BaseFilter, CallbackQueryHandler, Filters, Updater
 # Imports needed for source()
 import sys
 import io
@@ -15,9 +10,13 @@ import json
 import codecs
 import time
 from collections import OrderedDict
-# Imports needed for convert_media()
-import sys
+# Import needed for convert_media()
 import imageio
+import pymysql
+from dotenv import load_dotenv
+from emoji import emojize
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import MessageHandler, CommandHandler, CallbackQueryHandler, Filters, Updater
 
 
 # Initialize dotenv
@@ -65,10 +64,10 @@ def get_user_karma(database):
         # Add each user and karma as its own row
         for row in results:
             username = row[0]
-            karma = row[1]
+            karma_points = row[1]
             return_message += username + (" " * (longest_username_length - len(username))) + \
                                  "   " + (" " * (longest_karma_length -
-                                                 len(str(karma)))) + str(karma) + "\n"
+                                                 len(str(karma_points)))) + str(karma_points) + "\n"
 
         return_message += "\n```" + emojize(":v:", use_aliases=True)
 
@@ -289,10 +288,10 @@ def get_message_karma(database, message_id):
         # Add each user and karma as its own row
         for row in results:
             username = row[0]
-            karma = row[1]
+            karma_points = row[1]
             return_message += username + (" " * (longest_username_length - len(username))) + \
                 "   " + (" " * (longest_karma_length -
-                                len(str(karma)))) + str(karma) + "\n"
+                                len(str(karma_points)))) + str(karma_points) + "\n"
     except Exception as e:
         return_message += "Error"
         print("get_message_karma() error: " + str(e))
@@ -356,7 +355,7 @@ def karma(update, context):
     # Find out which database to use. If the chat is private, watch for user specified database
     if update.message.chat.type == 'private':
         keyboard = [[InlineKeyboardButton(os.getenv("GROUP1"), callback_data='20'),
-                    InlineKeyboardButton(os.getenv("GROUP2"), callback_data='21')],
+                     InlineKeyboardButton(os.getenv("GROUP2"), callback_data='21')],
                     [InlineKeyboardButton(os.getenv("GROUP3"), callback_data='22')]]
 
         reply_markup = InlineKeyboardMarkup(keyboard)
@@ -373,7 +372,7 @@ def karma(update, context):
             database = os.getenv("DATABASE3")
 
         context.bot.send_message(chat_id=update.message.chat_id,
-                                text=get_user_karma(database), parse_mode='Markdown', timeout=20)
+                                 text=get_user_karma(database), parse_mode='Markdown', timeout=20)
 
 
 # Respond to /give
@@ -541,7 +540,7 @@ def source(update, context):
         extensions = {".jpg", ".jpeg", ".png", ".gif", ".bmp"}
         thumbSize = (150, 150)
 
-        """ 
+        """
         # enable or disable indexes
         index_hmags = '0'
         index_hanime = '0'
@@ -730,6 +729,18 @@ def make_keyboard(counter1, counter2, counter3):
 
 # Forward message that was posted by another user to the channel with emoji buttons
 def repost(update, context):
+    # If user posts a photo/video in a private chat with the bot, ignore it
+    if update.message.chat.type == 'private':
+        return
+
+    # If user is replying to a message, store the id to use later
+    reply_message_id = None
+    try:
+        if update.message.reply_to_message.message_id is not None:
+            reply_message_id = update.message.reply_to_message.message_id
+    except:
+        print('Not a reply')
+
     # Check to see if user doesn't want their photo to be deleted
     if update.message.caption is not None:
         if 'aquano' in update.message.caption.replace(' ', '').lower():
@@ -754,37 +765,37 @@ def repost(update, context):
         try:
             # Send message with inline keyboard
             context.bot.send_photo(chat_id=update.message.chat.id, photo=update.message.photo[-1].file_id, caption=repost_caption,
-                                   disable_notification=False, reply_markup=keyboard_buttons, timeout=20, parse_mode='HTML')
+                                   reply_to_message_id=reply_message_id, reply_markup=keyboard_buttons, timeout=20, parse_mode='HTML')
         except:
             print('Not a photo')
         else:
             # Delete original message
             context.bot.delete_message(chat_id=update.message.chat.id, message_id=update.message.message_id)
-            break
+            return
         # Try sending document animation
         try:
             # Send message with inline keyboard
             context.bot.send_animation(chat_id=update.message.chat.id, animation=update.message.document.file_id, caption=repost_caption,
-                                       disable_notification=False, reply_markup=keyboard_buttons, timeout=20, parse_mode='HTML')
+                                       reply_to_message_id=reply_message_id, reply_markup=keyboard_buttons, timeout=20, parse_mode='HTML')
         except:
             print('Not a document video')
         else:
             # Delete original message
             context.bot.delete_message(chat_id=update.message.chat.id, message_id=update.message.message_id)
-            break
+            return
         # Try sending video animation
         try:
             # Send message with inline keyboard
             context.bot.send_video(chat_id=update.message.chat.id, video=update.message.video.file_id, caption=repost_caption,
-                                   disable_notification=False, reply_markup=keyboard_buttons, timeout=20, parse_mode='HTML')
+                                   reply_to_message_id=reply_message_id, reply_markup=keyboard_buttons, timeout=20, parse_mode='HTML')
         except:
             print('Not a video video')
         else:
             # Delete original message
             context.bot.delete_message(chat_id=update.message.chat.id, message_id=update.message.message_id)
-            break
+            return
         finally:
-            break
+            return
 
 
 def button(update, context):
@@ -832,7 +843,7 @@ def button(update, context):
             # Prevent users from voting on their own posts
             if query.from_user.username == username[-1]:
                 context.bot.send_message(chat_id=query.message.chat_id,
-                                        text=query.from_user.username + " just tried to give themselves points.")
+                                         text=query.from_user.username + " just tried to give themselves points.")
                 context.bot.send_sticker(
                     chat_id=query.message.chat_id, sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
                 self_vote = True
