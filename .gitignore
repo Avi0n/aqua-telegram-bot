@@ -2,7 +2,7 @@
 env
 .DS_Store
 settings.json
-mariadb/
+db/
 source.jpg
 source.gif
 testing.py
