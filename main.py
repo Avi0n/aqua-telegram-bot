@@ -53,7 +53,6 @@ def get_user_karma(database, chat_type):
 
     # Add chat group name to the results of /karma
     if chat_type == "private":
-        groupname = ""
         return_message = groupname + ":\n"
     else:
         return_message = ""
