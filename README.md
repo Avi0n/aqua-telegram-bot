@@ -1,6 +1,11 @@
 # AquaTelegramBot
 This bot is a fun little karma system for a Telegram group. The bot re-posts any picture you send to the chat room with inline emojis which you can use to vote with. 👍 is 1 point, 👌 is 2 points, and ❤️ is 3 points. Here are a couple pictures to give you a feel for what it does:   
-https://imgur.com/a/aRS72Vf   
+![image1](https://i.imgur.com/7BzYRvE.png)   
+Sample of a photo with inline buttons attached. The Votes button shows which users have voted on the photo and how many points they gave.   
+![image2](https://i.imgur.com/B0k74du.png)   
+If you send /karma to the bot, it will tell you the current totals for each user in the chatroom.
+
+
 Why is it called Aqua? Because this bot was originally thought to be pretty useless, just like the goddess from KonoSuba. 
 
 I used this project to learn more about API's and Python so the code is messy and I probably did a lot of dumb stuff. If you want to fix something or add a feature, I'm open to pull requests!   
@@ -17,7 +22,7 @@ Aqua currently supports the following commands:
 
 ## Getting Started
 You'll need git, Docker, and docker-compose
-1.  Install [Docker](https://www.docker.com/get-started)
+1.  Install [Docker](https://docs.docker.com/get-started/)
 2.  If you're using Linux, [install Docker Compose](https://docs.docker.com/compose/install/) (macOS and Windows installations of Docker come with Compose)
 3.  Clone this repo by running `git clone https://gitlab.com/Avi0n/aqua-telegram-bot.git`
 4.  Using the Telegram bot [@BotFather](https://t.me/BotFather), create a new bot and disable Group Privacy. Copy the API Token of your new bot
