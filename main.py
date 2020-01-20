@@ -35,7 +35,7 @@ def error(update, context):
 
 
 # Retrieve user's karma from the database
-def get_user_karma(database):
+def get_user_karma(database, chat_type):
     # Set MySQL settings
     db = pymysql.connect(host=os.getenv("MYSQL_HOST"),
                          user=os.getenv("MYSQL_USER"),
@@ -44,7 +44,19 @@ def get_user_karma(database):
     # prepare a cursor object using cursor() method
     cursor = db.cursor()
 
-    return_message = ""
+    if database == os.getenv("DATABASE1"):
+        groupname = os.getenv("GROUP1")
+    if database == os.getenv("DATABASE2"):
+        groupname = os.getenv("GROUP2")
+    if database == os.getenv("DATABASE3"):
+        groupname = os.getenv("GROUP3")
+
+    # Add chat group name to the results of /karma
+    if chat_type == "private":
+        return_message = groupname + ":\n"
+    else:
+        return_message = ""
+
     sql = "SELECT * FROM user_karma WHERE karma <> 0 ORDER BY username;"
     try:
         # Execute the SQL command
@@ -364,6 +376,7 @@ def karma(update, context):
 
     else:
         # If not a private chat, check the room name to match to a database
+        chat_type = 'group'
         if update.message.chat.title == os.getenv("GROUP1"):
             database = os.getenv("DATABASE1")
         elif update.message.chat.title == os.getenv("GROUP2"):
@@ -372,7 +385,7 @@ def karma(update, context):
             database = os.getenv("DATABASE3")
 
         context.bot.send_message(chat_id=update.message.chat_id,
-                                 text=get_user_karma(database), parse_mode='Markdown', timeout=20)
+                                 text=get_user_karma(database, chat_type), parse_mode='Markdown', timeout=20)
 
 
 # Respond to /give
@@ -776,7 +789,7 @@ def repost(update, context):
         try:
             # Send message with inline keyboard
             context.bot.send_animation(chat_id=update.message.chat.id, animation=update.message.document.file_id, caption=repost_caption,
-                                       reply_to_message_id=reply_message_id, reply_markup=keyboard_buttons, timeout=20, parse_mode='HTML')
+                                    reply_to_message_id=reply_message_id, reply_markup=keyboard_buttons, timeout=20, parse_mode='HTML')
         except:
             print('Not a document video')
         else:
@@ -801,12 +814,13 @@ def repost(update, context):
 def button(update, context):
     query = update.callback_query
     if query.message.chat.type == 'private':
+        chat_type = 'private'
         if int(query.data) == 20:
-            query.edit_message_text(text=get_user_karma(os.getenv("DATABASE1")), parse_mode='Markdown', timeout=20)
+            query.edit_message_text(text=get_user_karma(os.getenv("DATABASE1"), chat_type), parse_mode='Markdown', timeout=20)
         elif int(query.data) == 21:
-            query.edit_message_text(text=get_user_karma(os.getenv("DATABASE2")), parse_mode='Markdown', timeout=20)
+            query.edit_message_text(text=get_user_karma(os.getenv("DATABASE2"), chat_type), parse_mode='Markdown', timeout=20)
         elif int(query.data) == 22:
-            query.edit_message_text(text=get_user_karma(os.getenv("DATABASE3")), parse_mode='Markdown', timeout=20)
+            query.edit_message_text(text=get_user_karma(os.getenv("DATABASE3"), chat_type), parse_mode='Markdown', timeout=20)
     else:
         database = ''
 
@@ -914,6 +928,10 @@ def main():
 
     # on noncommand i.e message - repost the video on Telegram
     updater.dispatcher.add_handler(MessageHandler(Filters.video, repost))
+    updater.dispatcher.add_handler(CallbackQueryHandler(button))
+
+    # on noncommand i.e message - repost the document on Telegram
+    updater.dispatcher.add_handler(MessageHandler(Filters.document, repost))
     updater.dispatcher.add_handler(CallbackQueryHandler(button))
 
     updater.dispatcher.add_error_handler(error)
