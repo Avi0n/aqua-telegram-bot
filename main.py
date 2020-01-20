@@ -35,7 +35,7 @@ def error(update, context):
 
 
 # Retrieve user's karma from the database
-def get_user_karma(database):
+def get_user_karma(database, chat_type):
     # Set MySQL settings
     db = pymysql.connect(host=os.getenv("MYSQL_HOST"),
                          user=os.getenv("MYSQL_USER"),
@@ -44,8 +44,6 @@ def get_user_karma(database):
     # prepare a cursor object using cursor() method
     cursor = db.cursor()
 
-    # Add chat group name to the results of /karma
-    groupname = ""
     if database == os.getenv("DATABASE1"):
         groupname = os.getenv("GROUP1")
     if database == os.getenv("DATABASE2"):
@@ -53,7 +51,12 @@ def get_user_karma(database):
     if database == os.getenv("DATABASE3"):
         groupname = os.getenv("GROUP3")
 
-    return_message = groupname + ":\n"
+    # Add chat group name to the results of /karma
+    if chat_type == "private":
+        groupname = ""
+        return_message = groupname + ":\n"
+    else:
+        return_message = ""
 
     sql = "SELECT * FROM user_karma WHERE karma <> 0 ORDER BY username;"
     try:
@@ -374,6 +377,7 @@ def karma(update, context):
 
     else:
         # If not a private chat, check the room name to match to a database
+        chat_type = 'group'
         if update.message.chat.title == os.getenv("GROUP1"):
             database = os.getenv("DATABASE1")
         elif update.message.chat.title == os.getenv("GROUP2"):
@@ -382,7 +386,7 @@ def karma(update, context):
             database = os.getenv("DATABASE3")
 
         context.bot.send_message(chat_id=update.message.chat_id,
-                                 text=get_user_karma(database), parse_mode='Markdown', timeout=20)
+                                 text=get_user_karma(database, chat_type), parse_mode='Markdown', timeout=20)
 
 
 # Respond to /give
@@ -811,12 +815,13 @@ def repost(update, context):
 def button(update, context):
     query = update.callback_query
     if query.message.chat.type == 'private':
+        chat_type = 'private'
         if int(query.data) == 20:
-            query.edit_message_text(text=get_user_karma(os.getenv("DATABASE1")), parse_mode='Markdown', timeout=20)
+            query.edit_message_text(text=get_user_karma(os.getenv("DATABASE1"), chat_type), parse_mode='Markdown', timeout=20)
         elif int(query.data) == 21:
-            query.edit_message_text(text=get_user_karma(os.getenv("DATABASE2")), parse_mode='Markdown', timeout=20)
+            query.edit_message_text(text=get_user_karma(os.getenv("DATABASE2"), chat_type), parse_mode='Markdown', timeout=20)
         elif int(query.data) == 22:
-            query.edit_message_text(text=get_user_karma(os.getenv("DATABASE3")), parse_mode='Markdown', timeout=20)
+            query.edit_message_text(text=get_user_karma(os.getenv("DATABASE3"), chat_type), parse_mode='Markdown', timeout=20)
     else:
         database = ''
 
