@@ -784,11 +784,9 @@ def repost(update, context):
             return
         # Try sending document animation
         try:
-            # Check if the document is a gif
-            if update.message.document.mime_type == "image/gif":
-                # Send message with inline keyboard
-                context.bot.send_animation(chat_id=update.message.chat.id, animation=update.message.document.file_id, caption=repost_caption,
-                                        reply_to_message_id=reply_message_id, reply_markup=keyboard_buttons, timeout=20, parse_mode='HTML')
+            # Send message with inline keyboard
+            context.bot.send_animation(chat_id=update.message.chat.id, animation=update.message.document.file_id, caption=repost_caption,
+                                    reply_to_message_id=reply_message_id, reply_markup=keyboard_buttons, timeout=20, parse_mode='HTML')
         except:
             print('Not a document video')
         else:
