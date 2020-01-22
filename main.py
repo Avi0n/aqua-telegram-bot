@@ -789,7 +789,7 @@ def repost(update, context):
         try:
             # Send message with inline keyboard
             context.bot.send_animation(chat_id=update.message.chat.id, animation=update.message.document.file_id, caption=repost_caption,
-                                    reply_to_message_id=reply_message_id, reply_markup=keyboard_buttons, timeout=20, parse_mode='HTML')
+                                       reply_to_message_id=reply_message_id, reply_markup=keyboard_buttons, timeout=20, parse_mode='HTML')
         except:
             print('Not a document video')
         else:
@@ -890,11 +890,7 @@ def button(update, context):
 
 def main():
     # Create the Updater and pass it Aqua Bot's token.
-    updater = Updater(os.getenv("TEL_BOT_TOKEN"), workers=100, use_context=True)
-
-    # Create webhook. Uncomment the following lines if you want to use webhooks
-    #updater.start_webhook(listen='0.0.0.0', port=5001, url_path=os.getenv("TEL_BOT_TOKEN"),
-    #                      webhook_url='https://' + os.getenv("DOMAIN") + '/' + os.getenv("TEL_BOT_TOKEN"))
+    updater = Updater(os.getenv("TEL_BOT_TOKEN"), use_context=True)
 
     # Create handlers
     start_handler = CommandHandler('start', start)
@@ -936,8 +932,16 @@ def main():
 
     updater.dispatcher.add_error_handler(error)
 
-    # Comment if you want to use webhooks
+    # Start polling
+    # Comment the following line if you want to use webhooks
     updater.start_polling()
+
+    # Create webhook
+    # Uncomment the following 2 lines if you want to use webhooks
+    # Note: The following webhook configuration is setup to use a reverse proxy
+    # See https://github.com/python-telegram-bot/python-telegram-bot/wiki/Webhooks for more info
+    #updater.start_webhook(listen='0.0.0.0', port=5001, url_path=os.getenv("TEL_BOT_TOKEN"))
+    #updater.bot.set_webhook(url='https://' + os.getenv("DOMAIN") + '/' + os.getenv("TEL_BOT_TOKEN"))
 
     updater.idle()
 
