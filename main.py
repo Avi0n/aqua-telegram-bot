@@ -18,6 +18,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import os
 import logging
 import string
+import asyncio
+import aiomysql
 # Imports needed for source()
 import sys
 import io
@@ -29,9 +31,10 @@ import time
 from collections import OrderedDict
 # Import needed for convert_media()
 import imageio
-import pymysql
+#import pymysql
 from dotenv import load_dotenv
 from emoji import emojize
+from telegram.ext.dispatcher import run_async
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import MessageHandler, CommandHandler, CallbackQueryHandler, Filters, Updater
 
@@ -52,14 +55,14 @@ def error(update, context):
 
 
 # Retrieve user's karma from the database
-def get_user_karma(database, chat_type):
+async def get_user_karma(database, chat_type, loop):
     # Set MySQL settings
-    db = pymysql.connect(host=os.getenv("MYSQL_HOST"),
-                         user=os.getenv("MYSQL_USER"),
-                         passwd=os.getenv("MYSQL_PASS"),
-                         db=database)
+    conn = await aiomysql.connect(host=os.getenv("MYSQL_HOST"),
+                                user=os.getenv("MYSQL_USER"),
+                                password=os.getenv("MYSQL_PASS"),
+                                db=database, loop=loop)
     # prepare a cursor object using cursor() method
-    cursor = db.cursor()
+    #cursor = await db.cursor()
 
     if database == os.getenv("DATABASE1"):
         groupname = os.getenv("GROUP1")
@@ -75,98 +78,102 @@ def get_user_karma(database, chat_type):
         return_message = ""
 
     sql = "SELECT * FROM user_karma WHERE karma <> 0 ORDER BY username;"
-    try:
-        # Execute the SQL command
-        cursor.execute(sql)
-        # Fetch all the rows in a list of lists.
-        results = cursor.fetchall()
+    async with conn.cursor() as cur:
+        try:
+            # Execute the SQL command
+            await cur.execute(sql)
+            # Fetch all the rows in a list of lists.
+            results = await cur.fetchall()
 
-        return_message += "```\n"
+            return_message += "```\n"
 
-        # Find length of longest username and karma
-        longest_username_length = 0
-        longest_karma_length = 0
-        for row in results:
-            longest_username_length = max(longest_username_length, len(row[0]))
-            longest_karma_length = max(longest_karma_length, len(str(row[1])))
+            # Find length of longest username and karma
+            longest_username_length = 0
+            longest_karma_length = 0
+            for row in results:
+                longest_username_length = max(longest_username_length, len(row[0]))
+                longest_karma_length = max(longest_karma_length, len(str(row[1])))
 
-        # Add each user and karma as its own row
-        for row in results:
-            username = row[0]
-            karma_points = row[1]
-            return_message += username + (" " * (longest_username_length - len(username))) + \
-                                 "   " + (" " * (longest_karma_length -
-                                                 len(str(karma_points)))) + str(karma_points) + "\n"
+            # Add each user and karma as its own row
+            for row in results:
+                username = row[0]
+                karma_points = row[1]
+                return_message += username + (" " * (longest_username_length - len(username))) + \
+                                    "   " + (" " * (longest_karma_length -
+                                                    len(str(karma_points)))) + str(karma_points) + "\n"
 
-        return_message += "\n```" + emojize(":v:", use_aliases=True)
+            return_message += "\n```" + emojize(":v:", use_aliases=True)
 
-    except Exception as e:
-        if '1046' in str(e):
-            return_message = 'The database options are:  \n- DTP  \n- DJB  \n- DCR'
-        else:
-            return_message += 'Error: ' + str(e)
-            print('get_user_karma() error: ' + str(e))
-    finally:
-        cursor.close()
-        db.close()
+        except Exception as e:
+            if '1046' in str(e):
+                return_message = 'The database options are:  \n- DTP  \n- DJB  \n- DCR'
+            else:
+                return_message += 'Error: ' + str(e)
+                print('get_user_karma() error: ' + str(e))
+        #finally:
+            #await cur.close()
+    conn.close()
     return return_message
 
 
 # Increment the total karma for a specific user
-def update_user_karma(database, username, plus_or_minus, points):
+async def update_user_karma(database, username, plus_or_minus, points, loop):
     # Set MySQL settings
-    db = pymysql.connect(host=os.getenv("MYSQL_HOST"),
-                         user=os.getenv("MYSQL_USER"),
-                         passwd=os.getenv("MYSQL_PASS"),
-                         db=database)
+    pool = await aiomysql.create_pool(host=os.getenv("MYSQL_HOST"),
+                                      user=os.getenv("MYSQL_USER"),
+                                      password=os.getenv("MYSQL_PASS"),
+                                      db=database, loop=loop)
     # prepare a cursor object using cursor() method
-    cursor = db.cursor()
+    #cur = await conn.cursor()
 
-    sql = "SELECT * FROM user_karma WHERE username = '" + username + "';"
-    try:
-        # Execute the SQL command
-        cursor.execute(sql)
-        # Fetch all the rows in a list of lists.
-        result = cursor.fetchone()
-    except Exception as e:
-        print("Error: " + str(e))
-    if result is None:
-        # Add username to the database along with the points that were just added
-        sql = "INSERT INTO user_karma VALUES ('" + username + "', " + points + ");"
-        try:
-            # Execute the SQL command
-            cursor.execute(sql)
-            # Commit your changes in the database
-            db.commit()
-        except Exception as e:
-            # Rollback in case there is any error
-            db.rollback()
-            print("update_karma error: " + str(e))
-        finally:
-            cursor.close()
-            db.close()
-    else:
-        sql = "UPDATE user_karma SET karma = karma" + plus_or_minus + \
-            points + " WHERE username = '" + username + "';"
-        try:
-            # Execute the SQL command
-            cursor.execute(sql)
-            # Commit your changes in the database
-            db.commit()
-        except Exception as e:
-            # Rollback in case there is any error
-            db.rollback()
-            print("update_karma error: " + str(e))
-        finally:
-            cursor.close()
-            db.close()
+    async with pool.acquire() as conn:
+        async with conn.cursor() as cur:
+            sql = "SELECT * FROM user_karma WHERE username = '" + username + "';"
+            try:
+                # Execute the SQL command
+                await cur.execute(sql)
+                # Fetch all the rows in a list of lists.
+                result = await cur.fetchone()
+                print(result)
+            except Exception as e:
+                print("Error: " + str(e))
+            if result is None:
+                # Add username to the database along with the points that were just added
+                sql = "INSERT INTO user_karma VALUES ('" + username + "', " + points + ");"
+                try:
+                    # Execute the SQL command
+                    await cur.execute(sql)
+                    # Commit your changes in the database
+                    await conn.commit()
+                except Exception as e:
+                    # Rollback in case there is any error
+                    await conn.rollback()
+                    print("update_karma error: " + str(e))
+                finally:
+                    await cur.close()
+            else:
+                sql = "UPDATE user_karma SET karma = karma" + plus_or_minus + \
+                    points + " WHERE username = '" + username + "';"
+                try:
+                    # Execute the SQL command
+                    await cur.execute(sql)
+                    # Commit your changes in the database
+                    await conn.commit()
+                except Exception as e:
+                    # Rollback in case there is any error
+                    await conn.rollback()
+                    print("update_karma error: " + str(e))
+                finally:
+                    await cur.close()
+    pool.close()
+    await pool.wait_closed()
 
 
 '''
 # Check the toggle state of an emoji
 def check_for_previous_vote(message_id, username, emoji_symbol):
     # Set MySQL settings
-    db = pymysql.connect(host=os.getenv("MYSQL_HOST"),
+    conn = pymysql.connect(host=os.getenv("MYSQL_HOST"),
                          user=os.getenv("MYSQL_USER"),
                          passwd=os.getenv("MYSQL_PASS"),
                          db=database)
@@ -177,13 +184,13 @@ def check_for_previous_vote(message_id, username, emoji_symbol):
             str(message_id) + " AND username = '" + username + "';"
     try:
         # Execute the SQL command
-        cursor.execute(sql)
+        await cursor.execute(sql)
         # Fetch all the rows in a list of lists.
         result = cursor.fetchone()
     except Exception as e:
         print("Error: " + str(e))
     finally:
-        cursor.close()
+        await cursor.close()
         db.close()
     if int(result) is not 0:
         return True
@@ -192,167 +199,179 @@ def check_for_previous_vote(message_id, username, emoji_symbol):
 '''
 
 
-def update_message_karma(database, message_id, username, emoji_points):
+async def update_message_karma(database, message_id, username, emoji_points, loop):
     # Set MySQL settings
-    db = pymysql.connect(host=os.getenv("MYSQL_HOST"),
-                         user=os.getenv("MYSQL_USER"),
-                         passwd=os.getenv("MYSQL_PASS"),
-                         db=database)
+    pool = await aiomysql.create_pool(host=os.getenv("MYSQL_HOST"),
+                                      user=os.getenv("MYSQL_USER"),
+                                      password=os.getenv("MYSQL_PASS"),
+                                      db=database, loop=loop)
     # prepare a cursor object using cursor() method
-    cursor = db.cursor()
+    #cursor = await db.cursor()
 
     thumb_points = 0
     ok_points = 0
     heart_points = 0
     # Figure out which column to update
-    if int(emoji_points) is 1:
+    if int(emoji_points) == 1:
         emoji_symbol = 'thumbsup'
         thumb_points = 1
-    elif int(emoji_points) is 2:
+    elif int(emoji_points) == 2:
         emoji_symbol = 'ok_hand'
         ok_points = 2
-    elif int(emoji_points) is 3:
+    elif int(emoji_points) == 3:
         emoji_symbol = 'heart'
         heart_points = 3
 
-    sql = "SELECT * FROM message_karma WHERE message_id = " + \
-        str(message_id) + " AND username = '" + username + "';"
-    try:
-        # Execute the SQL command
-        cursor.execute(sql)
-        # Fetch all the rows in a list of lists.
-        result = cursor.fetchone()
-    except Exception as e:
-        print("Error: " + str(e))
-    if result is None:
-        # Insert new row with message_id, username, and emoji point values
-        sql = "INSERT INTO message_karma VALUES (" + str(message_id) + ", '" + username + \
-            "', " + str(thumb_points) + ", " + str(ok_points) + \
-            ", " + str(heart_points) + ");"
-        try:
-            # Execute the SQL command
-            cursor.execute(sql)
-            # Commit your changes in the database
-            db.commit()
-        except Exception as e:
-            # Rollback in case there is any error
-            db.rollback()
-            print("update_message_karma insert error: " + str(e))
-        finally:
-            cursor.close()
-            db.close()
-    else:
-        # Update emoji points that user has given a specific message_id
-        sql = "UPDATE message_karma SET " + emoji_symbol + " = " + emoji_symbol + " + " + str(emoji_points) + \
-            " WHERE message_id = " + \
-            str(message_id) + " AND username = '" + username + "';"
-        try:
-            # Execute the SQL command
-            cursor.execute(sql)
-            # Commit your changes in the database
-            db.commit()
-        except Exception as e:
-            # Rollback in case there is any error
-            db.rollback()
-            print("update_message_karma error: " + str(e))
-        finally:
-            cursor.close()
-            db.close()
+    async with pool.acquire() as conn:
+        async with conn.cursor() as cur:
+            sql = "SELECT * FROM message_karma WHERE message_id = " + \
+                str(message_id) + " AND username = '" + username + "';"
+            try:
+                # Execute the SQL command
+                await cur.execute(sql)
+                # Fetch all the rows in a list of lists.
+                result = await cur.fetchone()
+            except Exception as e:
+                print("Error: " + str(e))
+            if result is None:
+                # Insert new row with message_id, username, and emoji point values
+                sql = "INSERT INTO message_karma VALUES (" + str(message_id) + ", '" + username + \
+                    "', " + str(thumb_points) + ", " + str(ok_points) + \
+                    ", " + str(heart_points) + ");"
+                try:
+                    # Execute the SQL command
+                    await cur.execute(sql)
+                    # Commit your changes in the database
+                    await conn.commit()
+                except Exception as e:
+                    # Rollback in case there is any error
+                    await conn.rollback()
+                    print("update_message_karma insert error: " + str(e))
+                finally:
+                    await cur.close()
+            else:
+                # Update emoji points that user has given a specific message_id
+                sql = "UPDATE message_karma SET " + emoji_symbol + " = " + emoji_symbol + " + " + str(emoji_points) + \
+                    " WHERE message_id = " + \
+                    str(message_id) + " AND username = '" + username + "';"
+                try:
+                    # Execute the SQL command
+                    await cur.execute(sql)
+                    # Commit your changes in the database
+                    await conn.commit()
+                except Exception as e:
+                    # Rollback in case there is any error
+                    await conn.rollback()
+                    print("update_message_karma error: " + str(e))
+                finally:
+                    await cur.close()
+    pool.close()
+    await pool.wait_closed()
 
 
 # Check total karma for specific emoji for a specific message
-def check_emoji_points(database, message_id):
+async def check_emoji_points(database, message_id, loop):
     # Set MySQL settings
-    db = pymysql.connect(host=os.getenv("MYSQL_HOST"),
-                         user=os.getenv("MYSQL_USER"),
-                         passwd=os.getenv("MYSQL_PASS"),
-                         db=database)
+    pool = await aiomysql.create_pool(host=os.getenv("MYSQL_HOST"),
+                                      user=os.getenv("MYSQL_USER"),
+                                      password=os.getenv("MYSQL_PASS"),
+                                      db=database, loop=loop)
     # prepare a cursor object using cursor() method
-    cursor = db.cursor()
+    #cursor = await db.cursor()
 
     #return_message = ""
-
-    sql = "SELECT SUM(thumbsup), SUM(ok_hand), SUM(heart) FROM message_karma WHERE message_id = " + \
-        str(message_id) + ";"
-    try:
-        # Execute the SQL command
-        cursor.execute(sql)
-        # Fetch all the rows in a list of lists.
-        result = cursor.fetchone()
-    except Exception as e:
-        print("Error: " + str(e))
-    finally:
-        cursor.close()
-        db.close()
+    async with pool.acquire() as conn:
+        async with conn.cursor() as cur:
+            sql = "SELECT SUM(thumbsup), SUM(ok_hand), SUM(heart) FROM message_karma WHERE message_id = " + \
+                   str(message_id) + ";"
+            try:
+                # Execute the SQL command
+                await cur.execute(sql)
+                # Fetch all the rows in a list of lists.
+                result = await cur.fetchone()
+                print("Result of check_emoji_points: " + str(result))
+            except Exception as e:
+                print("Error: " + str(e))
+            #finally:
+            #    await cur.close()
+    pool.close()
+    await pool.wait_closed()
     return result
 
 
 # Get total karma per user for a specific message
-def get_message_karma(database, message_id):
+async def get_message_karma(database, message_id, loop):
     # Set MySQL settings
-    db = pymysql.connect(host=os.getenv("MYSQL_HOST"),
-                         user=os.getenv("MYSQL_USER"),
-                         passwd=os.getenv("MYSQL_PASS"),
-                         db=database)
+    pool = await aiomysql.create_pool(host=os.getenv("MYSQL_HOST"),
+                                      user=os.getenv("MYSQL_USER"),
+                                      password=os.getenv("MYSQL_PASS"),
+                                      db=database, loop=loop)
     # prepare a cursor object using cursor() method
-    cursor = db.cursor()
+    #cursor = await db.cursor()
 
     return_message = "Votes\n\n"
-    # SELECT SUM(thumbsup + ok_hand + heart) FROM message_karma WHERE message_id=2337 AND username='Avi0n'
-    sql = "SELECT username, SUM(thumbsup + ok_hand + heart) AS karma FROM message_karma WHERE message_id = " + \
-        str(message_id) + " GROUP BY username ORDER BY username;"
-    try:
-        # Execute the SQL command
-        cursor.execute(sql)
-        # Fetch all the rows in a list of lists.
-        results = cursor.fetchall()
 
-        # Find length of longest username and karma
-        longest_username_length = 0
-        longest_karma_length = 0
-        for row in results:
-            longest_username_length = max(longest_username_length, len(row[0]))
-            longest_karma_length = max(longest_karma_length, len(str(row[1])))
+    async with pool.acquire() as conn:
+        async with conn.cursor() as cur:
+            # SELECT SUM(thumbsup + ok_hand + heart) FROM message_karma WHERE message_id=2337 AND username='Avi0n'
+            sql = "SELECT username, SUM(thumbsup + ok_hand + heart) AS karma FROM message_karma WHERE message_id = " + \
+                str(message_id) + " GROUP BY username ORDER BY username;"
+            try:
+                # Execute the SQL command
+                await cur.execute(sql)
+                # Fetch all the rows in a list of lists.
+                results = await cur.fetchall()
 
-        # Add each user and karma as its own row
-        for row in results:
-            username = row[0]
-            karma_points = row[1]
-            return_message += username + (" " * (longest_username_length - len(username))) + \
-                "   " + (" " * (longest_karma_length -
-                                len(str(karma_points)))) + str(karma_points) + "\n"
-    except Exception as e:
-        return_message += "Error"
-        print("get_message_karma() error: " + str(e))
-    finally:
-        cursor.close()
-        db.close()
+                # Find length of longest username and karma
+                longest_username_length = 0
+                longest_karma_length = 0
+                for row in results:
+                    longest_username_length = max(longest_username_length, len(row[0]))
+                    longest_karma_length = max(longest_karma_length, len(str(row[1])))
+
+                # Add each user and karma as its own row
+                for row in results:
+                    username = row[0]
+                    karma_points = row[1]
+                    return_message += username + (" " * (longest_username_length - len(username))) + \
+                        "   " + (" " * (longest_karma_length -
+                                        len(str(karma_points)))) + str(karma_points) + "\n"
+            except Exception as e:
+                return_message += "Error"
+                print("get_message_karma() error: " + str(e))
+            finally:
+                await cur.close()
+    pool.close()
+    await pool.wait_closed()
     return return_message
 
 
 # Get user's personal chat_id with Aqua
-def get_chat_id(tele_user):
+async def get_chat_id(tele_user):
     # Set MySQL settings
-    db = pymysql.connect(host=os.getenv("MYSQL_HOST"),
-                         user=os.getenv("MYSQL_USER"),
-                         passwd=os.getenv("MYSQL_PASS"),
-                         db=os.getenv("DATABASE1"))
+    pool = await aiomysql.create_pool(host=os.getenv("MYSQL_HOST"),
+                                      user=os.getenv("MYSQL_USER"),
+                                      password=os.getenv("MYSQL_PASS"),
+                                      db=os.getenv("DATABASE1"))
     # prepare a cursor object using cursor() method
-    cursor = db.cursor()
+    #cursor = await db.cursor()
 
-    sql = "SELECT chat_id FROM user_chat_id WHERE username = '" + \
-        str(tele_user) + "';"
-    try:
-        # Execute the SQL command
-        cursor.execute(sql)
-        # Fetch all the rows in a list of lists.
-        result = cursor.fetchone()
-        return result[0]
-    except Exception as e:
-        print("Error: " + str(e))
-    finally:
-        cursor.close()
-        db.close()
+    async with pool.acquire() as conn:
+        async with conn.cursor() as cur:
+            sql = "SELECT chat_id FROM user_chat_id WHERE username = '" + \
+                str(tele_user) + "';"
+            try:
+                # Execute the SQL command
+                await cur.execute(sql)
+                # Fetch all the rows in a list of lists.
+                result = cur.fetchone()
+                return result[0]
+            except Exception as e:
+                print("Error: " + str(e))
+            finally:
+                await cur.close()
+    pool.close()
+    await pool.wait_closed()
 
 
 # Respond to /start
@@ -380,7 +399,10 @@ def delete(update, context):
 
 
 # Respond to /karma
+@run_async
 def karma(update, context):
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     # Find out which database to use. If the chat is private, watch for user specified database
     if update.message.chat.type == 'private':
         keyboard = [[InlineKeyboardButton(os.getenv("GROUP1"), callback_data='20'),
@@ -401,12 +423,18 @@ def karma(update, context):
         elif update.message.chat.title == os.getenv("GROUP3"):
             database = os.getenv("DATABASE3")
 
+        message = loop.run_until_complete(get_user_karma(database, chat_type, loop))
+
         context.bot.send_message(chat_id=update.message.chat_id,
-                                 text=get_user_karma(database, chat_type), parse_mode='Markdown', timeout=20)
+                                 text=message, parse_mode='Markdown', timeout=20)
 
 
+@run_async
 # Respond to /give
 def give(update, context):
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
     database = ''
     # Find out which database to use
     if update.message.chat.title == os.getenv("GROUP1"):
@@ -431,7 +459,7 @@ def give(update, context):
                                          " just tried to give themselves points.")
                 context.bot.send_sticker(chat_id=update.message.chat_id,
                                          sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
-            elif int(points) is 0:
+            elif int(points) == 0:
                 context.bot.send_message(chat_id=update.message.chat_id,
                                          text="pfft, you just tried to give someone 0 points.")
                 context.bot.send_sticker(chat_id=update.message.chat_id,
@@ -440,11 +468,11 @@ def give(update, context):
                 context.bot.send_message(chat_id=update.message.chat_id,
                                          text="Don't you think that's a tad too many points to be taking away?")
             elif -21 < int(points) < 0:
-                update_user_karma(database, username, '-', points_no_punc)
+                loop.run_until_complete(update_user_karma(database, username, '-', points_no_punc, loop))
                 context.bot.send_message(chat_id=update.message.chat_id,
                                          text=from_username + " took away " + points + " points from " + username + "!")
             elif 61 > int(points) > 0:
-                update_user_karma(database, username, '+', points_no_punc)
+                loop.run_until_complete(update_user_karma(database, username, '+', points_no_punc, loop))
                 context.bot.send_message(chat_id=update.message.chat_id,
                                          text=from_username + " gave " + username + " " + points + " points!")
             elif int(points) > 61:
@@ -463,24 +491,29 @@ def give(update, context):
                                  text="The correct format is '/give @" + username + " " + points + "'")
 
 
+"""
 # Respond to /addme
 def addme(update, context):
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(addme_async(update, context, loop))
+
+async def addme_async(update, context, loop):
     # Make sure the /addme command is being sent in a PM
     if not update.message.chat.title:
         username = update.message.from_user.username
         chat_id = update.message.chat_id
         # Set MySQL settings
-        db = pymysql.connect(host=os.getenv("MYSQL_HOST"),
+        conn = await aiomysql.connect(host=os.getenv("MYSQL_HOST"),
                              user=os.getenv("MYSQL_USER"),
-                             passwd=os.getenv("MYSQL_PASS"),
+                             password=os.getenv("MYSQL_PASS"),
                              db=os.getenv("DATABASE1"))
         # prepare a cursor object using cursor() method
-        cursor = db.cursor()
+        cursor = await db.cursor()
 
         sql = "SELECT * FROM user_chat_id WHERE username = '" + str(username) + "';"
         try:
             # Execute the SQL command
-            cursor.execute(sql)
+            await cursor.execute(sql)
             # Fetch all the rows in a list of lists.
             result = cursor.fetchone()
         except Exception as e:
@@ -490,9 +523,9 @@ def addme(update, context):
             sql = "INSERT INTO user_chat_id VALUES (" + str(chat_id) + ", '" + str(username) + "');"
             try:
                 # Execute the SQL command
-                cursor.execute(sql)
+                await cursor.execute(sql)
                 # Commit your changes in the database
-                db.commit()
+                await db.commit()
                 context.bot.send_message(chat_id=chat_id, text="Added! Now whenever you " + emojize(":star:", use_aliases=True) +
                                          " a photo, I'll forward it to you here! " + emojize(":smiley:", use_aliases=True))
             except Exception as e:
@@ -503,7 +536,7 @@ def addme(update, context):
                                          text="Sorry, something went wrong. Please send the following message to @Avi0n.")
                 context.bot.send_message(chat_id=chat_id, text=str(e))
             finally:
-                cursor.close()
+                await cursor.close()
                 db.close()
         else:
             context.bot.send_message(chat_id=chat_id,
@@ -511,7 +544,7 @@ def addme(update, context):
     else:
         context.bot.send_message(chat_id=update.message.chat_id, text="That doesn't work in here. Send me a PM instead "
                                  + emojize(":wink:", use_aliases=True))
-
+"""
 
 # Respond to /sauce
 def sauce(update, context):
@@ -804,6 +837,9 @@ def repost(update, context):
             return
         # Try sending document animation
         try:
+            # If user posts a document animation in reply to another message, ignore it
+            if reply_message_id is not None:
+                return
             # Send message with inline keyboard
             context.bot.send_animation(chat_id=update.message.chat.id, animation=update.message.document.file_id, caption=repost_caption,
                                        reply_to_message_id=reply_message_id, reply_markup=keyboard_buttons, timeout=20, parse_mode='HTML')
@@ -815,6 +851,9 @@ def repost(update, context):
             return
         # Try sending video animation
         try:
+            # If user posts a video animation in reply to another message, ignore it
+            if reply_message_id is not None:
+                return
             # Send message with inline keyboard
             context.bot.send_video(chat_id=update.message.chat.id, video=update.message.video.file_id, caption=repost_caption,
                                    reply_to_message_id=reply_message_id, reply_markup=keyboard_buttons, timeout=20, parse_mode='HTML')
@@ -828,16 +867,21 @@ def repost(update, context):
             return
 
 
+@run_async
 def button(update, context):
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    
     query = update.callback_query
     if query.message.chat.type == 'private':
         chat_type = 'private'
         if int(query.data) == 20:
-            query.edit_message_text(text=get_user_karma(os.getenv("DATABASE1"), chat_type), parse_mode='Markdown', timeout=20)
+            message = loop.run_until_complete(get_user_karma(os.getenv("DATABASE1"), chat_type, loop))
+            query.edit_message_text(text=message, parse_mode='Markdown', timeout=20)
         elif int(query.data) == 21:
-            query.edit_message_text(text=get_user_karma(os.getenv("DATABASE2"), chat_type), parse_mode='Markdown', timeout=20)
+            query.edit_message_text(text=loop.run_until_complete(get_user_karma(os.getenv("DATABASE2"), chat_type, loop)), parse_mode='Markdown', timeout=20)
         elif int(query.data) == 22:
-            query.edit_message_text(text=get_user_karma(os.getenv("DATABASE3"), chat_type), parse_mode='Markdown', timeout=20)
+            query.edit_message_text(text=loop.run_until_complete(get_user_karma(os.getenv("DATABASE3"), chat_type, loop)), parse_mode='Markdown', timeout=20)
     else:
         database = ''
 
@@ -852,10 +896,63 @@ def button(update, context):
         elif query.message.chat.title == os.getenv("GROUP3"):
             database = os.getenv("DATABASE3")
 
+        if int(query.data) != 10 and int(query.data) != 11:
+            self_vote = False
+            # Prevent users from voting on their own posts
+            """
+            if query.from_user.username == username[-1]:
+                context.bot.send_message(chat_id=query.message.chat_id,
+                                         text=query.from_user.username + " just tried to give themselves points.")
+                context.bot.send_sticker(
+                    chat_id=query.message.chat_id, sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
+                self_vote = True
+            """
+            if 1 == 0:
+                print("didn't skip. oops.")
+            # Update database with emoji point data
+            else:
+                if self_vote is False:
+                    try:
+                        print("message_id: " + str(query.message.message_id))
+                        print("query.data: " + query.data)
+                        loop.run_until_complete(update_user_karma(database, username[-1], "+", query.data, loop))
+                        loop.run_until_complete(update_message_karma(database, query.message.message_id, query.from_user.username, query.data, loop))
+                        emoji_points = loop.run_until_complete(check_emoji_points(database, query.message.message_id, loop))
+                        print("emoji_points: " + str(emoji_points))
+
+                        counter1 = emoji_points[0]
+                        counter2 = emoji_points[1] / 2
+                        counter3 = emoji_points[2] / 3
+
+                        # Update emoji points. Divide by 2 and 3 for ok_hand and heart to get the correct number of votes
+                        print("Before running keyboard_buttons, emoji_points are: " + str(emoji_points))
+                        keyboard = [[InlineKeyboardButton(str(counter1) + ' ' + emojize(":thumbsup:", use_aliases=True), callback_data=1),
+                                     InlineKeyboardButton(str(counter2) + ' ' + emojize(":ok_hand:", use_aliases=True), callback_data=2),
+                                     InlineKeyboardButton(str(counter3) + ' ' + emojize(":heart:", use_aliases=True), callback_data=3),
+                                     InlineKeyboardButton(emojize(":star:", use_aliases=True), callback_data=10),
+                                     InlineKeyboardButton('Votes', callback_data=11)]]
+                        reply_markup = InlineKeyboardMarkup(keyboard)
+                        query.edit_message_reply_markup(reply_markup=reply_markup)
+                    except Exception as e:
+                        print(str(e))
+                        context.bot.answer_callback_query(callback_query_id=query.id, text='Error. ' + str(e),
+                                                        show_alert=False, timeout=None)
+
+            # Check to see which emoji user pressed
+            if int(query.data) == 1:
+                context.bot.answer_callback_query(callback_query_id=query.id, text='You ' + emojize(
+                    ":thumbsup:", use_aliases=True) + ' this.', show_alert=False, timeout=None)
+            elif int(query.data) == 2:
+                context.bot.answer_callback_query(callback_query_id=query.id, text='You ' + emojize(
+                    ":ok_hand:", use_aliases=True) + ' this.', show_alert=False, timeout=None)
+            elif int(query.data) == 3:
+                context.bot.answer_callback_query(callback_query_id=query.id, text='You ' + emojize(
+                    ":heart:", use_aliases=True) + ' this.', show_alert=False, timeout=None)
+
         # Show popup showing who voted on the picture/video
-        if int(query.data) == 11:
+        elif int(query.data) == 11:
             context.bot.answer_callback_query(
-                callback_query_id=query.id, text=get_message_karma(database, query.message.message_id), show_alert=True, timeout=None)
+                callback_query_id=query.id, text=loop.run_until_complete(get_message_karma(database, query.message.message_id, loop)), show_alert=True, timeout=None)
         # Forward message that user star'd
         elif int(query.data) == 10:
             try:
@@ -869,46 +966,13 @@ def button(update, context):
             except:
                 context.bot.answer_callback_query(
                     callback_query_id=query.id, text="Error. Have you PM'd me the '/addme' command?", show_alert=True, timeout=None)
-        else:
-            self_vote = False
-            # Prevent users from voting on their own posts
-            if query.from_user.username == username[-1]:
-                context.bot.send_message(chat_id=query.message.chat_id,
-                                         text=query.from_user.username + " just tried to give themselves points.")
-                context.bot.send_sticker(
-                    chat_id=query.message.chat_id, sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
-                self_vote = True
-            # Update database with emoji point data
-            else:
-                try:
-                    update_user_karma(database, username[-1], "+", query.data)
-                    update_message_karma(database, query.message.message_id, query.from_user.username, query.data)
-                    emoji_points = check_emoji_points(database, query.message.message_id)
 
-                    # Check to see which emoji user pressed
-                    if int(query.data) == 1:
-                        context.bot.answer_callback_query(callback_query_id=query.id, text='You ' + emojize(
-                            ":thumbsup:", use_aliases=True) + ' this.', show_alert=False, timeout=None)
-                    elif int(query.data) == 2:
-                        context.bot.answer_callback_query(callback_query_id=query.id, text='You ' + emojize(
-                            ":ok_hand:", use_aliases=True) + ' this.', show_alert=False, timeout=None)
-                    elif int(query.data) == 3:
-                        context.bot.answer_callback_query(callback_query_id=query.id, text='You ' + emojize(
-                            ":heart:", use_aliases=True) + ' this.', show_alert=False, timeout=None)
-                except Exception as e:
-                    print(str(e))
-                    context.bot.answer_callback_query(callback_query_id=query.id, text='Error. ' + str(e),
-                                                      show_alert=False, timeout=None)
-            if self_vote is False:
-                # Update emoji points. Divide by 2 and 3 for ok_hand and heart to get the correct number of votes
-                keyboard_buttons = make_keyboard(emoji_points[0], emoji_points[1] / 2, emoji_points[2] / 3)
-                query.edit_message_reply_markup(reply_markup=keyboard_buttons)
 
 
 def main():
     # Create the Updater and pass it Aqua Bot's token.
-    updater = Updater(os.getenv("TEL_BOT_TOKEN"), use_context=True)
-
+    updater = Updater(os.getenv("TEL_BOT_TOKEN"), workers=50, use_context=True)
+    
     # Create handlers
     start_handler = CommandHandler('start', start)
     updater.dispatcher.add_handler(start_handler)
@@ -925,8 +989,8 @@ def main():
     karma_handler = CommandHandler('karma', karma)
     updater.dispatcher.add_handler(karma_handler)
 
-    addme_handler = CommandHandler('addme', addme)
-    updater.dispatcher.add_handler(addme_handler)
+    #addme_handler = CommandHandler('addme', addme)
+    #updater.dispatcher.add_handler(addme_handler)
 
     give_handler = CommandHandler('give', give)
     updater.dispatcher.add_handler(give_handler)
