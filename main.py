@@ -347,12 +347,13 @@ async def get_message_karma(database, message_id, loop):
 
 
 # Get user's personal chat_id with Aqua
-async def get_chat_id(tele_user):
+async def get_chat_id(tele_user, loop):
     # Set MySQL settings
     pool = await aiomysql.create_pool(host=os.getenv("MYSQL_HOST"),
                                       user=os.getenv("MYSQL_USER"),
                                       password=os.getenv("MYSQL_PASS"),
-                                      db=os.getenv("DATABASE1"))
+                                      db=os.getenv("DATABASE1"),
+                                      loop=loop)
     # prepare a cursor object using cursor() method
     #cursor = await db.cursor()
 
@@ -364,14 +365,14 @@ async def get_chat_id(tele_user):
                 # Execute the SQL command
                 await cur.execute(sql)
                 # Fetch all the rows in a list of lists.
-                result = cur.fetchone()
-                return result[0]
+                result = await cur.fetchone()
             except Exception as e:
                 print("Error: " + str(e))
-            finally:
-                await cur.close()
+            #finally:
+            #    await cur.close()
     pool.close()
     await pool.wait_closed()
+    return result[0]
 
 
 # Respond to /start
@@ -491,60 +492,65 @@ def give(update, context):
                                  text="The correct format is '/give @" + username + " " + points + "'")
 
 
-"""
+
 # Respond to /addme
 def addme(update, context):
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(addme_async(update, context, loop))
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
 
-async def addme_async(update, context, loop):
+    chat_type = update.message.chat.type
+    username = update.message.from_user.username
+    chat_id = update.message.chat_id
+
+    context.bot.send_message(chat_id=chat_id, text=loop.run_until_complete(addme_async(chat_type, username, chat_id, loop)))
+
+
+async def addme_async(chat_type, username, chat_id, loop):
     # Make sure the /addme command is being sent in a PM
-    if not update.message.chat.title:
-        username = update.message.from_user.username
-        chat_id = update.message.chat_id
+    if chat_type == 'private':
         # Set MySQL settings
-        conn = await aiomysql.connect(host=os.getenv("MYSQL_HOST"),
-                             user=os.getenv("MYSQL_USER"),
-                             password=os.getenv("MYSQL_PASS"),
-                             db=os.getenv("DATABASE1"))
+        pool = await aiomysql.create_pool(host=os.getenv("MYSQL_HOST"),
+                                          user=os.getenv("MYSQL_USER"),
+                                          password=os.getenv("MYSQL_PASS"),
+                                          db=os.getenv("DATABASE1"), 
+                                          loop=loop)
         # prepare a cursor object using cursor() method
-        cursor = await db.cursor()
+        #cursor = await db.cursor()
 
-        sql = "SELECT * FROM user_chat_id WHERE username = '" + str(username) + "';"
-        try:
-            # Execute the SQL command
-            await cursor.execute(sql)
-            # Fetch all the rows in a list of lists.
-            result = cursor.fetchone()
-        except Exception as e:
-            print("Error: " + str(e))
-        if result is None:
-            # Add user's chat_id with Aqua to database
-            sql = "INSERT INTO user_chat_id VALUES (" + str(chat_id) + ", '" + str(username) + "');"
-            try:
-                # Execute the SQL command
-                await cursor.execute(sql)
-                # Commit your changes in the database
-                await db.commit()
-                context.bot.send_message(chat_id=chat_id, text="Added! Now whenever you " + emojize(":star:", use_aliases=True) +
-                                         " a photo, I'll forward it to you here! " + emojize(":smiley:", use_aliases=True))
-            except Exception as e:
-                # Rollback in case there is any error
-                db.rollback()
-                print("Adding user's chat_id failed. " + str(e))
-                context.bot.send_message(chat_id=chat_id,
-                                         text="Sorry, something went wrong. Please send the following message to @Avi0n.")
-                context.bot.send_message(chat_id=chat_id, text=str(e))
-            finally:
-                await cursor.close()
-                db.close()
-        else:
-            context.bot.send_message(chat_id=chat_id,
-                                     text="You've already been added! " + emojize(":star:", use_aliases=True) + " away :)")
+        async with pool.acquire() as conn:
+            async with conn.cursor() as cur:
+                sql = "SELECT * FROM user_chat_id WHERE username = '" + str(username) + "';"
+                try:
+                    # Execute the SQL command
+                    await cur.execute(sql)
+                    # Fetch all the rows in a list of lists.
+                    result = await cur.fetchone()
+                except Exception as e:
+                    print("Error: " + str(e))
+                if result is None:
+                    # Add user's chat_id with Aqua to database
+                    sql = "INSERT INTO user_chat_id VALUES (" + str(chat_id) + ", '" + str(username) + "');"
+                    try:
+                        # Execute the SQL command
+                        await cur.execute(sql)
+                        # Commit your changes in the database
+                        await conn.commit()
+                        message = "Added! Now whenever you " + emojize(":star:", use_aliases=True) + \
+                                                " a photo, I'll forward it to you here! " + emojize(":smiley:", use_aliases=True)
+                    except Exception as e:
+                        # Rollback in case there is any error
+                        await conn.rollback()
+                        print("Adding user's chat_id failed. " + str(e))
+                        message = "Sorry, something went wrong. Please send the following message to @Avi0n.\n" + str(e)
+                    finally:
+                        await cur.close()
+                else:
+                    message = "You've already been added! " + emojize(":star:", use_aliases=True) + " away :)"
+        pool.close()
+        await pool.wait_closed()
     else:
-        context.bot.send_message(chat_id=update.message.chat_id, text="That doesn't work in here. Send me a PM instead "
-                                 + emojize(":wink:", use_aliases=True))
-"""
+        message = "That doesn't work in here. Send me a PM instead " + emojize(":wink:", use_aliases=True)
+    return message
 
 # Respond to /sauce
 def sauce(update, context):
@@ -913,19 +919,15 @@ def button(update, context):
             else:
                 if self_vote is False:
                     try:
-                        print("message_id: " + str(query.message.message_id))
-                        print("query.data: " + query.data)
                         loop.run_until_complete(update_user_karma(database, username[-1], "+", query.data, loop))
                         loop.run_until_complete(update_message_karma(database, query.message.message_id, query.from_user.username, query.data, loop))
                         emoji_points = loop.run_until_complete(check_emoji_points(database, query.message.message_id, loop))
-                        print("emoji_points: " + str(emoji_points))
 
                         counter1 = emoji_points[0]
                         counter2 = emoji_points[1] / 2
                         counter3 = emoji_points[2] / 3
 
                         # Update emoji points. Divide by 2 and 3 for ok_hand and heart to get the correct number of votes
-                        print("Before running keyboard_buttons, emoji_points are: " + str(emoji_points))
                         keyboard = [[InlineKeyboardButton(str(counter1) + ' ' + emojize(":thumbsup:", use_aliases=True), callback_data=1),
                                      InlineKeyboardButton(str(counter2) + ' ' + emojize(":ok_hand:", use_aliases=True), callback_data=2),
                                      InlineKeyboardButton(str(counter3) + ' ' + emojize(":heart:", use_aliases=True), callback_data=3),
@@ -933,21 +935,23 @@ def button(update, context):
                                      InlineKeyboardButton('Votes', callback_data=11)]]
                         reply_markup = InlineKeyboardMarkup(keyboard)
                         query.edit_message_reply_markup(reply_markup=reply_markup)
+
+                        # Check to see which emoji user pressed
+                        if int(query.data) == 1:
+                            context.bot.answer_callback_query(callback_query_id=query.id, text='You ' + emojize(
+                                ":thumbsup:", use_aliases=True) + ' this.', show_alert=False, timeout=None)
+                        elif int(query.data) == 2:
+                            context.bot.answer_callback_query(callback_query_id=query.id, text='You ' + emojize(
+                                ":ok_hand:", use_aliases=True) + ' this.', show_alert=False, timeout=None)
+                        elif int(query.data) == 3:
+                            context.bot.answer_callback_query(callback_query_id=query.id, text='You ' + emojize(
+                                ":heart:", use_aliases=True) + ' this.', show_alert=False, timeout=None)
+                        return
                     except Exception as e:
                         print(str(e))
                         context.bot.answer_callback_query(callback_query_id=query.id, text='Error. ' + str(e),
                                                         show_alert=False, timeout=None)
-
-            # Check to see which emoji user pressed
-            if int(query.data) == 1:
-                context.bot.answer_callback_query(callback_query_id=query.id, text='You ' + emojize(
-                    ":thumbsup:", use_aliases=True) + ' this.', show_alert=False, timeout=None)
-            elif int(query.data) == 2:
-                context.bot.answer_callback_query(callback_query_id=query.id, text='You ' + emojize(
-                    ":ok_hand:", use_aliases=True) + ' this.', show_alert=False, timeout=None)
-            elif int(query.data) == 3:
-                context.bot.answer_callback_query(callback_query_id=query.id, text='You ' + emojize(
-                    ":heart:", use_aliases=True) + ' this.', show_alert=False, timeout=None)
+                        return
 
         # Show popup showing who voted on the picture/video
         elif int(query.data) == 11:
@@ -957,22 +961,22 @@ def button(update, context):
         elif int(query.data) == 10:
             try:
                 # Get user's personal chat_id with Aqua
-                tele_chat_id = get_chat_id(query.from_user.username)
+                tele_chat_id = loop.run_until_complete(get_chat_id(query.from_user.username, loop))
                 # Send message
                 context.bot.forward_message(chat_id=tele_chat_id, from_chat_id=query.message.chat_id,
                                             message_id=query.message.message_id)
+                context.bot.answer_callback_query(callback_query_id=query.id, text='Saved!', show_alert=False, timeout=None)
+            except Exception as e:
                 context.bot.answer_callback_query(
-                    callback_query_id=query.id, text='Saved!', show_alert=False, timeout=None)
-            except:
-                context.bot.answer_callback_query(
-                    callback_query_id=query.id, text="Error. Have you PM'd me the '/addme' command?", show_alert=True, timeout=None)
+                    callback_query_id=query.id, text="Error." + str(e) + "\n" + \
+                                                      "Have you PM'd me the '/addme' command?", show_alert=True, timeout=None)
 
 
 
 def main():
     # Create the Updater and pass it Aqua Bot's token.
     updater = Updater(os.getenv("TEL_BOT_TOKEN"), workers=50, use_context=True)
-    
+
     # Create handlers
     start_handler = CommandHandler('start', start)
     updater.dispatcher.add_handler(start_handler)
@@ -989,8 +993,8 @@ def main():
     karma_handler = CommandHandler('karma', karma)
     updater.dispatcher.add_handler(karma_handler)
 
-    #addme_handler = CommandHandler('addme', addme)
-    #updater.dispatcher.add_handler(addme_handler)
+    addme_handler = CommandHandler('addme', addme)
+    updater.dispatcher.add_handler(addme_handler)
 
     give_handler = CommandHandler('give', give)
     updater.dispatcher.add_handler(give_handler)
