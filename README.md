@@ -22,7 +22,7 @@ Aqua currently supports the following commands:
 
 ## Getting Started
 This short guide will use git, Docker, and docker-compose. You can set this bot up without using Docker, but I will not be covering how to do that.
-1.  Install [Docker](https://docs.docker.com/get-started/)
+1.  Install [Docker](https://docs.docker.com/install)
 2.  If you're using Linux, [install Docker Compose](https://docs.docker.com/compose/install/) (macOS and Windows installations of Docker come with Compose)
 3.  Clone this repo by running `git clone https://gitlab.com/Avi0n/aqua-telegram-bot.git`
 4.  Using the Telegram bot [@BotFather](https://t.me/BotFather), create a new bot and disable Group Privacy. Copy the API Token of your new bot

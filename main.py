@@ -804,6 +804,9 @@ def repost(update, context):
             return
         # Try sending document animation
         try:
+            # If user posts a document animation in reply to another message, ignore it
+            if reply_message_id is not None:
+                return
             # Send message with inline keyboard
             context.bot.send_animation(chat_id=update.message.chat.id, animation=update.message.document.file_id, caption=repost_caption,
                                        reply_to_message_id=reply_message_id, reply_markup=keyboard_buttons, timeout=20, parse_mode='HTML')
@@ -815,6 +818,9 @@ def repost(update, context):
             return
         # Try sending video animation
         try:
+            # If user posts a video animation in reply to another message, ignore it
+            if reply_message_id is not None:
+                return
             # Send message with inline keyboard
             context.bot.send_video(chat_id=update.message.chat.id, video=update.message.video.file_id, caption=repost_caption,
                                    reply_to_message_id=reply_message_id, reply_markup=keyboard_buttons, timeout=20, parse_mode='HTML')
