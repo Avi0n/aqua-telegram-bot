@@ -58,11 +58,11 @@ def error(update, context):
 async def get_user_karma(database, chat_type, loop):
     # Set MySQL settings
     conn = await aiomysql.connect(host=os.getenv("MYSQL_HOST"),
-                                user=os.getenv("MYSQL_USER"),
-                                password=os.getenv("MYSQL_PASS"),
-                                db=database, loop=loop)
+                                  user=os.getenv("MYSQL_USER"),
+                                  password=os.getenv("MYSQL_PASS"),
+                                  db=database, loop=loop)
     # prepare a cursor object using cursor() method
-    #cursor = await db.cursor()
+    # cursor = await db.cursor()
 
     if database == os.getenv("DATABASE1"):
         groupname = os.getenv("GROUP1")
@@ -91,16 +91,18 @@ async def get_user_karma(database, chat_type, loop):
             longest_username_length = 0
             longest_karma_length = 0
             for row in results:
-                longest_username_length = max(longest_username_length, len(row[0]))
-                longest_karma_length = max(longest_karma_length, len(str(row[1])))
+                longest_username_length = max(
+                    longest_username_length, len(row[0]))
+                longest_karma_length = max(
+                    longest_karma_length, len(str(row[1])))
 
             # Add each user and karma as its own row
             for row in results:
                 username = row[0]
                 karma_points = row[1]
                 return_message += username + (" " * (longest_username_length - len(username))) + \
-                                    "   " + (" " * (longest_karma_length -
-                                                    len(str(karma_points)))) + str(karma_points) + "\n"
+                    "   " + (" " * (longest_karma_length -
+                                    len(str(karma_points)))) + str(karma_points) + "\n"
 
             return_message += "\n```" + emojize(":v:", use_aliases=True)
 
@@ -110,8 +112,8 @@ async def get_user_karma(database, chat_type, loop):
             else:
                 return_message += 'Error: ' + str(e)
                 print('get_user_karma() error: ' + str(e))
-        #finally:
-            #await cur.close()
+        # finally:
+            # await cur.close()
     conn.close()
     return return_message
 
@@ -124,7 +126,7 @@ async def update_user_karma(database, username, plus_or_minus, points, loop):
                                       password=os.getenv("MYSQL_PASS"),
                                       db=database, loop=loop)
     # prepare a cursor object using cursor() method
-    #cur = await conn.cursor()
+    # cur = await conn.cursor()
 
     async with pool.acquire() as conn:
         async with conn.cursor() as cur:
@@ -139,7 +141,8 @@ async def update_user_karma(database, username, plus_or_minus, points, loop):
                 print("Error: " + str(e))
             if result is None:
                 # Add username to the database along with the points that were just added
-                sql = "INSERT INTO user_karma VALUES ('" + username + "', " + points + ");"
+                sql = "INSERT INTO user_karma VALUES ('" + \
+                    username + "', " + points + ");"
                 try:
                     # Execute the SQL command
                     await cur.execute(sql)
@@ -206,7 +209,7 @@ async def update_message_karma(database, message_id, username, emoji_points, loo
                                       password=os.getenv("MYSQL_PASS"),
                                       db=database, loop=loop)
     # prepare a cursor object using cursor() method
-    #cursor = await db.cursor()
+    # cursor = await db.cursor()
 
     thumb_points = 0
     ok_points = 0
@@ -277,22 +280,21 @@ async def check_emoji_points(database, message_id, loop):
                                       password=os.getenv("MYSQL_PASS"),
                                       db=database, loop=loop)
     # prepare a cursor object using cursor() method
-    #cursor = await db.cursor()
+    # cursor = await db.cursor()
 
     #return_message = ""
     async with pool.acquire() as conn:
         async with conn.cursor() as cur:
             sql = "SELECT SUM(thumbsup), SUM(ok_hand), SUM(heart) FROM message_karma WHERE message_id = " + \
-                   str(message_id) + ";"
+                str(message_id) + ";"
             try:
                 # Execute the SQL command
                 await cur.execute(sql)
                 # Fetch all the rows in a list of lists.
                 result = await cur.fetchone()
-                print("Result of check_emoji_points: " + str(result))
             except Exception as e:
                 print("Error: " + str(e))
-            #finally:
+            # finally:
             #    await cur.close()
     pool.close()
     await pool.wait_closed()
@@ -307,7 +309,7 @@ async def get_message_karma(database, message_id, loop):
                                       password=os.getenv("MYSQL_PASS"),
                                       db=database, loop=loop)
     # prepare a cursor object using cursor() method
-    #cursor = await db.cursor()
+    # cursor = await db.cursor()
 
     return_message = "Votes\n\n"
 
@@ -326,8 +328,10 @@ async def get_message_karma(database, message_id, loop):
                 longest_username_length = 0
                 longest_karma_length = 0
                 for row in results:
-                    longest_username_length = max(longest_username_length, len(row[0]))
-                    longest_karma_length = max(longest_karma_length, len(str(row[1])))
+                    longest_username_length = max(
+                        longest_username_length, len(row[0]))
+                    longest_karma_length = max(
+                        longest_karma_length, len(str(row[1])))
 
                 # Add each user and karma as its own row
                 for row in results:
@@ -355,7 +359,7 @@ async def get_chat_id(tele_user, loop):
                                       db=os.getenv("DATABASE1"),
                                       loop=loop)
     # prepare a cursor object using cursor() method
-    #cursor = await db.cursor()
+    # cursor = await db.cursor()
 
     async with pool.acquire() as conn:
         async with conn.cursor() as cur:
@@ -368,7 +372,7 @@ async def get_chat_id(tele_user, loop):
                 result = await cur.fetchone()
             except Exception as e:
                 print("Error: " + str(e))
-            #finally:
+            # finally:
             #    await cur.close()
     pool.close()
     await pool.wait_closed()
@@ -378,7 +382,7 @@ async def get_chat_id(tele_user, loop):
 # Respond to /start
 def start(update, context):
     context.bot.send_message(chat_id=update.message.chat_id,
-                             text="Send /karma to see everyone's points.\nSend /addme to let me forward" + \
+                             text="Send /karma to see everyone's points.\nSend /addme to let me forward" +
                              " photos that you " + emojize(":star:", use_aliases=True) + " to you!")
 
 
@@ -424,7 +428,8 @@ def karma(update, context):
         elif update.message.chat.title == os.getenv("GROUP3"):
             database = os.getenv("DATABASE3")
 
-        message = loop.run_until_complete(get_user_karma(database, chat_type, loop))
+        message = loop.run_until_complete(
+            get_user_karma(database, chat_type, loop))
 
         context.bot.send_message(chat_id=update.message.chat_id,
                                  text=message, parse_mode='Markdown', timeout=20)
@@ -449,9 +454,11 @@ def give(update, context):
     if '@' in update.message.text:
         # Remove all punctuation (@) and split the string
         string_split = update.message.text.split()
-        username = string_split[1].translate(str.maketrans('', '', string.punctuation))
+        username = string_split[1].translate(
+            str.maketrans('', '', string.punctuation))
         points = string_split[2]
-        points_no_punc = points.translate(str.maketrans('', '', string.punctuation))
+        points_no_punc = points.translate(
+            str.maketrans('', '', string.punctuation))
         from_username = update.message.from_user.username
 
         try:
@@ -469,11 +476,13 @@ def give(update, context):
                 context.bot.send_message(chat_id=update.message.chat_id,
                                          text="Don't you think that's a tad too many points to be taking away?")
             elif -21 < int(points) < 0:
-                loop.run_until_complete(update_user_karma(database, username, '-', points_no_punc, loop))
+                loop.run_until_complete(update_user_karma(
+                    database, username, '-', points_no_punc, loop))
                 context.bot.send_message(chat_id=update.message.chat_id,
                                          text=from_username + " took away " + points + " points from " + username + "!")
             elif 61 > int(points) > 0:
-                loop.run_until_complete(update_user_karma(database, username, '+', points_no_punc, loop))
+                loop.run_until_complete(update_user_karma(
+                    database, username, '+', points_no_punc, loop))
                 context.bot.send_message(chat_id=update.message.chat_id,
                                          text=from_username + " gave " + username + " " + points + " points!")
             elif int(points) > 61:
@@ -492,7 +501,6 @@ def give(update, context):
                                  text="The correct format is '/give @" + username + " " + points + "'")
 
 
-
 # Respond to /addme
 def addme(update, context):
     loop = asyncio.new_event_loop()
@@ -502,7 +510,8 @@ def addme(update, context):
     username = update.message.from_user.username
     chat_id = update.message.chat_id
 
-    context.bot.send_message(chat_id=chat_id, text=loop.run_until_complete(addme_async(chat_type, username, chat_id, loop)))
+    context.bot.send_message(chat_id=chat_id, text=loop.run_until_complete(
+        addme_async(chat_type, username, chat_id, loop)))
 
 
 async def addme_async(chat_type, username, chat_id, loop):
@@ -512,14 +521,15 @@ async def addme_async(chat_type, username, chat_id, loop):
         pool = await aiomysql.create_pool(host=os.getenv("MYSQL_HOST"),
                                           user=os.getenv("MYSQL_USER"),
                                           password=os.getenv("MYSQL_PASS"),
-                                          db=os.getenv("DATABASE1"), 
+                                          db=os.getenv("DATABASE1"),
                                           loop=loop)
         # prepare a cursor object using cursor() method
-        #cursor = await db.cursor()
+        # cursor = await db.cursor()
 
         async with pool.acquire() as conn:
             async with conn.cursor() as cur:
-                sql = "SELECT * FROM user_chat_id WHERE username = '" + str(username) + "';"
+                sql = "SELECT * FROM user_chat_id WHERE username = '" + \
+                    str(username) + "';"
                 try:
                     # Execute the SQL command
                     await cur.execute(sql)
@@ -529,30 +539,37 @@ async def addme_async(chat_type, username, chat_id, loop):
                     print("Error: " + str(e))
                 if result is None:
                     # Add user's chat_id with Aqua to database
-                    sql = "INSERT INTO user_chat_id VALUES (" + str(chat_id) + ", '" + str(username) + "');"
+                    sql = "INSERT INTO user_chat_id VALUES (" + str(
+                        chat_id) + ", '" + str(username) + "');"
                     try:
                         # Execute the SQL command
                         await cur.execute(sql)
                         # Commit your changes in the database
                         await conn.commit()
                         message = "Added! Now whenever you " + emojize(":star:", use_aliases=True) + \
-                                                " a photo, I'll forward it to you here! " + emojize(":smiley:", use_aliases=True)
+                            " a photo, I'll forward it to you here! " + \
+                            emojize(":smiley:", use_aliases=True)
                     except Exception as e:
                         # Rollback in case there is any error
                         await conn.rollback()
                         print("Adding user's chat_id failed. " + str(e))
-                        message = "Sorry, something went wrong. Please send the following message to @Avi0n.\n" + str(e)
+                        message = "Sorry, something went wrong. Please send the following message to @Avi0n.\n" + \
+                            str(e)
                     finally:
                         await cur.close()
                 else:
-                    message = "You've already been added! " + emojize(":star:", use_aliases=True) + " away :)"
+                    message = "You've already been added! " + \
+                        emojize(":star:", use_aliases=True) + " away :)"
         pool.close()
         await pool.wait_closed()
     else:
-        message = "That doesn't work in here. Send me a PM instead " + emojize(":wink:", use_aliases=True)
+        message = "That doesn't work in here. Send me a PM instead " + \
+            emojize(":wink:", use_aliases=True)
     return message
 
 # Respond to /sauce
+
+
 def sauce(update, context):
     source(update, context)
 
@@ -786,6 +803,7 @@ def convert_media(inputpath, targetFormat):
     print("Done converting.")
 
 
+"""
 def make_keyboard(counter1, counter2, counter3):
     keyboard = [[InlineKeyboardButton(str(counter1) + ' ' + emojize(":thumbsup:", use_aliases=True), callback_data=1),
                  InlineKeyboardButton(str(counter2) + ' ' + emojize(":ok_hand:", use_aliases=True), callback_data=2),
@@ -794,8 +812,10 @@ def make_keyboard(counter1, counter2, counter3):
                  InlineKeyboardButton('Votes', callback_data=11)]]
 
     return InlineKeyboardMarkup(keyboard)
+"""
 
 
+@run_async
 # Forward message that was posted by another user to the channel with emoji buttons
 def repost(update, context):
     # If user posts a photo/video in a private chat with the bot, ignore it
@@ -820,7 +840,13 @@ def repost(update, context):
             return
 
     repost_caption = None
-    keyboard_buttons = make_keyboard(0, 0, 0)
+
+    keyboard = [[InlineKeyboardButton(str(0) + ' ' + emojize(":thumbsup:", use_aliases=True), callback_data=1),
+                 InlineKeyboardButton(str(0) + ' ' + emojize(":ok_hand:", use_aliases=True), callback_data=2),
+                 InlineKeyboardButton(str(0) + ' ' + emojize(":heart:", use_aliases=True), callback_data=3),
+                 InlineKeyboardButton(emojize(":star:", use_aliases=True), callback_data=10),
+                 InlineKeyboardButton('Votes', callback_data=11)]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
 
     # Give credit to who originally posted the photo/video
     if update.message.caption is not None:
@@ -834,12 +860,14 @@ def repost(update, context):
         try:
             # Send message with inline keyboard
             context.bot.send_photo(chat_id=update.message.chat.id, photo=update.message.photo[-1].file_id, caption=repost_caption,
-                                   reply_to_message_id=reply_message_id, reply_markup=keyboard_buttons, timeout=20, parse_mode='HTML')
-        except:
+                                   reply_to_message_id=reply_message_id, reply_markup=reply_markup, timeout=20, parse_mode='HTML')
+        except Exception as e:
             print('Not a photo')
+            print(str(e))
         else:
             # Delete original message
-            context.bot.delete_message(chat_id=update.message.chat.id, message_id=update.message.message_id)
+            context.bot.delete_message(
+                chat_id=update.message.chat.id, message_id=update.message.message_id)
             return
         # Try sending document animation
         try:
@@ -848,12 +876,14 @@ def repost(update, context):
                 return
             # Send message with inline keyboard
             context.bot.send_animation(chat_id=update.message.chat.id, animation=update.message.document.file_id, caption=repost_caption,
-                                       reply_to_message_id=reply_message_id, reply_markup=keyboard_buttons, timeout=20, parse_mode='HTML')
-        except:
+                                       reply_to_message_id=reply_message_id, reply_markup=reply_markup, timeout=20, parse_mode='HTML')
+        except Exception as e:
             print('Not a document video')
+            print(str(e))
         else:
             # Delete original message
-            context.bot.delete_message(chat_id=update.message.chat.id, message_id=update.message.message_id)
+            context.bot.delete_message(
+                chat_id=update.message.chat.id, message_id=update.message.message_id)
             return
         # Try sending video animation
         try:
@@ -862,12 +892,14 @@ def repost(update, context):
                 return
             # Send message with inline keyboard
             context.bot.send_video(chat_id=update.message.chat.id, video=update.message.video.file_id, caption=repost_caption,
-                                   reply_to_message_id=reply_message_id, reply_markup=keyboard_buttons, timeout=20, parse_mode='HTML')
-        except:
+                                   reply_to_message_id=reply_message_id, reply_markup=reply_markup, timeout=20, parse_mode='HTML')
+        except Exception as e:
             print('Not a video video')
+            print(str(e))
         else:
             # Delete original message
-            context.bot.delete_message(chat_id=update.message.chat.id, message_id=update.message.message_id)
+            context.bot.delete_message(
+                chat_id=update.message.chat.id, message_id=update.message.message_id)
             return
         finally:
             return
@@ -877,17 +909,21 @@ def repost(update, context):
 def button(update, context):
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    
+
     query = update.callback_query
     if query.message.chat.type == 'private':
         chat_type = 'private'
         if int(query.data) == 20:
-            message = loop.run_until_complete(get_user_karma(os.getenv("DATABASE1"), chat_type, loop))
-            query.edit_message_text(text=message, parse_mode='Markdown', timeout=20)
+            message = loop.run_until_complete(get_user_karma(
+                os.getenv("DATABASE1"), chat_type, loop))
+            query.edit_message_text(
+                text=message, parse_mode='Markdown', timeout=20)
         elif int(query.data) == 21:
-            query.edit_message_text(text=loop.run_until_complete(get_user_karma(os.getenv("DATABASE2"), chat_type, loop)), parse_mode='Markdown', timeout=20)
+            query.edit_message_text(text=loop.run_until_complete(get_user_karma(
+                os.getenv("DATABASE2"), chat_type, loop)), parse_mode='Markdown', timeout=20)
         elif int(query.data) == 22:
-            query.edit_message_text(text=loop.run_until_complete(get_user_karma(os.getenv("DATABASE3"), chat_type, loop)), parse_mode='Markdown', timeout=20)
+            query.edit_message_text(text=loop.run_until_complete(get_user_karma(
+                os.getenv("DATABASE3"), chat_type, loop)), parse_mode='Markdown', timeout=20)
     else:
         database = ''
 
@@ -919,22 +955,22 @@ def button(update, context):
             else:
                 if self_vote is False:
                     try:
-                        loop.run_until_complete(update_user_karma(database, username[-1], "+", query.data, loop))
-                        loop.run_until_complete(update_message_karma(database, query.message.message_id, query.from_user.username, query.data, loop))
-                        emoji_points = loop.run_until_complete(check_emoji_points(database, query.message.message_id, loop))
-
-                        counter1 = emoji_points[0]
-                        counter2 = emoji_points[1] / 2
-                        counter3 = emoji_points[2] / 3
+                        loop.run_until_complete(update_user_karma(
+                            database, username[-1], "+", query.data, loop))
+                        loop.run_until_complete(update_message_karma(
+                            database, query.message.message_id, query.from_user.username, query.data, loop))
+                        emoji_points = loop.run_until_complete(
+                            check_emoji_points(database, query.message.message_id, loop))
 
                         # Update emoji points. Divide by 2 and 3 for ok_hand and heart to get the correct number of votes
-                        keyboard = [[InlineKeyboardButton(str(counter1) + ' ' + emojize(":thumbsup:", use_aliases=True), callback_data=1),
-                                     InlineKeyboardButton(str(counter2) + ' ' + emojize(":ok_hand:", use_aliases=True), callback_data=2),
-                                     InlineKeyboardButton(str(counter3) + ' ' + emojize(":heart:", use_aliases=True), callback_data=3),
+                        keyboard = [[InlineKeyboardButton(str(emoji_points[0]) + ' ' + emojize(":thumbsup:", use_aliases=True), callback_data=1),
+                                     InlineKeyboardButton(str(emoji_points[1] / 2) + ' ' + emojize(":ok_hand:", use_aliases=True), callback_data=2),
+                                     InlineKeyboardButton(str(emoji_points[2] / 3) + ' ' + emojize(":heart:", use_aliases=True), callback_data=3),
                                      InlineKeyboardButton(emojize(":star:", use_aliases=True), callback_data=10),
                                      InlineKeyboardButton('Votes', callback_data=11)]]
                         reply_markup = InlineKeyboardMarkup(keyboard)
-                        query.edit_message_reply_markup(reply_markup=reply_markup)
+                        query.edit_message_reply_markup(
+                            reply_markup=reply_markup)
 
                         # Check to see which emoji user pressed
                         if int(query.data) == 1:
@@ -948,9 +984,10 @@ def button(update, context):
                                 ":heart:", use_aliases=True) + ' this.', show_alert=False, timeout=None)
                         return
                     except Exception as e:
-                        print(str(e))
-                        context.bot.answer_callback_query(callback_query_id=query.id, text='Error. ' + str(e),
-                                                        show_alert=False, timeout=None)
+                        print("Error while updating buttons: " + str(e))
+                        context.bot.answer_callback_query(callback_query_id=query.id, text='Error. ' + str(e) + \
+                                                          ". Might've hit the API flood limit. Wait a few seconds and try again.",
+                                                          show_alert=False, timeout=None)
                         return
 
         # Show popup showing who voted on the picture/video
@@ -961,16 +998,17 @@ def button(update, context):
         elif int(query.data) == 10:
             try:
                 # Get user's personal chat_id with Aqua
-                tele_chat_id = loop.run_until_complete(get_chat_id(query.from_user.username, loop))
+                tele_chat_id = loop.run_until_complete(
+                    get_chat_id(query.from_user.username, loop))
                 # Send message
                 context.bot.forward_message(chat_id=tele_chat_id, from_chat_id=query.message.chat_id,
                                             message_id=query.message.message_id)
-                context.bot.answer_callback_query(callback_query_id=query.id, text='Saved!', show_alert=False, timeout=None)
+                context.bot.answer_callback_query(
+                    callback_query_id=query.id, text='Saved!', show_alert=False, timeout=None)
             except Exception as e:
                 context.bot.answer_callback_query(
-                    callback_query_id=query.id, text="Error." + str(e) + "\n" + \
-                                                      "Have you PM'd me the '/addme' command?", show_alert=True, timeout=None)
-
+                    callback_query_id=query.id, text="Error." + str(e) + "\n" +
+                    "Have you PM'd me the '/addme' command?", show_alert=True, timeout=None)
 
 
 def main():
@@ -1022,9 +1060,9 @@ def main():
     updater.start_polling()
 
     # Create webhook
-    # Uncomment the following 2 lines if you want to use webhooks
     # Note: The following webhook configuration is setup to use a reverse proxy
     # See https://github.com/python-telegram-bot/python-telegram-bot/wiki/Webhooks for more info
+    # Uncomment the following 2 lines if you want to use webhooks
     #updater.start_webhook(listen='0.0.0.0', port=5001, url_path=os.getenv("TEL_BOT_TOKEN"))
     #updater.bot.set_webhook(url='https://' + os.getenv("DOMAIN") + '/' + os.getenv("TEL_BOT_TOKEN"))
 
