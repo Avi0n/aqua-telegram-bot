@@ -325,7 +325,7 @@ def source(update, context):
         # Search for source from SauceNao
         # The following script is mostly a copy and paste from https://saucenao.com/tools/examples/api/identify_images_v1.py
         api_key = os.getenv("SAUCE_NAO_TOKEN")
-        EnableRename = False
+        #EnableRename = False
         minsim = '50!'
 
         extensions = {".jpg", ".jpeg", ".png", ".gif", ".bmp"}
@@ -353,9 +353,9 @@ def source(update, context):
         """
 
         # encoded print - handle random crap
-        def printe(line):
+        #def printe(line):
             # ignore or replace
-            print(str(line).encode(sys.getdefaultencoding(), 'replace'))
+        #    print(str(line).encode(sys.getdefaultencoding(), 'replace'))
 
         for root, _, files in os.walk(u'.', topdown=False):
             for f in files:
@@ -832,7 +832,7 @@ async def get_chat_id(tele_user, loop):
             except Exception as e:
                 print("Error: " + str(e))
             finally:
-                await cur.close()
+               await cur.close()
     pool.close()
     await pool.wait_closed()
     return result[0]
@@ -1051,7 +1051,7 @@ def main():
     # for test purposes limit global throughput to 3 messages per 3 seconds
     q = mq.MessageQueue()
     # set connection pool size for bot 
-    request = Request(con_pool_size=8)
+    request = Request(con_pool_size=54)
     qbot = MQBot(token, request=request, mqueue=q)
     updater = telegram.ext.updater.Updater(bot=qbot, workers=50, use_context=True)
 
