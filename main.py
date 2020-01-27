@@ -511,10 +511,11 @@ def convert_media(inputpath, targetFormat):
 # Retrieve user's karma from the database
 async def get_user_karma(database, chat_type, loop):
     # Set MySQL settings
-    conn = await aiomysql.connect(host=os.getenv("MYSQL_HOST"),
-                                  user=os.getenv("MYSQL_USER"),
-                                  password=os.getenv("MYSQL_PASS"),
-                                  db=database, loop=loop)
+    pool = await aiomysql.create_pool(host=os.getenv("MYSQL_HOST"),
+                                      user=os.getenv("MYSQL_USER"),
+                                      password=os.getenv("MYSQL_PASS"),
+                                      db=database, 
+                                      loop=loop)
     # prepare a cursor object using cursor() method
     # cursor = await db.cursor()
 
@@ -532,43 +533,45 @@ async def get_user_karma(database, chat_type, loop):
         return_message = ""
 
     sql = "SELECT * FROM user_karma WHERE karma <> 0 ORDER BY username;"
-    async with conn.cursor() as cur:
-        try:
-            # Execute the SQL command
-            await cur.execute(sql)
-            # Fetch all the rows in a list of lists.
-            results = await cur.fetchall()
+    async with pool.acquire() as conn:
+        async with conn.cursor() as cur:
+            try:
+                # Execute the SQL command
+                await cur.execute(sql)
+                # Fetch all the rows in a list of lists.
+                results = await cur.fetchall()
 
-            return_message += "```\n"
+                return_message += "```\n"
 
-            # Find length of longest username and karma
-            longest_username_length = 0
-            longest_karma_length = 0
-            for row in results:
-                longest_username_length = max(
-                    longest_username_length, len(row[0]))
-                longest_karma_length = max(
-                    longest_karma_length, len(str(row[1])))
+                # Find length of longest username and karma
+                longest_username_length = 0
+                longest_karma_length = 0
+                for row in results:
+                    longest_username_length = max(
+                        longest_username_length, len(row[0]))
+                    longest_karma_length = max(
+                        longest_karma_length, len(str(row[1])))
 
-            # Add each user and karma as its own row
-            for row in results:
-                username = row[0]
-                karma_points = row[1]
-                return_message += username + (" " * (longest_username_length - len(username))) + \
-                    "   " + (" " * (longest_karma_length -
-                                    len(str(karma_points)))) + str(karma_points) + "\n"
+                # Add each user and karma as its own row
+                for row in results:
+                    username = row[0]
+                    karma_points = row[1]
+                    return_message += username + (" " * (longest_username_length - len(username))) + \
+                        "   " + (" " * (longest_karma_length -
+                                        len(str(karma_points)))) + str(karma_points) + "\n"
 
-            return_message += "\n```" + emojize(":v:", use_aliases=True)
+                return_message += "\n```" + emojize(":v:", use_aliases=True)
 
-        except Exception as e:
-            if "1046" in str(e):
-                return_message = "The database options are:  \n- DTP  \n- DJB  \n- DCR"
-            else:
-                return_message += "Error: " + str(e)
-                print("get_user_karma() error: " + str(e))
-        # finally:
-            # await cur.close()
-    conn.close()
+            except Exception as e:
+                if "1046" in str(e):
+                    return_message = "The database options are:  \n- DTP  \n- DJB  \n- DCR"
+                else:
+                    return_message += "Error: " + str(e)
+                    print("get_user_karma() error: " + str(e))
+            finally:
+                 await cur.close()
+    pool.close()
+    await pool.wait_closed()
     return return_message
 
 
@@ -661,7 +664,8 @@ async def update_message_karma(database, message_id, username, emoji_points, loo
     pool = await aiomysql.create_pool(host=os.getenv("MYSQL_HOST"),
                                       user=os.getenv("MYSQL_USER"),
                                       password=os.getenv("MYSQL_PASS"),
-                                      db=database, loop=loop)
+                                      db=database, 
+                                      loop=loop)
     # prepare a cursor object using cursor() method
     # cursor = await db.cursor()
 
@@ -732,7 +736,8 @@ async def check_emoji_points(database, message_id, loop):
     pool = await aiomysql.create_pool(host=os.getenv("MYSQL_HOST"),
                                       user=os.getenv("MYSQL_USER"),
                                       password=os.getenv("MYSQL_PASS"),
-                                      db=database, loop=loop)
+                                      db=database, 
+                                      loop=loop)
     # prepare a cursor object using cursor() method
     # cursor = await db.cursor()
 
@@ -748,8 +753,8 @@ async def check_emoji_points(database, message_id, loop):
                 result = await cur.fetchone()
             except Exception as e:
                 print("Error: " + str(e))
-            # finally:
-            #    await cur.close()
+            finally:
+                await cur.close()
     pool.close()
     await pool.wait_closed()
     return result
@@ -761,7 +766,8 @@ async def get_message_karma(database, message_id, loop):
     pool = await aiomysql.create_pool(host=os.getenv("MYSQL_HOST"),
                                       user=os.getenv("MYSQL_USER"),
                                       password=os.getenv("MYSQL_PASS"),
-                                      db=database, loop=loop)
+                                      db=database, 
+                                      loop=loop)
     # prepare a cursor object using cursor() method
     # cursor = await db.cursor()
 
@@ -825,8 +831,8 @@ async def get_chat_id(tele_user, loop):
                 result = await cur.fetchone()
             except Exception as e:
                 print("Error: " + str(e))
-            # finally:
-            #    await cur.close()
+            finally:
+                await cur.close()
     pool.close()
     await pool.wait_closed()
     return result[0]
