@@ -1,5 +1,6 @@
 .env
 env
+.gitlab-ci.yml
 .DS_Store
 settings.json
 db/

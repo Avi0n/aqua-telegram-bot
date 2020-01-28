@@ -16,19 +16,12 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 import os
+import sys
 import logging
 import string
 import asyncio
 import aiomysql
-# Imports needed for source()
-import sys
-import io
-import requests
-from PIL import Image
-import json
-import codecs
-import time
-from collections import OrderedDict
+from get_source import get_source
 # Import needed for convert_media()
 import imageio
 # Imports needed for Telegram bot
@@ -77,6 +70,31 @@ class MQBot(telegram.bot.Bot):
         # Wrapped method would accept new 'queued' and 'isgroup' OPTIONAL arguments
         return super(MQBot, self).send_message(*args, **kwargs)
 
+
+# Convert mp4 to gif. Copy paste from:
+# https://gist.github.com/michaelosthege/cd3e0c3c556b70a79deba6855deb2cc8
+class TargetFormat(object):
+    GIF = ".gif"
+    MP4 = ".mp4"
+    AVI = ".avi"
+
+
+def convert_media(inputpath, targetFormat):
+    """Reference: http://imageio.readthedocs.io/en/latest/examples.html#convert-a-movie"""
+    outputpath = "source" + targetFormat
+    print("converting\r\n\t{0}\r\nto\r\n\t{1}".format(inputpath, outputpath))
+
+    reader = imageio.get_reader(inputpath)
+    fps = reader.get_meta_data()["fps"]
+
+    writer = imageio.get_writer(outputpath, fps=fps)
+    for i, im in enumerate(reader):
+        sys.stdout.write("\rframe {0}".format(i))
+        sys.stdout.flush()
+        writer.append_data(im)
+    print("\r\nFinalizing conversion...")
+    writer.close()
+    print("Done converting.")
 
 
 # Respond to /start
@@ -269,6 +287,7 @@ async def addme_async(chat_type, username, chat_id, loop):
 
 
 # Respond to /challege_repost
+# https://github.com/JohannesBuchner/imagehash
 def challenge_repost(update, context):
     context.bot.send_message(chat_id=update.message.chat_id,
                              text="Nothing to see here.")
@@ -322,152 +341,10 @@ def source(update, context):
                 os.remove(fname)
                 break
 
-        # Search for source from SauceNao
-        # The following script is mostly a copy and paste from https://saucenao.com/tools/examples/api/identify_images_v1.py
-        api_key = os.getenv("SAUCE_NAO_TOKEN")
-        #EnableRename = False
-        minsim = '50!'
+        context.bot.send_message(chat_id=update.message.chat_id,
+                                text=get_source(),
+                                parse_mode='Markdown', disable_web_page_preview=True)
 
-        extensions = {".jpg", ".jpeg", ".png", ".gif", ".bmp"}
-        thumbSize = (150, 150)
-
-        """
-        # enable or disable indexes
-        index_hmags = '0'
-        index_hanime = '0'
-        index_hcg = '0'
-        index_ddbobjects = '0'
-        index_ddbsamples = '0'
-        index_pixiv = '1'
-        index_pixivhistorical = '1'
-        index_anime = '1'
-        index_seigaillust = '1'
-        index_danbooru = '1'
-        index_drawr = '1'
-        index_nijie = '1'
-        index_yandere = '1'
-
-        # generate appropriate bitmask
-        db_bitmask = int(index_yandere + index_nijie + index_drawr + index_danbooru + index_seigaillust + index_anime + \
-            index_pixivhistorical + index_pixiv + index_ddbsamples + index_ddbobjects + index_hcg + index_hanime + index_hmags,2)
-        """
-
-        # encoded print - handle random crap
-        #def printe(line):
-            # ignore or replace
-        #    print(str(line).encode(sys.getdefaultencoding(), 'replace'))
-
-        for root, _, files in os.walk(u'.', topdown=False):
-            for f in files:
-                fname = os.path.join(root, f)
-                for ext in extensions:
-                    if fname.lower().endswith(ext):
-                        print(fname)
-                        image = Image.open(fname)
-                        image.thumbnail(thumbSize, Image.ANTIALIAS)
-                        imageData = io.BytesIO()
-                        image.save(imageData, format='PNG')
-
-                        url = 'http://saucenao.com/search.php?output_type=2&testmode=1&numres=8&minsim=' + \
-                            minsim + '&db=999' + '&api_key=' + api_key
-                        files = {'file': ("photo.jpg", imageData.getvalue())}
-                        imageData.close()
-
-                        processResults = True
-                        while processResults is True:
-                            r = requests.post(url, files=files)
-                            if r.status_code != 200:
-                                if r.status_code == 403:
-                                    print(
-                                        'Incorrect or Invalid API Key! Please Edit Script to Configure...')
-                                    sys.exit(1)
-                                else:
-                                    # generally non 200 statuses are due to either overloaded servers or the user is out of searches
-                                    print("status code: " + str(r.status_code))
-                                    time.sleep(10)
-                            else:
-                                results = json.JSONDecoder(
-                                    object_pairs_hook=OrderedDict).decode(r.text)
-                                if int(results['header']['user_id']) > 0:
-                                    # api responded
-                                    print(
-                                        'Remaining Searches 30s|24h: ' + str(results['header']['short_remaining']) + '|' + str(
-                                            results['header']['long_remaining']))
-                                    if int(results['header']['status']) == 0:
-                                        # search succeeded for all indexes, results usable
-                                        break
-                                    else:
-                                        if int(results['header']['status']) > 0:
-                                            # One or more indexes are having an issue.
-                                            # This search is considered partially successful, even if all indexes failed,
-                                            # so is still counted against your limit.
-                                            print(
-                                                'API Error. Retrying in 10 seconds...')
-                                            time.sleep(10)
-                                        else:
-                                            # Problem with search as submitted, bad image, or impossible request.
-                                            # Issue is unclear, so don't flood requests.
-                                            print(
-                                                'Bad image or other request error. Skipping in 10 seconds...')
-                                            processResults = False
-                                            context.bot.send_message(
-                                                chat_id=update.message.chat_id, text="Something went wrong.")
-                                            break
-                                else:
-                                    # General issue, api did not respond. Normal site took over for this error state.
-                                    # Issue is unclear, so don't flood requests.
-                                    print(
-                                        'Bad image, or API failure. Skipping in 10 seconds...')
-                                    processResults = False
-                                    break
-
-                        if processResults:
-                            # print(results)
-
-                            if int(results['header']['results_returned']) > 0:
-                                # one or more results were returned
-                                if float(results['results'][0]['header']['similarity']) > float(
-                                        results['header']['minimum_similarity']):
-                                    print(
-                                        'hit! ' + str(results['results'][0]['header']['similarity']))
-
-                                    pic_similarity = str(
-                                        results['results'][0]['header']['similarity'])
-                                    result_url = results['results'][0]['data']['ext_urls'][0]
-
-                                    # Send result URL
-                                    if float(results['results'][0]['header']['similarity']) < 70:
-                                        context.bot.send_message(chat_id=update.message.chat_id,
-                                                                 text="This _might_ be it: [Sauce](" + result_url + ")" +
-                                                                 "\nSimilarity: " + pic_similarity,
-                                                                 parse_mode='Markdown', disable_web_page_preview=True)
-                                    else:
-                                        context.bot.send_message(chat_id=update.message.chat_id,
-                                                                 text="[Sauce](" + result_url + ")" +
-                                                                 "\nSimilarity: " + pic_similarity,
-                                                                 parse_mode='Markdown', disable_web_page_preview=True)
-
-                                else:
-                                    print('miss...')
-                                    context.bot.send_message(chat_id=update.message.chat_id,
-                                                             text="I couldn't find a source for that image")
-                            else:
-                                print('no results... ;_;')
-                                context.bot.send_message(
-                                    chat_id=update.message.chat_id, text="No results")
-
-                            # could potentially be negative
-                            if int(results['header']['long_remaining']) < 1:
-                                print('Out of searches for today :(')
-                                context.bot.send_message(chat_id=update.message.chat_id,
-                                                         text="Out of searches for today :(")
-                            if int(results['header']['short_remaining']) < 1:
-                                print(
-                                    'Out of searches for this 30 second period. Sleeping for 25 seconds...')
-                                context.bot.send_message(chat_id=update.message.chat_id,
-                                                         text="Out of searches for this 30 second period. Try again later.")
-
-        print('Done with SauceNao search.')
     # If this else statement runs, the user is either not in an "authorized room", or they didn't reply to an image
     else:
         print("You're not authorized to use that command here.")
@@ -480,32 +357,6 @@ def source(update, context):
             os.remove("source.gif")
         elif fname.endswith(".jpg"):
             os.remove(fname)
-
-
-# Convert mp4 to gif. Copy paste from:
-# https://gist.github.com/michaelosthege/cd3e0c3c556b70a79deba6855deb2cc8
-class TargetFormat(object):
-    GIF = ".gif"
-    MP4 = ".mp4"
-    AVI = ".avi"
-
-
-def convert_media(inputpath, targetFormat):
-    """Reference: http://imageio.readthedocs.io/en/latest/examples.html#convert-a-movie"""
-    outputpath = "source" + targetFormat
-    print("converting\r\n\t{0}\r\nto\r\n\t{1}".format(inputpath, outputpath))
-
-    reader = imageio.get_reader(inputpath)
-    fps = reader.get_meta_data()["fps"]
-
-    writer = imageio.get_writer(outputpath, fps=fps)
-    for i, im in enumerate(reader):
-        sys.stdout.write("\rframe {0}".format(i))
-        sys.stdout.flush()
-        writer.append_data(im)
-    print("\r\nFinalizing conversion...")
-    writer.close()
-    print("Done converting.")
 
 
 # Retrieve user's karma from the database
@@ -838,18 +689,6 @@ async def get_chat_id(tele_user, loop):
     return result[0]
 
 
-"""
-def make_keyboard(counter1, counter2, counter3):
-    keyboard = [[InlineKeyboardButton(str(counter1) + " " + emojize(":thumbsup:", use_aliases=True), callback_data=1),
-                 InlineKeyboardButton(str(counter2) + " " + emojize(":ok_hand:", use_aliases=True), callback_data=2),
-                 InlineKeyboardButton(str(counter3) + " " + emojize(":heart:", use_aliases=True), callback_data=3),
-                 InlineKeyboardButton(emojize(":star:", use_aliases=True), callback_data=10),
-                 InlineKeyboardButton("Votes", callback_data=11)]]
-
-    return InlineKeyboardMarkup(keyboard)
-"""
-
-
 @run_async
 # Forward message that was posted by another user to the channel with emoji buttons
 def repost(update, context):
@@ -1048,15 +887,11 @@ def button(update, context):
 
 def main():
     token = os.getenv("TEL_BOT_TOKEN")
-    # for test purposes limit global throughput to 3 messages per 3 seconds
     q = mq.MessageQueue()
     # set connection pool size for bot 
     request = Request(con_pool_size=54)
     qbot = MQBot(token, request=request, mqueue=q)
     updater = telegram.ext.updater.Updater(bot=qbot, workers=50, use_context=True)
-
-    # Create the Updater and pass it Aqua Bot's token.
-    #updater = Updater(os.getenv("TEL_BOT_TOKEN"), workers=50, use_context=True)
 
     # Create handlers
     start_handler = CommandHandler("start", start)
