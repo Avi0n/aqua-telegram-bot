@@ -134,7 +134,7 @@ def karma(update, context):
 
         reply_markup = InlineKeyboardMarkup(keyboard)
 
-        update.message.reply_text("Please choose:", reply_markup=reply_markup)
+        update.message.reply_text("Please choose a room.", reply_markup=reply_markup)
 
     else:
         # If not a private chat, check the room name to match to a database
@@ -342,8 +342,8 @@ def source(update, context):
                 break
 
         context.bot.send_message(chat_id=update.message.chat_id,
-                                text=get_source(),
-                                parse_mode='Markdown', disable_web_page_preview=True)
+                                 text=get_source(),
+                                 parse_mode='Markdown', disable_web_page_preview=True)
 
     # If this else statement runs, the user is either not in an "authorized room", or they didn't reply to an image
     else:
@@ -365,7 +365,7 @@ async def get_user_karma(database, chat_type, loop):
     pool = await aiomysql.create_pool(host=os.getenv("MYSQL_HOST"),
                                       user=os.getenv("MYSQL_USER"),
                                       password=os.getenv("MYSQL_PASS"),
-                                      db=database, 
+                                      db=database,
                                       loop=loop)
     # prepare a cursor object using cursor() method
     # cursor = await db.cursor()
@@ -379,7 +379,7 @@ async def get_user_karma(database, chat_type, loop):
 
     # Add chat group name to the results of /karma
     if chat_type == "private":
-        return_message = groupname + ":\n"
+        return_message = groupname + "\n"
     else:
         return_message = ""
 
@@ -420,7 +420,7 @@ async def get_user_karma(database, chat_type, loop):
                     return_message += "Error: " + str(e)
                     print("get_user_karma() error: " + str(e))
             finally:
-                 await cur.close()
+                await cur.close()
     pool.close()
     await pool.wait_closed()
     return return_message
@@ -515,7 +515,7 @@ async def update_message_karma(database, message_id, username, emoji_points, loo
     pool = await aiomysql.create_pool(host=os.getenv("MYSQL_HOST"),
                                       user=os.getenv("MYSQL_USER"),
                                       password=os.getenv("MYSQL_PASS"),
-                                      db=database, 
+                                      db=database,
                                       loop=loop)
     # prepare a cursor object using cursor() method
     # cursor = await db.cursor()
@@ -587,7 +587,7 @@ async def check_emoji_points(database, message_id, loop):
     pool = await aiomysql.create_pool(host=os.getenv("MYSQL_HOST"),
                                       user=os.getenv("MYSQL_USER"),
                                       password=os.getenv("MYSQL_PASS"),
-                                      db=database, 
+                                      db=database,
                                       loop=loop)
     # prepare a cursor object using cursor() method
     # cursor = await db.cursor()
@@ -617,7 +617,7 @@ async def get_message_karma(database, message_id, loop):
     pool = await aiomysql.create_pool(host=os.getenv("MYSQL_HOST"),
                                       user=os.getenv("MYSQL_USER"),
                                       password=os.getenv("MYSQL_PASS"),
-                                      db=database, 
+                                      db=database,
                                       loop=loop)
     # prepare a cursor object using cursor() method
     # cursor = await db.cursor()
@@ -683,7 +683,7 @@ async def get_chat_id(tele_user, loop):
             except Exception as e:
                 print("Error: " + str(e))
             finally:
-               await cur.close()
+                await cur.close()
     pool.close()
     await pool.wait_closed()
     return result[0]
@@ -725,9 +725,9 @@ def repost(update, context):
     # Give credit to who originally posted the photo/video
     if update.message.caption is not None:
         repost_caption = update.message.caption + \
-            "\n\nPosted by: " + update.message.from_user.username
+            "\n\nPosted by " + update.message.from_user.username
     else:
-        repost_caption = "\n\nPosted by: " + update.message.from_user.username
+        repost_caption = "\n\nPosted by " + update.message.from_user.username
 
     while True:
         # Try sending photo
@@ -815,16 +815,14 @@ def button(update, context):
         if int(query.data) != 10 and int(query.data) != 11:
             self_vote = False
             # Prevent users from voting on their own posts
-            """
             if query.from_user.username == username[-1]:
+                context.bot.answer_callback_query(callback_query_id=query.id, text="You can't vote on your own posts!",
+                                                  show_alert=False, timeout=None)
                 context.bot.send_message(chat_id=query.message.chat_id,
                                          text=query.from_user.username + " just tried to give themselves points.")
                 context.bot.send_sticker(
                     chat_id=query.message.chat_id, sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
                 self_vote = True
-            """
-            if 1 == 0:
-                print("didn't skip. oops.")
             # Update database with emoji point data
             else:
                 if self_vote is False:
@@ -859,7 +857,7 @@ def button(update, context):
                         return
                     except Exception as e:
                         print("Error while updating buttons: " + str(e))
-                        context.bot.answer_callback_query(callback_query_id=query.id, text="Error. " + str(e) + \
+                        context.bot.answer_callback_query(callback_query_id=query.id, text="Error. " + str(e) +
                                                           ". Might've hit the API flood limit. Wait a few seconds and try again.",
                                                           show_alert=False, timeout=None)
                         return
@@ -868,17 +866,48 @@ def button(update, context):
         elif int(query.data) == 11:
             context.bot.answer_callback_query(
                 callback_query_id=query.id, text=loop.run_until_complete(get_message_karma(database, query.message.message_id, loop)), show_alert=True, timeout=None)
-        # Forward message that user star'd
+        # Forward message that the user star'd
         elif int(query.data) == 10:
             try:
                 # Get user's personal chat_id with Aqua
                 tele_chat_id = loop.run_until_complete(
                     get_chat_id(query.from_user.username, loop))
-                # Send message
-                context.bot.forward_message(chat_id=tele_chat_id, from_chat_id=query.message.chat_id,
-                                            message_id=query.message.message_id)
-                context.bot.answer_callback_query(
-                    callback_query_id=query.id, text="Saved!", show_alert=False, timeout=None)
+                # Send photo/video with link to the original message
+                if update.callback_query.message.caption is not None:
+                    repost_caption = update.callback_query.message.caption + \
+                        "\n\n" + update.callback_query.message.link
+                else:
+                    repost_caption = "\n\n" + update.callback_query.message.link
+
+                while True:
+                    # Try sending photo
+                    try:
+                        # Send message with inline keyboard
+                        context.bot.send_photo(chat_id=tele_chat_id, photo=update.callback_query.message.photo[-1].file_id, caption=repost_caption,
+                                               timeout=20, parse_mode="HTML")
+                    except Exception as e:
+                        print("Not a photo")
+                        print(str(e))
+                    # Try sending document animation
+                    try:
+                        # Send message with inline keyboard
+                        context.bot.send_animation(chat_id=tele_chat_id, animation=update.callback_query.message.document.file_id, caption=repost_caption,
+                                                   timeout=20, parse_mode="HTML")
+                    except Exception as e:
+                        print("Not a document video")
+                        print(str(e))
+                    # Try sending video animation
+                    try:
+                        # Send message with inline keyboard
+                        context.bot.send_video(chat_id=tele_chat_id, video=update.callback_query.message.video.file_id, caption=repost_caption,
+                                               timeout=20, parse_mode="HTML")
+                    except Exception as e:
+                        print("Not a video video")
+                        print(str(e))
+                    finally:
+                        context.bot.answer_callback_query(
+                            callback_query_id=query.id, text="Saved!", show_alert=False, timeout=None)
+                        return
             except Exception as e:
                 context.bot.answer_callback_query(
                     callback_query_id=query.id, text="Error: " + str(e) + "\n" + "." +
@@ -888,10 +917,11 @@ def button(update, context):
 def main():
     token = os.getenv("TEL_BOT_TOKEN")
     q = mq.MessageQueue()
-    # set connection pool size for bot 
+    # set connection pool size for bot
     request = Request(con_pool_size=54)
     qbot = MQBot(token, request=request, mqueue=q)
-    updater = telegram.ext.updater.Updater(bot=qbot, workers=50, use_context=True)
+    updater = telegram.ext.updater.Updater(
+        bot=qbot, workers=50, use_context=True)
 
     # Create handlers
     start_handler = CommandHandler("start", start)
