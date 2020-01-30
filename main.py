@@ -15,25 +15,26 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
-import os
-import sys
-import logging
-import string
 import asyncio
+import logging
+import os
+import string
+import sys
+
 import aiomysql
-from get_source import get_source
 # Import needed for convert_media()
 import imageio
 # Imports needed for Telegram bot
+import telegram.bot
 from dotenv import load_dotenv
 from emoji import emojize
-from telegram.ext.dispatcher import run_async
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import MessageHandler, CommandHandler, CallbackQueryHandler, Filters, Updater
-# Imports for avoiding Telegram flood limits
-import telegram.bot
-from telegram.utils.request import Request
+from telegram.ext import MessageHandler, CommandHandler, CallbackQueryHandler, Filters
 from telegram.ext import messagequeue as mq
+from telegram.ext.dispatcher import run_async
+from telegram.utils.request import Request
+
+from get_source import get_source
 
 # Initialize dotenv
 load_dotenv()
@@ -101,7 +102,7 @@ def convert_media(inputpath, targetFormat):
 def start(update, context):
     context.bot.send_message(chat_id=update.message.chat_id,
                              text="Send /karma to see everyone's points.\nSend /addme to let me forward" +
-                             " photos that you " + emojize(":star:", use_aliases=True) + " to you!")
+                                  " photos that you " + emojize(":star:", use_aliases=True) + " to you!")
 
 
 # Allow user to delete their own photo
@@ -111,14 +112,12 @@ def delete(update, context):
     # Only allow original poster to delete their own message
     if username[-1] == update.message.from_user.username:
         # Remove message that user replied to
-        context.bot.delete_message(
-            chat_id=update.message.chat_id, message_id=update.message.reply_to_message.message_id)
+        context.bot.delete_message(chat_id=update.message.chat_id,
+                                   message_id=update.message.reply_to_message.message_id)
         # Remove the "/delete" message the user sent to keep the chat clean
-        context.bot.delete_message(
-            chat_id=update.message.chat_id, message_id=update.message.message_id)
+        context.bot.delete_message(chat_id=update.message.chat_id, message_id=update.message.message_id)
     else:
-        context.bot.send_message(
-            chat_id=update.message.chat_id, text="You can only delete your own posts.")
+        context.bot.send_message(chat_id=update.message.chat_id, text="You can only delete your own posts.")
 
 
 # Respond to /karma
@@ -146,11 +145,9 @@ def karma(update, context):
         elif update.message.chat.title == os.getenv("GROUP3"):
             database = os.getenv("DATABASE3")
 
-        message = loop.run_until_complete(
-            get_user_karma(database, chat_type, loop))
+        message = loop.run_until_complete(get_user_karma(database, chat_type, loop))
 
-        context.bot.send_message(chat_id=update.message.chat_id,
-                                 text=message, parse_mode="Markdown", timeout=20)
+        context.bot.send_message(chat_id=update.message.chat_id, text=message, parse_mode="Markdown", timeout=20)
 
 
 @run_async
@@ -172,17 +169,15 @@ def give(update, context):
     if "@" in update.message.text:
         # Remove all punctuation (@) and split the string
         string_split = update.message.text.split()
-        username = string_split[1].translate(
-            str.maketrans("", "", string.punctuation))
+        username = string_split[1].translate(str.maketrans("", "", string.punctuation))
         points = string_split[2]
-        points_no_punc = points.translate(
-            str.maketrans("", "", string.punctuation))
+        points_no_punc = points.translate(str.maketrans("", "", string.punctuation))
         from_username = update.message.from_user.username
 
         try:
             if username == from_username:
                 context.bot.send_message(chat_id=update.message.chat_id, text=update.message.from_user.username +
-                                         " just tried to give themselves points.")
+                                                                              " just tried to give themselves points.")
                 context.bot.send_sticker(chat_id=update.message.chat_id,
                                          sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
             elif int(points) == 0:
@@ -226,8 +221,8 @@ def addme(update, context):
     username = update.message.from_user.username
     chat_id = update.message.chat_id
 
-    context.bot.send_message(chat_id=chat_id, text=loop.run_until_complete(
-        addme_async(chat_type, username, chat_id, loop)))
+    context.bot.send_message(chat_id=chat_id,
+                             text=loop.run_until_complete(addme_async(chat_type, username, chat_id, loop)))
 
 
 async def addme_async(chat_type, username, chat_id, loop):
@@ -245,7 +240,7 @@ async def addme_async(chat_type, username, chat_id, loop):
         async with pool.acquire() as conn:
             async with conn.cursor() as cur:
                 sql = "SELECT * FROM user_chat_id WHERE username = '" + \
-                    str(username) + "';"
+                      str(username) + "';"
                 try:
                     # Execute the SQL command
                     await cur.execute(sql)
@@ -263,8 +258,8 @@ async def addme_async(chat_type, username, chat_id, loop):
                         # Commit your changes in the database
                         await conn.commit()
                         message = "Added! Now whenever you " + emojize(":star:", use_aliases=True) + \
-                            " a photo, I'll forward it to you here! " + \
-                            emojize(":smiley:", use_aliases=True)
+                                  " a photo, I'll forward it to you here! " + \
+                                  emojize(":smiley:", use_aliases=True)
                     except Exception as e:
                         # Rollback in case there is any error
                         await conn.rollback()
@@ -274,12 +269,12 @@ async def addme_async(chat_type, username, chat_id, loop):
                         await cur.close()
                 else:
                     message = "You've already been added! " + \
-                        emojize(":star:", use_aliases=True) + " away :)"
+                              emojize(":star:", use_aliases=True) + " away :)"
         pool.close()
         await pool.wait_closed()
     else:
         message = "That doesn't work in here. Send me a PM instead " + \
-            emojize(":wink:", use_aliases=True)
+                  emojize(":wink:", use_aliases=True)
     return message
 
 
@@ -346,15 +341,13 @@ def source(update, context):
                 os.remove(fname)
                 break
 
-        context.bot.send_message(chat_id=update.message.chat_id,
-                                 text=get_source(),
-                                 parse_mode='Markdown', disable_web_page_preview=True)
+        context.bot.send_message(chat_id=update.message.chat_id, text=get_source(), parse_mode='Markdown',
+                                 disable_web_page_preview=True)
 
     # If this else statement runs, the user is either not in an "authorized room", or they didn't reply to an image
     else:
         print("You're not authorized to use that command here.")
-        context.bot.send_message(chat_id=update.message.chat_id,
-                                 text="Did you forget to reply to an image?")
+        context.bot.send_message(chat_id=update.message.chat_id, text="Did you forget to reply to an image?")
 
     # Cleanup downloaded media
     for fname in os.listdir("."):
@@ -413,8 +406,8 @@ async def get_user_karma(database, chat_type, loop):
                     username = row[0]
                     karma_points = row[1]
                     return_message += username + (" " * (longest_username_length - len(username))) + \
-                        "   " + (" " * (longest_karma_length -
-                                        len(str(karma_points)))) + str(karma_points) + "\n"
+                                      "   " + (" " * (longest_karma_length -
+                                                      len(str(karma_points)))) + str(karma_points) + "\n"
 
                 return_message += "\n```" + emojize(":v:", use_aliases=True)
 
@@ -455,7 +448,7 @@ async def update_user_karma(database, username, plus_or_minus, points, loop):
             if result is None:
                 # Add username to the database along with the points that were just added
                 sql = "INSERT INTO user_karma VALUES ('" + \
-                    username + "', " + points + ");"
+                      username + "', " + points + ");"
                 try:
                     # Execute the SQL command
                     await cur.execute(sql)
@@ -469,7 +462,7 @@ async def update_user_karma(database, username, plus_or_minus, points, loop):
                     await cur.close()
             else:
                 sql = "UPDATE user_karma SET karma = karma" + plus_or_minus + \
-                    points + " WHERE username = '" + username + "';"
+                      points + " WHERE username = '" + username + "';"
                 try:
                     # Execute the SQL command
                     await cur.execute(sql)
@@ -542,7 +535,7 @@ async def update_message_karma(database, message_id, username, emoji_points, loo
     async with pool.acquire() as conn:
         async with conn.cursor() as cur:
             sql = "SELECT * FROM message_karma WHERE message_id = " + \
-                str(message_id) + " AND username = '" + username + "';"
+                  str(message_id) + " AND username = '" + username + "';"
             try:
                 # Execute the SQL command
                 await cur.execute(sql)
@@ -553,8 +546,8 @@ async def update_message_karma(database, message_id, username, emoji_points, loo
             if result is None:
                 # Insert new row with message_id, username, and emoji point values
                 sql = "INSERT INTO message_karma VALUES (" + str(message_id) + ", '" + username + \
-                    "', " + str(thumb_points) + ", " + str(ok_points) + \
-                    ", " + str(heart_points) + ");"
+                      "', " + str(thumb_points) + ", " + str(ok_points) + \
+                      ", " + str(heart_points) + ");"
                 try:
                     # Execute the SQL command
                     await cur.execute(sql)
@@ -569,8 +562,8 @@ async def update_message_karma(database, message_id, username, emoji_points, loo
             else:
                 # Update emoji points that user has given a specific message_id
                 sql = "UPDATE message_karma SET " + emoji_symbol + " = " + emoji_symbol + " + " + str(emoji_points) + \
-                    " WHERE message_id = " + \
-                    str(message_id) + " AND username = '" + username + "';"
+                      " WHERE message_id = " + \
+                      str(message_id) + " AND username = '" + username + "';"
                 try:
                     # Execute the SQL command
                     await cur.execute(sql)
@@ -597,11 +590,11 @@ async def check_emoji_points(database, message_id, loop):
     # prepare a cursor object using cursor() method
     # cursor = await db.cursor()
 
-    #return_message = ""
+    # return_message = ""
     async with pool.acquire() as conn:
         async with conn.cursor() as cur:
             sql = "SELECT SUM(thumbsup), SUM(ok_hand), SUM(heart) FROM message_karma WHERE message_id = " + \
-                str(message_id) + ";"
+                  str(message_id) + ";"
             try:
                 # Execute the SQL command
                 await cur.execute(sql)
@@ -632,7 +625,7 @@ async def get_message_karma(database, message_id, loop):
     async with pool.acquire() as conn:
         async with conn.cursor() as cur:
             sql = "SELECT username, SUM(thumbsup + ok_hand + heart) AS karma FROM message_karma WHERE message_id = " + \
-                str(message_id) + " GROUP BY username ORDER BY username;"
+                  str(message_id) + " GROUP BY username ORDER BY username;"
             try:
                 # Execute the SQL command
                 await cur.execute(sql)
@@ -653,8 +646,8 @@ async def get_message_karma(database, message_id, loop):
                     username = row[0]
                     karma_points = row[1]
                     return_message += username + (" " * (longest_username_length - len(username))) + \
-                        "   " + (" " * (longest_karma_length -
-                                        len(str(karma_points)))) + str(karma_points) + "\n"
+                                      "   " + (" " * (longest_karma_length -
+                                                      len(str(karma_points)))) + str(karma_points) + "\n"
             except Exception as e:
                 return_message += "Error"
                 print("get_message_karma() error: " + str(e))
@@ -678,8 +671,7 @@ async def get_chat_id(tele_user, loop):
 
     async with pool.acquire() as conn:
         async with conn.cursor() as cur:
-            sql = "SELECT chat_id FROM user_chat_id WHERE username = '" + \
-                str(tele_user) + "';"
+            sql = "SELECT chat_id FROM user_chat_id WHERE username = '" + str(tele_user) + "';"
             try:
                 # Execute the SQL command
                 await cur.execute(sql)
@@ -706,10 +698,10 @@ async def store_hash(message_id, database, loop):
     """
     # Set MySQL settings
     pool = await aiomysql.create_pool(host=os.getenv("MYSQL_HOST"),
-                                        user=os.getenv("MYSQL_USER"),
-                                        password=os.getenv("MYSQL_PASS"),
-                                        db=database,
-                                        loop=loop)
+                                      user=os.getenv("MYSQL_USER"),
+                                      password=os.getenv("MYSQL_PASS"),
+                                      db=database,
+                                      loop=loop)
 
     async with pool.acquire() as conn:
         async with conn.cursor() as cur:
@@ -770,8 +762,7 @@ def repost(update, context):
 
     # Give credit to who originally posted the photo/video
     if update.message.caption is not None:
-        repost_caption = update.message.caption + \
-            "\n\nPosted by " + update.message.from_user.username
+        repost_caption = update.message.caption + "\n\nPosted by " + update.message.from_user.username
     else:
         repost_caption = "\n\nPosted by " + update.message.from_user.username
 
@@ -779,15 +770,16 @@ def repost(update, context):
         # Try sending photo
         try:
             # Send message with inline keyboard
-            context.bot.send_photo(chat_id=update.message.chat.id, photo=update.message.photo[-1].file_id, caption=repost_caption,
-                                   reply_to_message_id=reply_message_id, reply_markup=reply_markup, timeout=20, parse_mode="HTML")
+            context.bot.send_photo(chat_id=update.message.chat.id, photo=update.message.photo[-1].file_id,
+                                   caption=repost_caption,
+                                   reply_to_message_id=reply_message_id, reply_markup=reply_markup, timeout=20,
+                                   parse_mode="HTML")
         except Exception as e:
             print("Not a photo")
             print(str(e))
         else:
             # Delete original message
-            context.bot.delete_message(
-                chat_id=update.message.chat.id, message_id=update.message.message_id)
+            context.bot.delete_message(chat_id=update.message.chat.id, message_id=update.message.message_id)
             return
         # Try sending document animation
         try:
@@ -795,8 +787,10 @@ def repost(update, context):
             if reply_message_id is not None:
                 return
             # Send message with inline keyboard
-            context.bot.send_animation(chat_id=update.message.chat.id, animation=update.message.document.file_id, caption=repost_caption,
-                                       reply_to_message_id=reply_message_id, reply_markup=reply_markup, timeout=20, parse_mode="HTML")
+            context.bot.send_animation(chat_id=update.message.chat.id, animation=update.message.document.file_id,
+                                       caption=repost_caption,
+                                       reply_to_message_id=reply_message_id, reply_markup=reply_markup, timeout=20,
+                                       parse_mode="HTML")
         except Exception as e:
             print("Not a document video")
             print(str(e))
@@ -811,15 +805,16 @@ def repost(update, context):
             if reply_message_id is not None:
                 return
             # Send message with inline keyboard
-            context.bot.send_video(chat_id=update.message.chat.id, video=update.message.video.file_id, caption=repost_caption,
-                                   reply_to_message_id=reply_message_id, reply_markup=reply_markup, timeout=20, parse_mode="HTML")
+            context.bot.send_video(chat_id=update.message.chat.id, video=update.message.video.file_id,
+                                   caption=repost_caption,
+                                   reply_to_message_id=reply_message_id, reply_markup=reply_markup, timeout=20,
+                                   parse_mode="HTML")
         except Exception as e:
             print("Not a video video")
             print(str(e))
         else:
             # Delete original message
-            context.bot.delete_message(
-                chat_id=update.message.chat.id, message_id=update.message.message_id)
+            context.bot.delete_message(chat_id=update.message.chat.id, message_id=update.message.message_id)
             return
         finally:
             return
@@ -834,16 +829,16 @@ def button(update, context):
     if query.message.chat.type == "private":
         chat_type = "private"
         if int(query.data) == 20:
-            message = loop.run_until_complete(get_user_karma(
-                os.getenv("DATABASE1"), chat_type, loop))
-            query.edit_message_text(
-                text=message, parse_mode="Markdown", timeout=20)
+            message = loop.run_until_complete(get_user_karma(os.getenv("DATABASE1"), chat_type, loop))
+            query.edit_message_text(text=message, parse_mode="Markdown", timeout=20)
         elif int(query.data) == 21:
-            query.edit_message_text(text=loop.run_until_complete(get_user_karma(
-                os.getenv("DATABASE2"), chat_type, loop)), parse_mode="Markdown", timeout=20)
+            query.edit_message_text(
+                text=loop.run_until_complete(get_user_karma(os.getenv("DATABASE2"), chat_type, loop)),
+                parse_mode="Markdown", timeout=20)
         elif int(query.data) == 22:
-            query.edit_message_text(text=loop.run_until_complete(get_user_karma(
-                os.getenv("DATABASE3"), chat_type, loop)), parse_mode="Markdown", timeout=20)
+            query.edit_message_text(
+                text=loop.run_until_complete(get_user_karma(os.getenv("DATABASE3"), chat_type, loop)),
+                parse_mode="Markdown", timeout=20)
     else:
         database = ""
 
@@ -866,8 +861,7 @@ def button(update, context):
                                                   show_alert=False, timeout=None)
                 context.bot.send_message(chat_id=query.message.chat_id,
                                          text=query.from_user.username + " just tried to give themselves points.")
-                context.bot.send_sticker(
-                    chat_id=query.message.chat_id, sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
+                context.bot.send_sticker(chat_id=query.message.chat_id, sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
                 self_vote = True
             # Update database with emoji point data
             else:
@@ -880,12 +874,17 @@ def button(update, context):
                         emoji_points = loop.run_until_complete(
                             check_emoji_points(database, query.message.message_id, loop))
 
-                        # Update emoji points. Divide by 2 and 3 for ok_hand and heart to get the correct number of votes
-                        keyboard = [[InlineKeyboardButton(str(emoji_points[0]) + " " + emojize(":thumbsup:", use_aliases=True), callback_data=1),
-                                     InlineKeyboardButton(str(emoji_points[1] / 2) + " " + emojize(":ok_hand:", use_aliases=True), callback_data=2),
-                                     InlineKeyboardButton(str(emoji_points[2] / 3) + " " + emojize(":heart:", use_aliases=True), callback_data=3),
-                                     InlineKeyboardButton(emojize(":star:", use_aliases=True), callback_data=10),
-                                     InlineKeyboardButton("Votes", callback_data=11)]]
+                        # Update emoji points. Divide by 2 & 3 for ok_hand and heart to get the correct number of votes
+                        keyboard = [[InlineKeyboardButton(
+                            str(emoji_points[0]) + " " + emojize(":thumbsup:", use_aliases=True), callback_data=1),
+                            InlineKeyboardButton(
+                                str(emoji_points[1] / 2) + " " + emojize(":ok_hand:", use_aliases=True),
+                                callback_data=2),
+                            InlineKeyboardButton(
+                                str(emoji_points[2] / 3) + " " + emojize(":heart:", use_aliases=True),
+                                callback_data=3),
+                            InlineKeyboardButton(emojize(":star:", use_aliases=True), callback_data=10),
+                            InlineKeyboardButton("Votes", callback_data=11)]]
                         reply_markup = InlineKeyboardMarkup(keyboard)
                         query.edit_message_reply_markup(
                             reply_markup=reply_markup)
@@ -903,25 +902,25 @@ def button(update, context):
                         return
                     except Exception as e:
                         print("Error while updating buttons: " + str(e))
-                        context.bot.answer_callback_query(callback_query_id=query.id, text="Error. " + str(e) +
-                                                          ". Might've hit the API flood limit. Wait a few seconds and try again.",
+                        context.bot.answer_callback_query(callback_query_id=query.id, text="Error. " + str(e),
                                                           show_alert=False, timeout=None)
                         return
 
         # Show popup showing who voted on the picture/video
         elif int(query.data) == 11:
             context.bot.answer_callback_query(
-                callback_query_id=query.id, text=loop.run_until_complete(get_message_karma(database, query.message.message_id, loop)), show_alert=True, timeout=None)
+                callback_query_id=query.id,
+                text=loop.run_until_complete(get_message_karma(database, query.message.message_id, loop)),
+                show_alert=True, timeout=None)
         # Forward message that the user star'd
         elif int(query.data) == 10:
             try:
                 # Get user's personal chat_id with Aqua
-                tele_chat_id = loop.run_until_complete(
-                    get_chat_id(query.from_user.username, loop))
+                tele_chat_id = loop.run_until_complete(get_chat_id(query.from_user.username, loop))
                 # Send photo/video with link to the original message
                 if update.callback_query.message.caption is not None:
                     repost_caption = update.callback_query.message.caption + \
-                        "\n\n" + update.callback_query.message.link
+                                     "\n\n" + update.callback_query.message.link
                 else:
                     repost_caption = "\n\n" + update.callback_query.message.link
 
@@ -929,7 +928,9 @@ def button(update, context):
                     # Try sending photo
                     try:
                         # Send message with inline keyboard
-                        context.bot.send_photo(chat_id=tele_chat_id, photo=update.callback_query.message.photo[-1].file_id, caption=repost_caption,
+                        context.bot.send_photo(chat_id=tele_chat_id,
+                                               photo=update.callback_query.message.photo[-1].file_id,
+                                               caption=repost_caption,
                                                timeout=20, parse_mode="HTML")
                     except Exception as e:
                         print("Not a photo")
@@ -937,7 +938,9 @@ def button(update, context):
                     # Try sending document animation
                     try:
                         # Send message with inline keyboard
-                        context.bot.send_animation(chat_id=tele_chat_id, animation=update.callback_query.message.document.file_id, caption=repost_caption,
+                        context.bot.send_animation(chat_id=tele_chat_id,
+                                                   animation=update.callback_query.message.document.file_id,
+                                                   caption=repost_caption,
                                                    timeout=20, parse_mode="HTML")
                     except Exception as e:
                         print("Not a document video")
@@ -945,7 +948,8 @@ def button(update, context):
                     # Try sending video animation
                     try:
                         # Send message with inline keyboard
-                        context.bot.send_video(chat_id=tele_chat_id, video=update.callback_query.message.video.file_id, caption=repost_caption,
+                        context.bot.send_video(chat_id=tele_chat_id, video=update.callback_query.message.video.file_id,
+                                               caption=repost_caption,
                                                timeout=20, parse_mode="HTML")
                     except Exception as e:
                         print("Not a video video")
@@ -957,7 +961,8 @@ def button(update, context):
             except Exception as e:
                 context.bot.answer_callback_query(
                     callback_query_id=query.id, text="Error: " + str(e) + "\n" + "." +
-                    "Have you PM'd me the '/addme' command?", show_alert=True, timeout=None)
+                                                     "Have you PM'd me the '/addme' command?", show_alert=True,
+                    timeout=None)
 
 
 def main():
