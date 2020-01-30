@@ -208,9 +208,7 @@ def give(update, context):
                                          text="Don't you think that's a tad too many points?")
         except Exception as e:
             context.bot.send_message(chat_id=update.message.chat_id,
-                                     text="There was a problem. Please send the following message to @Avi0n")
-            context.bot.send_message(
-                chat_id=update.message.chat_id, text=str(e))
+                                     text="Error: " + str(e))
     else:
         string_split = update.message.text.split()
         username = string_split[1]
@@ -271,8 +269,7 @@ async def addme_async(chat_type, username, chat_id, loop):
                         # Rollback in case there is any error
                         await conn.rollback()
                         print("Adding user's chat_id failed. " + str(e))
-                        message = "Sorry, something went wrong. Please send the following message to @Avi0n.\n" + \
-                            str(e)
+                        message = "Error: " + str(e)
                     finally:
                         await cur.close()
                 else:
@@ -288,9 +285,17 @@ async def addme_async(chat_type, username, chat_id, loop):
 
 # Respond to /challege_repost
 # https://github.com/JohannesBuchner/imagehash
-def challenge_repost(update, context):
+def repost_check(update, context):
+    """
+    1) Get room name to know which database to store hash in
+    2) Get message_id and message link
+    3) Download media
+    4) Run haser
+    5) Store hash and message link in database
+    """
     context.bot.send_message(chat_id=update.message.chat_id,
                              text="Nothing to see here.")
+    # check_hash(message_id, room_name)
 
 
 # Respond to /sauce
@@ -689,6 +694,47 @@ async def get_chat_id(tele_user, loop):
     return result[0]
 
 
+# Store hash of message_id's media in database
+async def store_hash(message_id, database, loop):
+    print("Entered store_hash()")
+    """
+    1) Get room name to know which database to store hash in
+    2) Get message_id and message link
+    3) Download media
+    4) Run haser
+    5) Store hash and message link in database
+    """
+    # Set MySQL settings
+    pool = await aiomysql.create_pool(host=os.getenv("MYSQL_HOST"),
+                                        user=os.getenv("MYSQL_USER"),
+                                        password=os.getenv("MYSQL_PASS"),
+                                        db=database,
+                                        loop=loop)
+
+    async with pool.acquire() as conn:
+        async with conn.cursor() as cur:
+            # Add user's chat_id with Aqua to database
+            sql = "INSERT INTO user_chat_id VALUES (" + "PLACEHOLDER" + "');"
+            try:
+                # Execute the SQL command
+                await cur.execute(sql)
+                # Commit your changes in the database
+                await conn.commit()
+            except Exception as e:
+                # Rollback in case there is any error
+                await conn.rollback()
+                print("Error: " + str(e))
+            finally:
+                await cur.close()
+    pool.close()
+    await pool.wait_closed()
+
+
+# Check hash of message_id's media against all previously stored hashes
+async def check_hash(message_id):
+    print("Entered check_hash()")
+
+
 @run_async
 # Forward message that was posted by another user to the channel with emoji buttons
 def repost(update, context):
@@ -944,6 +990,9 @@ def main():
 
     give_handler = CommandHandler("give", give)
     updater.dispatcher.add_handler(give_handler)
+
+    repost_check_handler = CommandHandler("repost_check", repost_check)
+    updater.dispatcher.add_handler(repost_check_handler)
 
     # on noncommand i.e message - repost the photo on Telegram
     updater.dispatcher.add_handler(MessageHandler(Filters.photo, repost))
