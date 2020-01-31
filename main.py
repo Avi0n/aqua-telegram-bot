@@ -295,7 +295,16 @@ def repost_check(update, context):
 
     result = loop.run_until_complete(compare_hash(update.message.reply_to_message.message_id, database, loop))
     print(str(result))
-    context.bot.send_message(chat_id=update.message.chat_id, text=str(result[1]))
+    # Check to see if more than 1 record was returned
+    try:
+        # If this assignment fails, there's only 1 row in the db with this hash
+        reposted_check = result[1][1]
+        if repost_check is not None:
+            context.bot.send_message(chat_id=update.message.chat_id, reply_to_message_id=result[0][0],
+                                     text="Yep, that's a repost. ")
+    except Exception as e:
+        context.bot.send_message(chat_id=update.message.chat_id, text=str(e))
+        context.bot.send_message(chat_id=update.message.chat_id, text="Hmm... doesn't look like a repost to me.")
 
 
 # Respond to /sauce
@@ -401,18 +410,16 @@ async def get_user_karma(database, chat_type, loop):
                 longest_username_length = 0
                 longest_karma_length = 0
                 for row in results:
-                    longest_username_length = max(
-                        longest_username_length, len(row[0]))
-                    longest_karma_length = max(
-                        longest_karma_length, len(str(row[1])))
+                    longest_username_length = max(longest_username_length, len(row[0]))
+                    longest_karma_length = max(longest_karma_length, len(str(row[1])))
 
                 # Add each user and karma as its own row
                 for row in results:
                     username = row[0]
                     karma_points = row[1]
                     return_message += username + (" " * (longest_username_length - len(username))) + \
-                                      "   " + (" " * (longest_karma_length -
-                                                      len(str(karma_points)))) + str(karma_points) + "\n"
+                                      "   " + (" " * (longest_karma_length - len(str(karma_points)))) + str(
+                        karma_points) + "\n"
 
                 return_message += "\n```" + emojize(":v:", use_aliases=True)
 
@@ -640,18 +647,15 @@ async def get_message_karma(database, message_id, loop):
                 longest_username_length = 0
                 longest_karma_length = 0
                 for row in results:
-                    longest_username_length = max(
-                        longest_username_length, len(row[0]))
-                    longest_karma_length = max(
-                        longest_karma_length, len(str(row[1])))
+                    longest_username_length = max(longest_username_length, len(row[0]))
+                    longest_karma_length = max(longest_karma_length, len(str(row[1])))
 
                 # Add each user and karma as its own row
                 for row in results:
                     username = row[0]
                     karma_points = row[1]
-                    return_message += username + (" " * (longest_username_length - len(username))) + \
-                                      "   " + (" " * (longest_karma_length -
-                                                      len(str(karma_points)))) + str(karma_points) + "\n"
+                    return_message += username + (" " * (longest_username_length - len(username))) + "   " + (
+                            " " * (longest_karma_length - len(str(karma_points)))) + str(karma_points) + "\n"
             except Exception as e:
                 return_message += "Error"
                 print("get_message_karma() error: " + str(e))
@@ -766,12 +770,12 @@ async def compare_hash(message_id, database, loop):
             except Exception as e:
                 print("Error: " + str(e))
             sql = "SELECT * FROM media_hash WHERE hash = " + "'" + str(result[0]) + "';"
-            print(result[0])
+            print(result)
             try:
                 # Execute the SQL command
                 await cur.execute(sql)
                 # Fetch all the rows in a list of lists.
-                result = await cur.fetchone()
+                result = await cur.fetchall()
             except Exception as e:
                 print("Error: " + str(e))
             finally:
