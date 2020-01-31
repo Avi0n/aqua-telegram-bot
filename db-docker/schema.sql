@@ -22,10 +22,9 @@ USE room1;
 -- Table structure for table `user_chat_id`
 --
 
-DROP TABLE IF EXISTS `user_chat_id`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `user_chat_id` (
+CREATE TABLE IF NOT EXISTS `user_chat_id` (
   `chat_id` int(11) DEFAULT NULL,
   `username` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
@@ -35,10 +34,9 @@ CREATE TABLE `user_chat_id` (
 -- Table structure for table `message_karma`
 --
 
-DROP TABLE IF EXISTS `message_karma`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `message_karma` (
+CREATE TABLE IF NOT EXISTS `message_karma` (
   `message_id` int(11) NOT NULL,
   `username` varchar(20) DEFAULT NULL,
   `thumbsup` tinyint(4) NOT NULL,
@@ -51,28 +49,39 @@ CREATE TABLE `message_karma` (
 -- Table structure for table `user_karma`
 --
 
-DROP TABLE IF EXISTS `user_karma`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `user_karma` (
+CREATE TABLE IF NOT EXISTS `user_karma` (
   `username` varchar(255) NOT NULL,
   `karma` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+--
+-- Table structure for table `user_karma`
+--
+
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE IF NOT EXISTS `media_hash` (
+  `message_id` int(11) NOT NULL,
+  `hash` varchar(255) NOT NULL,
+  `date` DATE NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
 
 -- Create 2nd table for 2nd Telegram room
-CREATE DATABASE room2;
+CREATE DATABASE IF NOT EXISTS room2;
 USE room2;
 
 --
 -- Table structure for table `message_karma`
 --
 
-DROP TABLE IF EXISTS `message_karma`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `message_karma` (
+CREATE TABLE IF NOT EXISTS `message_karma` (
   `message_id` int(11) NOT NULL,
   `username` varchar(20) DEFAULT NULL,
   `thumbsup` tinyint(4) NOT NULL,
@@ -85,28 +94,35 @@ CREATE TABLE `message_karma` (
 -- Table structure for table `user_karma`
 --
 
-DROP TABLE IF EXISTS `user_karma`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `user_karma` (
+CREATE TABLE IF NOT EXISTS `user_karma` (
   `username` varchar(255) NOT NULL,
   `karma` int(11) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE IF NOT EXISTS `media_hash` (
+  `message_id` int(11) NOT NULL,
+  `hash` varchar(255) NOT NULL,
+  `date` DATE NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
 
 -- Create 3rd table for 3rd Telegram room
-CREATE DATABASE room3;
+CREATE DATABASE IF NOT EXISTS room3;
 USE room3;
 
 --
 -- Table structure for table `message_karma`
 --
 
-DROP TABLE IF EXISTS `message_karma`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `message_karma` (
+CREATE TABLE IF NOT EXISTS `message_karma` (
   `message_id` int(11) NOT NULL,
   `username` varchar(20) DEFAULT NULL,
   `thumbsup` tinyint(4) NOT NULL,
@@ -119,12 +135,20 @@ CREATE TABLE `message_karma` (
 -- Table structure for table `user_karma`
 --
 
-DROP TABLE IF EXISTS `user_karma`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `user_karma` (
+CREATE TABLE IF NOT EXISTS `user_karma` (
   `username` varchar(255) NOT NULL,
   `karma` int(11) DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE IF NOT EXISTS `media_hash` (
+  `message_id` int(11) NOT NULL,
+  `hash` varchar(255) NOT NULL,
+  `date` DATE NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 

@@ -5,7 +5,9 @@ aiomysql
 python-telegram-bot
 emoji
 python-dotenv
-Pillow
 requests
 imageio
 imageio-ffmpeg
+Pillow==6.2.2
+numpy==1.16.6
+imagededup

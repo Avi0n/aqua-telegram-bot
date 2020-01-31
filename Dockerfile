@@ -1,4 +1,5 @@
-FROM pypy:3
+#FROM pypy:3
+FROM python:3.7-stretch
 
 COPY requirements.txt /tmp/
 
@@ -10,4 +11,5 @@ USER appuser
 
 COPY . .
 
-CMD [ "pypy3", "-u", "./main.py" ]
+#CMD [ "pypy3", "-u", "./main.py" ]
+CMD [ "python3", "-u", "./main.py" ]
