@@ -24,7 +24,7 @@ import sys
 import aiomysql
 from pathlib import Path
 import imagededup
-from imagededup.methods import DHash
+from imagededup.methods import PHash
 import imageio
 import telegram.bot
 from PIL import Image
@@ -692,8 +692,8 @@ async def get_chat_id(tele_user, loop):
 
 def compute_hash(file_name):
     print(file_name)
-    dhasher = DHash()
-    media_hash = dhasher.encode_image("./" + file_name)
+    phasher = PHash()
+    media_hash = phasher.encode_image("./" + file_name)
     print(media_hash)
 
     # Cleanup downloaded media
