@@ -1,19 +1,20 @@
-image: "pypy:3"
-
-before_script:
-  - python --version
-  - pip install -r requirements.txt
+image: docker:stable
 
 stages:
-  - Static Analysis
+  - Build image
+  - Push to Docker Hub
 
-flake8:
-  stage: Static Analysis
+docker build:
+  stage: Build image
   script:
-  - flake8 --max-line-length=120 bild/*.py
+  - docker info
+  - docker build -t avi0n/aqua-telegram-bot:dev .
 
-pylint:
-  stage: Static Analysis
-  allow_failure: true
+docker push:
+  stage: Push to Docker Hub
+  only:
+  - dev
   script:
-  - pylint -d C0301 main.py
+  - echo "$REGISTRY_PASSWORD" | docker login -u "$REGISTRY_USER" --password-stdin
+  - docker push avi0n/aqua-telegram-bot:dev && docker image rm avi0n/aqua-telegram-bot:dev
+ 
