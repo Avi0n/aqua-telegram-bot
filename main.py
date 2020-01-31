@@ -280,19 +280,22 @@ async def addme_async(chat_type, username, chat_id, loop):
     return message
 
 
-# Respond to /challege_repost
-# https://github.com/JohannesBuchner/imagehash
+# Respond to /check_repost
 def repost_check(update, context):
-    """
-    1) Get room name to know which database to store hash in
-    2) Get message_id and message link
-    3) Download media
-    4) Run haser
-    5) Store hash and message link in database
-    """
-    context.bot.send_message(chat_id=update.message.chat_id,
-                             text="Nothing to see here.")
-    # check_hash(message_id, room_name)
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    # Find room name and assign correct database
+    if update.message.chat.title == os.getenv("GROUP1"):
+        database = os.getenv("DATABASE1")
+    elif update.message.chat.title == os.getenv("GROUP2"):
+        database = os.getenv("DATABASE2")
+    elif update.message.chat.title == os.getenv("GROUP3"):
+        database = os.getenv("DATABASE3")
+
+    result = loop.run_until_complete(compare_hash(update.message.reply_to_message.message_id, database, loop))
+    print(str(result))
+    context.bot.send_message(chat_id=update.message.chat_id, text=str(result))
 
 
 # Respond to /sauce
@@ -687,7 +690,7 @@ async def get_chat_id(tele_user, loop):
     return result[0]
 
 
-def get_hash(file_name):
+def compute_hash(file_name):
     print(file_name)
     dhasher = DHash()
     media_hash = dhasher.encode_image("./" + file_name)
@@ -704,13 +707,6 @@ def get_hash(file_name):
 # Store hash of message_id's media in database
 async def store_hash(database, message_id, media_hash, loop):
     print("Entered store_hash()")
-    """
-    1) Get room name to know which database to store hash in
-    2) Get message_id
-    3) Download media
-    4) Run hasher
-    5) Store hash in database
-    """
     print(message_id)
     print(database)
     # Set MySQL settings
@@ -751,8 +747,29 @@ async def store_hash(database, message_id, media_hash, loop):
 
 
 # Check hash of message_id's media against all previously stored hashes
-async def check_hash(message_id):
-    print("Entered check_hash()")
+async def compare_hash(message_id, database, loop):
+    # Set MySQL settings
+    pool = await aiomysql.create_pool(host=os.getenv("MYSQL_HOST"),
+                                      user=os.getenv("MYSQL_USER"),
+                                      password=os.getenv("MYSQL_PASS"),
+                                      db=database,
+                                      loop=loop)
+
+    async with pool.acquire() as conn:
+        async with conn.cursor() as cur:
+            sql = "SELECT hash FROM media_hash WHERE message_id = " + str(message_id) + ";"
+            try:
+                # Execute the SQL command
+                await cur.execute(sql)
+                # Fetch all the rows in a list of lists.
+                result = await cur.fetchone()
+            except Exception as e:
+                print("Error: " + str(e))
+            finally:
+                await cur.close()
+    pool.close()
+    await pool.wait_closed()
+    return result
 
 
 @run_async
@@ -801,15 +818,18 @@ def repost(update, context):
         # Try sending photo
         try:
             # Send message with inline keyboard
-            context.bot.send_photo(chat_id=update.message.chat.id, photo=update.message.photo[-1].file_id,
-                                   caption=repost_caption,
-                                   reply_to_message_id=reply_message_id, reply_markup=reply_markup, timeout=20,
-                                   parse_mode="HTML")
+            # Get message_id of re-posted image
+            repost_id = context.bot.send_photo(chat_id=update.message.chat.id, photo=update.message.photo[-1].file_id,
+                                               caption=repost_caption,
+                                               reply_to_message_id=reply_message_id, reply_markup=reply_markup,
+                                               timeout=20,
+                                               parse_mode="HTML")['message_id']
+            print("repost_id: " + str(repost_id))
             # Download file to hash
             file = context.bot.get_file(file_id=update.message.photo[-1].file_id)
             # Download the media (jpg, png)
             file_name = file.download(timeout=10)
-            media_hash = get_hash(file_name)
+            media_hash = compute_hash(file_name)
             # Find room name and assign correct database
             if update.message.chat.title == os.getenv("GROUP1"):
                 database = os.getenv("DATABASE1")
@@ -817,7 +837,7 @@ def repost(update, context):
                 database = os.getenv("DATABASE2")
             elif update.message.chat.title == os.getenv("GROUP3"):
                 database = os.getenv("DATABASE3")
-            loop.run_until_complete(store_hash(database, update.message.message_id, media_hash, loop))
+            loop.run_until_complete(store_hash(database, repost_id, media_hash, loop))
         except Exception as e:
             print("Not a photo")
             print(str(e))
@@ -932,8 +952,7 @@ def button(update, context):
                             InlineKeyboardButton(emojize(":star:", use_aliases=True), callback_data=10),
                             InlineKeyboardButton("Votes", callback_data=11)]]
                         reply_markup = InlineKeyboardMarkup(keyboard)
-                        query.edit_message_reply_markup(
-                            reply_markup=reply_markup)
+                        query.edit_message_reply_markup(reply_markup=reply_markup)
 
                         # Check to see which emoji user pressed
                         if int(query.data) == 1:
