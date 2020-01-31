@@ -295,7 +295,7 @@ def repost_check(update, context):
 
     result = loop.run_until_complete(compare_hash(update.message.reply_to_message.message_id, database, loop))
     print(str(result))
-    context.bot.send_message(chat_id=update.message.chat_id, text=str(result))
+    context.bot.send_message(chat_id=update.message.chat_id, text=str(result[1]))
 
 
 # Respond to /sauce
@@ -758,6 +758,15 @@ async def compare_hash(message_id, database, loop):
     async with pool.acquire() as conn:
         async with conn.cursor() as cur:
             sql = "SELECT hash FROM media_hash WHERE message_id = " + str(message_id) + ";"
+            try:
+                # Execute the SQL command
+                await cur.execute(sql)
+                # Fetch all the rows in a list of lists.
+                result = await cur.fetchone()
+            except Exception as e:
+                print("Error: " + str(e))
+            sql = "SELECT * FROM media_hash WHERE hash = " + "'" + str(result[0]) + "';"
+            print(result[0])
             try:
                 # Execute the SQL command
                 await cur.execute(sql)
