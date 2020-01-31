@@ -22,10 +22,12 @@ import string
 import sys
 
 import aiomysql
-# Import needed for convert_media()
+from pathlib import Path
+import imagededup
+from imagededup.methods import DHash
 import imageio
-# Imports needed for Telegram bot
 import telegram.bot
+from PIL import Image
 from dotenv import load_dotenv
 from emoji import emojize
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
@@ -686,16 +688,32 @@ async def get_chat_id(tele_user, loop):
     return result[0]
 
 
+def get_hash(file_name):
+    print(file_name)
+    dhasher = DHash()
+    media_hash = dhasher.encode_image("./" + file_name)
+    print(media_hash)
+
+    # Cleanup downloaded media
+    try:
+        os.remove("./" + file_name)
+    except Exception as e:
+        print(str(e))
+    return media_hash
+
+
 # Store hash of message_id's media in database
-async def store_hash(message_id, database, loop):
+async def store_hash(database, message_id, media_hash, loop):
     print("Entered store_hash()")
     """
     1) Get room name to know which database to store hash in
-    2) Get message_id and message link
+    2) Get message_id
     3) Download media
-    4) Run haser
-    5) Store hash and message link in database
+    4) Run hasher
+    5) Store hash in database
     """
+    print(message_id)
+    print(database)
     # Set MySQL settings
     pool = await aiomysql.create_pool(host=os.getenv("MYSQL_HOST"),
                                       user=os.getenv("MYSQL_USER"),
@@ -705,8 +723,8 @@ async def store_hash(message_id, database, loop):
 
     async with pool.acquire() as conn:
         async with conn.cursor() as cur:
-            # Add user's chat_id with Aqua to database
-            sql = "INSERT INTO user_chat_id VALUES (" + "PLACEHOLDER" + "');"
+            # Add message_id, photo's hash, and current date to database
+            sql = "INSERT INTO media_hash VALUES (" + str(message_id) + ",'" + media_hash + "', + CURRENT_DATE);"
             try:
                 # Execute the SQL command
                 await cur.execute(sql)
@@ -730,6 +748,9 @@ async def check_hash(message_id):
 @run_async
 # Forward message that was posted by another user to the channel with emoji buttons
 def repost(update, context):
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
     # If user posts a photo/video in a private chat with the bot, ignore it
     if update.message.chat.type == "private":
         return
@@ -774,6 +795,19 @@ def repost(update, context):
                                    caption=repost_caption,
                                    reply_to_message_id=reply_message_id, reply_markup=reply_markup, timeout=20,
                                    parse_mode="HTML")
+            # Download file to hash
+            file = context.bot.get_file(file_id=update.message.photo[-1].file_id)
+            # Download the media (jpg, png)
+            file_name = file.download(timeout=10)
+            media_hash = get_hash(file_name)
+            # Find room name and assign correct database
+            if update.message.chat.title == os.getenv("GROUP1"):
+                database = os.getenv("DATABASE1")
+            elif update.message.chat.title == os.getenv("GROUP2"):
+                database = os.getenv("DATABASE2")
+            elif update.message.chat.title == os.getenv("GROUP3"):
+                database = os.getenv("DATABASE3")
+            loop.run_until_complete(store_hash(database, update.message.message_id, media_hash, loop))
         except Exception as e:
             print("Not a photo")
             print(str(e))
@@ -919,8 +953,7 @@ def button(update, context):
                 tele_chat_id = loop.run_until_complete(get_chat_id(query.from_user.username, loop))
                 # Send photo/video with link to the original message
                 if update.callback_query.message.caption is not None:
-                    repost_caption = update.callback_query.message.caption + \
-                                     "\n\n" + update.callback_query.message.link
+                    repost_caption = update.callback_query.message.caption + "\n\n" + update.callback_query.message.link
                 else:
                     repost_caption = "\n\n" + update.callback_query.message.link
 
@@ -1025,8 +1058,8 @@ def main():
     # Note: The following webhook configuration is setup to use a reverse proxy
     # See https://github.com/python-telegram-bot/python-telegram-bot/wiki/Webhooks for more info
     # Uncomment the following 2 lines if you want to use webhooks
-    #updater.start_webhook(listen="0.0.0.0", port=5001, url_path=os.getenv("TEL_BOT_TOKEN"))
-    #updater.bot.set_webhook(url="https://" + os.getenv("DOMAIN") + "/" + os.getenv("TEL_BOT_TOKEN"))
+    # updater.start_webhook(listen="0.0.0.0", port=5001, url_path=os.getenv("TEL_BOT_TOKEN"))
+    # updater.bot.set_webhook(url="https://" + os.getenv("DOMAIN") + "/" + os.getenv("TEL_BOT_TOKEN"))
 
     updater.idle()
 

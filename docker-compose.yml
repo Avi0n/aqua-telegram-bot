@@ -9,7 +9,7 @@ services:
     command: 
       'mysqld --innodb-flush-method=littlesync --innodb-use-native-aio=OFF --log_bin=ON'
     volumes:
-      - ./db/config:/config:rw
+      - /etc/localtime:/etc/localtime:ro
       - ./db/data:/var/lib/mysql
     ports:
       - '3306:3306'
