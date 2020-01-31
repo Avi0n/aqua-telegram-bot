@@ -890,6 +890,8 @@ def button(update, context):
         username = query.message.caption.split()
 
         # Find room name and assign correct database
+        print("env GROUP1: " + os.getenv("GROUP1"))
+        print("query.message.chat.title" + query.message.chat.title)
         if query.message.chat.title == os.getenv("GROUP1"):
             database = os.getenv("DATABASE1")
         elif query.message.chat.title == os.getenv("GROUP2"):
