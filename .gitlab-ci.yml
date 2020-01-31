@@ -17,4 +17,3 @@ docker push:
   script:
   - echo "$REGISTRY_PASSWORD" | docker login -u "$REGISTRY_USER" --password-stdin
   - docker push avi0n/aqua-telegram-bot
- 
