@@ -8,7 +8,7 @@ docker build:
   stage: Build image
   script:
   - docker info
-  - docker build -t dev .
+  - docker build -t avi0n/aqua-telegram-bot:dev .
 
 docker push:
   stage: Push to Docker Hub
