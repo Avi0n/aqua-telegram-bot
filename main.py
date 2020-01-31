@@ -449,8 +449,7 @@ async def update_user_karma(database, username, plus_or_minus, points, loop):
                 print("Error: " + str(e))
             if result is None:
                 # Add username to the database along with the points that were just added
-                sql = "INSERT INTO user_karma VALUES ('" + \
-                      username + "', " + points + ");"
+                sql = "INSERT INTO user_karma VALUES ('" + username + "', " + points + ");"
                 try:
                     # Execute the SQL command
                     await cur.execute(sql)
@@ -463,8 +462,8 @@ async def update_user_karma(database, username, plus_or_minus, points, loop):
                 finally:
                     await cur.close()
             else:
-                sql = "UPDATE user_karma SET karma = karma" + plus_or_minus + \
-                      points + " WHERE username = '" + username + "';"
+                sql = "UPDATE user_karma SET karma = karma" + plus_or_minus + points + " WHERE username = '" + \
+                      username + "';"
                 try:
                     # Execute the SQL command
                     await cur.execute(sql)
@@ -725,6 +724,17 @@ async def store_hash(database, message_id, media_hash, loop):
         async with conn.cursor() as cur:
             # Add message_id, photo's hash, and current date to database
             sql = "INSERT INTO media_hash VALUES (" + str(message_id) + ",'" + media_hash + "', + CURRENT_DATE);"
+            try:
+                # Execute the SQL command
+                await cur.execute(sql)
+                # Commit your changes in the database
+                await conn.commit()
+            except Exception as e:
+                # Rollback in case there is any error
+                await conn.rollback()
+                print("Error: " + str(e))
+            # Delete hashes older than 1 month
+            sql = "DELETE FROM `media_hash` WHERE Date < NOW() - INTERVAL 1 MONTH;"
             try:
                 # Execute the SQL command
                 await cur.execute(sql)
@@ -1050,16 +1060,16 @@ def main():
 
     updater.dispatcher.add_error_handler(error)
 
-    # Start polling
-    # Comment the following line if you want to use webhooks
-    updater.start_polling()
-
-    # Create webhook
-    # Note: The following webhook configuration is setup to use a reverse proxy
-    # See https://github.com/python-telegram-bot/python-telegram-bot/wiki/Webhooks for more info
-    # Uncomment the following 2 lines if you want to use webhooks
-    # updater.start_webhook(listen="0.0.0.0", port=5001, url_path=os.getenv("TEL_BOT_TOKEN"))
-    # updater.bot.set_webhook(url="https://" + os.getenv("DOMAIN") + "/" + os.getenv("TEL_BOT_TOKEN"))
+    # Check to see if user wants to use polling or webhooks
+    if os.getenv("USE_WEBHOOK") == "FALSE":
+        # Start polling
+        updater.start_polling()
+    elif os.getenv("USE_WEBHOOK") == "TRUE":
+        # Create webhook
+        # Note: The following webhook configuration is setup to use a reverse proxy
+        # See https://github.com/python-telegram-bot/python-telegram-bot/wiki/Webhooks for more info
+        updater.start_webhook(listen="0.0.0.0", port=5001, url_path=os.getenv("TEL_BOT_TOKEN"))
+        updater.bot.set_webhook(url="https://" + os.getenv("DOMAIN") + "/" + os.getenv("TEL_BOT_TOKEN"))
 
     updater.idle()
 
