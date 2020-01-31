@@ -19,19 +19,7 @@ services:
   aqua-telegram-bot:
     restart: always
     build: .
+    env_file: .env
     container_name: aqua-telegram-bot
     depends_on:
       - mariadb
-
-  phpmyadmin:
-    hostname: phpmyadmin
-    container_name: phpmyadmin
-    image: phpmyadmin/phpmyadmin
-    restart: always
-    links:
-      - mariadb:db
-    ports:
-      - 2001:80
-    environment:
-      - PMA_HOST=mariadb
-      - MYSQL_ROOT_PASSWORD=${MYSQL_PASS}
