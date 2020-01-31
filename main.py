@@ -297,14 +297,20 @@ def repost_check(update, context):
     print(str(result))
     # Check to see if more than 1 record was returned
     try:
-        # If this assignment fails, there's only 1 row in the db with this hash
-        reposted_check = result[1][1]
-        if repost_check is not None:
+        if str(result) != "()":
+            if int(result[0][2]) > 1:
+                message_text = "Yep, that's a repost.\nThat photo has been posted " + str(result[0][2]) + \
+                               " times in the last 30 days.\nHere is the first time it was posted."
+            else:
+                message_text = "Yep, that's a repost.\nThat photo has been posted once before in the last 30 days."
+
             context.bot.send_message(chat_id=update.message.chat_id, reply_to_message_id=result[0][0],
-                                     text="Yep, that's a repost. ")
+                                     text=message_text)
+        else:
+            context.bot.send_message(chat_id=update.message.chat_id, text="Hmm... doesn't look like a repost to me.")
     except Exception as e:
+        print("Error: " + str(e))
         context.bot.send_message(chat_id=update.message.chat_id, text=str(e))
-        context.bot.send_message(chat_id=update.message.chat_id, text="Hmm... doesn't look like a repost to me.")
 
 
 # Respond to /sauce
@@ -733,8 +739,8 @@ async def store_hash(database, message_id, media_hash, loop):
                 # Rollback in case there is any error
                 await conn.rollback()
                 print("Error: " + str(e))
-            # Delete hashes older than 1 month
-            sql = "DELETE FROM `media_hash` WHERE Date < NOW() - INTERVAL 1 MONTH;"
+            # Delete hashes older than 30 days
+            sql = "DELETE FROM `media_hash` WHERE Date < NOW() - INTERVAL 30 DAY;"
             try:
                 # Execute the SQL command
                 await cur.execute(sql)
@@ -761,16 +767,12 @@ async def compare_hash(message_id, database, loop):
 
     async with pool.acquire() as conn:
         async with conn.cursor() as cur:
-            sql = "SELECT hash FROM media_hash WHERE message_id = " + str(message_id) + ";"
-            try:
-                # Execute the SQL command
-                await cur.execute(sql)
-                # Fetch all the rows in a list of lists.
-                result = await cur.fetchone()
-            except Exception as e:
-                print("Error: " + str(e))
-            sql = "SELECT * FROM media_hash WHERE hash = " + "'" + str(result[0]) + "';"
-            print(result)
+            # SELECT message_id, hash, COUNT(hash) FROM media_hash
+            # WHERE hash = (SELECT hash FROM media_hash WHERE message_id=4223)
+            # GROUP BY hash HAVING COUNT(*) > 1
+            sql = "SELECT message_id, hash, COUNT(hash) FROM media_hash" + \
+                  " WHERE hash = (SELECT hash FROM media_hash WHERE message_id = " + str(message_id) + ")" + \
+                  " GROUP BY hash HAVING COUNT(*) > 1;"
             try:
                 # Execute the SQL command
                 await cur.execute(sql)
