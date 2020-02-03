@@ -298,8 +298,8 @@ def repost_check(update, context):
     try:
         if str(result) != "()":
             if int(result[0][2]) > 1:
-                message_text = "Yep, that's a repost.\nThat photo has been posted " + str(result[0][2]) + \
-                               " times in the last 30 days.\nHere is the first time it was posted."
+                message_text = "Yep, that's a repost. Here's the first time it was posted.\nIt's been posted " + \
+                               str(result[0][2]) + " times in the last 30 days.\n"
 
             context.bot.send_message(chat_id=update.message.chat_id, reply_to_message_id=result[0][0],
                                      text=message_text)
