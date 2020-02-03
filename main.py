@@ -22,7 +22,6 @@ import string
 import sys
 
 import aiomysql
-from pathlib import Path
 import imagededup
 from imagededup.methods import PHash
 import imageio
@@ -301,8 +300,6 @@ def repost_check(update, context):
             if int(result[0][2]) > 1:
                 message_text = "Yep, that's a repost.\nThat photo has been posted " + str(result[0][2]) + \
                                " times in the last 30 days.\nHere is the first time it was posted."
-            else:
-                message_text = "Yep, that's a repost.\nThat photo has been posted once before in the last 30 days."
 
             context.bot.send_message(chat_id=update.message.chat_id, reply_to_message_id=result[0][0],
                                      text=message_text)
@@ -770,9 +767,10 @@ async def compare_hash(message_id, database, loop):
             # SELECT message_id, hash, COUNT(hash) FROM media_hash
             # WHERE hash = (SELECT hash FROM media_hash WHERE message_id=4223)
             # GROUP BY hash HAVING COUNT(*) > 1
-            sql = "SELECT message_id, hash, COUNT(hash) FROM media_hash" + \
-                  " WHERE hash = (SELECT hash FROM media_hash WHERE message_id = " + str(message_id) + ")" + \
-                  " GROUP BY hash HAVING COUNT(*) > 1;"
+            sql = "SELECT message_id, hash, COUNT(hash), 'temp' AS temp_col FROM media_hash" + \
+                  " WHERE LEFT(hash, 4) = " + \
+                  "(SELECT LEFT(hash, 4) FROM media_hash WHERE message_id = " + str(message_id) + ")" + \
+                  " GROUP BY temp_col HAVING COUNT(*) > 1;"
             try:
                 # Execute the SQL command
                 await cur.execute(sql)
