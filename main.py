@@ -106,17 +106,35 @@ def start(update, context):
                                   " photos that you " + emojize(":star:", use_aliases=True) + " to you!")
 
 
+@run_async
 # Allow user to delete their own photo
 def delete(update, context):
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    # Find room name and assign correct database
+    if update.message.chat.title == os.getenv("GROUP1"):
+        database = os.getenv("DATABASE1")
+    elif update.message.chat.title == os.getenv("GROUP2"):
+        database = os.getenv("DATABASE2")
+    elif update.message.chat.title == os.getenv("GROUP3"):
+        database = os.getenv("DATABASE3")
+
     username = update.message.reply_to_message.caption.split()
+    delete_message_id = update.message.reply_to_message.message_id
 
     # Only allow original poster to delete their own message
     if username[-1] == update.message.from_user.username:
-        # Remove message that user replied to
-        context.bot.delete_message(chat_id=update.message.chat_id,
-                                   message_id=update.message.reply_to_message.message_id)
-        # Remove the "/delete" message the user sent to keep the chat clean
-        context.bot.delete_message(chat_id=update.message.chat_id, message_id=update.message.message_id)
+        try:
+            points_to_delete = loop.run_until_complete(delete_row(database, delete_message_id, loop))
+            loop.run_until_complete(update_user_karma(database, username[-1], "-", str(points_to_delete[0]), loop))
+            # Remove message that user replied to
+            context.bot.delete_message(chat_id=update.message.chat_id,
+                                       message_id=delete_message_id)
+            # Remove the "/delete" message the user sent to keep the chat clean
+            context.bot.delete_message(chat_id=update.message.chat_id, message_id=update.message.message_id)
+        except Exception as e:
+            context.bot.send_message(chat_id=update.message.chat_id, text="Error: " + str(e))
     else:
         context.bot.send_message(chat_id=update.message.chat_id, text="You can only delete your own posts.")
 
@@ -593,6 +611,45 @@ async def update_message_karma(database, message_id, username, emoji_points, loo
     await pool.wait_closed()
 
 
+# Delete message_id row from database
+async def delete_row(database, message_id, loop):
+    # Set MySQL settings
+    pool = await aiomysql.create_pool(host=os.getenv("MYSQL_HOST"),
+                                      user=os.getenv("MYSQL_USER"),
+                                      password=os.getenv("MYSQL_PASS"),
+                                      db=database,
+                                      loop=loop)
+
+    async with pool.acquire() as conn:
+        async with conn.cursor() as cur:
+            # Add message_id, photo's hash, and current date to database
+            sql = "SELECT SUM(thumbsup + ok_hand + heart) FROM message_karma WHERE message_id = " + \
+                  str(message_id) + ";"
+            try:
+                # Execute the SQL command
+                await cur.execute(sql)
+                # Fetch all the rows in a list of lists.
+                points_to_delete = await cur.fetchone()
+            except Exception as e:
+                print("Error in delete_row: " + str(e))
+            # Delete hashes older than 30 days
+            sql = "DELETE from message_karma WHERE message_id = " + str(message_id) + ";"
+            try:
+                # Execute the SQL command
+                await cur.execute(sql)
+                # Commit your changes in the database
+                await conn.commit()
+            except Exception as e:
+                # Rollback in case there is any error
+                await conn.rollback()
+                print("Error in delete_row: " + str(e))
+            finally:
+                await cur.close()
+    pool.close()
+    await pool.wait_closed()
+    return points_to_delete
+
+
 # Check total karma for specific emoji for a specific message
 async def check_emoji_points(database, message_id, loop):
     # Set MySQL settings
@@ -601,10 +658,7 @@ async def check_emoji_points(database, message_id, loop):
                                       password=os.getenv("MYSQL_PASS"),
                                       db=database,
                                       loop=loop)
-    # prepare a cursor object using cursor() method
-    # cursor = await db.cursor()
 
-    # return_message = ""
     async with pool.acquire() as conn:
         async with conn.cursor() as cur:
             sql = "SELECT SUM(thumbsup), SUM(ok_hand), SUM(heart) FROM message_karma WHERE message_id = " + \
@@ -615,7 +669,7 @@ async def check_emoji_points(database, message_id, loop):
                 # Fetch all the rows in a list of lists.
                 result = await cur.fetchone()
             except Exception as e:
-                print("Error: " + str(e))
+                print("Error in check_emoji_points: " + str(e))
             finally:
                 await cur.close()
     pool.close()
@@ -631,8 +685,6 @@ async def get_message_karma(database, message_id, loop):
                                       password=os.getenv("MYSQL_PASS"),
                                       db=database,
                                       loop=loop)
-    # prepare a cursor object using cursor() method
-    # cursor = await db.cursor()
 
     return_message = "Votes\n\n"
 
@@ -661,7 +713,7 @@ async def get_message_karma(database, message_id, loop):
                             " " * (longest_karma_length - len(str(karma_points)))) + str(karma_points) + "\n"
             except Exception as e:
                 return_message += "Error"
-                print("get_message_karma() error: " + str(e))
+                print("Error in get_message_karma: " + str(e))
             finally:
                 await cur.close()
     pool.close()
@@ -689,7 +741,7 @@ async def get_chat_id(tele_user, loop):
                 # Fetch all the rows in a list of lists.
                 result = await cur.fetchone()
             except Exception as e:
-                print("Error: " + str(e))
+                print("Error in get_chat_id: " + str(e))
             finally:
                 await cur.close()
     pool.close()
@@ -735,9 +787,9 @@ async def store_hash(database, message_id, media_hash, loop):
             except Exception as e:
                 # Rollback in case there is any error
                 await conn.rollback()
-                print("Error: " + str(e))
+                print("Error in store_hash: " + str(e))
             # Delete hashes older than 30 days
-            sql = "DELETE FROM `media_hash` WHERE Date < NOW() - INTERVAL 30 DAY;"
+            sql = "DELETE FROM media_hash WHERE Date < NOW() - INTERVAL 30 DAY;"
             try:
                 # Execute the SQL command
                 await cur.execute(sql)
@@ -746,7 +798,7 @@ async def store_hash(database, message_id, media_hash, loop):
             except Exception as e:
                 # Rollback in case there is any error
                 await conn.rollback()
-                print("Error: " + str(e))
+                print("Error in store_hash: " + str(e))
             finally:
                 await cur.close()
     pool.close()
@@ -777,7 +829,7 @@ async def compare_hash(message_id, database, loop):
                 # Fetch all the rows in a list of lists.
                 result = await cur.fetchall()
             except Exception as e:
-                print("Error: " + str(e))
+                print("Error in compare_hash: " + str(e))
             finally:
                 await cur.close()
     pool.close()
