@@ -10,19 +10,20 @@ Why is it called Aqua? Because this bot was originally thought to be pretty usel
 
 I used this project to learn more about API's and Python so the code is messy and I probably did a lot of dumb stuff. If you want to fix something or add a feature, I'm open to pull requests!   
 
-Requires [PyPy 3](https://www.pypy.org/) and MySQL/MariaDB  
+Requires Docker, Docker Compose, Python 3, and MySQL/MariaDB  
 Python dependencies are managed by pip in requirements.txt   
 At the moment, Aqua supports up to 3 different Telegram rooms. This was a conscious design decision because I did not want my instance of the bot to be shared and used by unauthorized rooms.
 
 Aqua currently supports the following commands:
 *  /karma: Shows the current number of points users in the group chat have
+*  /repost_check: Checks to see if the photo has been posted in the last 30 days
 *  /delete: Deletes the photo that /delete was used on
 *  /source: Finds the source of an image/gif (currently only works with images drawn in the anime style)
 *  /addme: Adds user's personal chat ID to the database so that Aqua can send them PMs   
 
 ## Getting Started
 This short guide will use git, Docker, and docker-compose. You can set this bot up without using Docker, but I will not be covering how to do that.
-1.  Install [Docker](https://docs.docker.com/get-started/)
+1.  Install [Docker](https://docs.docker.com/install)
 2.  If you're using Linux, [install Docker Compose](https://docs.docker.com/compose/install/) (macOS and Windows installations of Docker come with Compose)
 3.  Clone this repo by running `git clone https://gitlab.com/Avi0n/aqua-telegram-bot.git`
 4.  Using the Telegram bot [@BotFather](https://t.me/BotFather), create a new bot and disable Group Privacy. Copy the API Token of your new bot
