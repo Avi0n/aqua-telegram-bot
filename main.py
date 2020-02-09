@@ -168,6 +168,7 @@ def karma(update, context):
 
         context.bot.send_message(chat_id=update.message.chat_id, text=message, parse_mode="Markdown", timeout=20)
 
+        context.bot.send_message(chat_id=update.message.chat_id, text=message, parse_mode="Markdown", timeout=20)
 
 @run_async
 # Respond to /give
@@ -311,7 +312,6 @@ def repost_check(update, context):
         database = os.getenv("DATABASE3")
 
     result = loop.run_until_complete(compare_hash(update.message.reply_to_message.message_id, database, loop))
-    print(str(result))
     # Check to see if more than 1 record was returned
     try:
         if str(result) != "()":
@@ -475,7 +475,6 @@ async def update_user_karma(database, username, plus_or_minus, points, loop):
                 await cur.execute(sql)
                 # Fetch all the rows in a list of lists.
                 result = await cur.fetchone()
-                print(result)
             except Exception as e:
                 print("Error: " + str(e))
             if result is None:
@@ -750,11 +749,8 @@ async def get_chat_id(tele_user, loop):
 
 
 def compute_hash(file_name):
-    print(file_name)
     phasher = PHash()
     media_hash = phasher.encode_image("./" + file_name)
-    print(media_hash)
-
     # Cleanup downloaded media
     try:
         os.remove("./" + file_name)
@@ -765,9 +761,6 @@ def compute_hash(file_name):
 
 # Store hash of message_id's media in database
 async def store_hash(database, message_id, media_hash, loop):
-    print("Entered store_hash()")
-    print(message_id)
-    print(database)
     # Set MySQL settings
     pool = await aiomysql.create_pool(host=os.getenv("MYSQL_HOST"),
                                       user=os.getenv("MYSQL_USER"),
@@ -889,7 +882,6 @@ def repost(update, context):
                                                reply_to_message_id=reply_message_id, reply_markup=reply_markup,
                                                timeout=20,
                                                parse_mode="HTML")['message_id']
-            print("repost_id: " + str(repost_id))
             # Download file to hash
             file = context.bot.get_file(file_id=update.message.photo[-1].file_id)
             # Download the media (jpg, png)
