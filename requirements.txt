@@ -1,10 +1,14 @@
 flake8
 pylint
-pymysql
+pymysql==0.9.2
+aiomysql
 python-telegram-bot
 emoji
 python-dotenv
-Pillow
 requests
 imageio
 imageio-ffmpeg
+Pillow==6.2.2
+numpy==1.16.6
+imagededup
+ujson
