@@ -8,13 +8,13 @@ services:
     hostname: mariadb
     command: 
       'mysqld --innodb-flush-method=littlesync --innodb-use-native-aio=OFF --log_bin=ON'
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_PASS}
+      - TZ=America/Los_Angeles
     volumes:
-      - ./db/config:/config:rw
       - ./db/data:/var/lib/mysql
     ports:
       - '3306:3306'
-    environment:
-      - MYSQL_ROOT_PASSWORD=${MYSQL_PASS}
 
   aqua-telegram-bot:
     restart: always
@@ -22,6 +22,20 @@ services:
     # It will simply download the latest version of the bot rather than compiling it on your computer
     #image: avi0n/aqua-telegram-bot:latest
     build: .
+    env_file: .env
     container_name: aqua-telegram-bot
     depends_on:
       - mariadb
+
+  phpmyadmin:
+    hostname: phpmyadmin
+    container_name: phpmyadmin
+    image: phpmyadmin/phpmyadmin
+    restart: always
+    links:
+      - mariadb:db
+    ports:
+      - 2001:80
+    environment:
+      - PMA_HOST=mariadb
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
