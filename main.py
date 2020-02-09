@@ -1061,9 +1061,8 @@ def button(update, context):
                                                photo=update.callback_query.message.photo[-1].file_id,
                                                caption=repost_caption,
                                                timeout=20, parse_mode="HTML")
-                    except Exception as e:
+                    except:
                         print("Not a photo")
-                        print(str(e))
                     # Try sending document animation
                     try:
                         # Send message with inline keyboard
@@ -1071,18 +1070,16 @@ def button(update, context):
                                                    animation=update.callback_query.message.document.file_id,
                                                    caption=repost_caption,
                                                    timeout=20, parse_mode="HTML")
-                    except Exception as e:
+                    except:
                         print("Not a document video")
-                        print(str(e))
                     # Try sending video animation
                     try:
                         # Send message with inline keyboard
                         context.bot.send_video(chat_id=tele_chat_id, video=update.callback_query.message.video.file_id,
                                                caption=repost_caption,
                                                timeout=20, parse_mode="HTML")
-                    except Exception as e:
+                    except:
                         print("Not a video video")
-                        print(str(e))
                     finally:
                         context.bot.answer_callback_query(
                             callback_query_id=query.id, text="Saved!", show_alert=False, timeout=None)
