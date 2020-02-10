@@ -22,13 +22,11 @@ import string
 import sys
 
 import aiomysql
-import imagededup
-from imagededup.methods import PHash
 import imageio
 import telegram.bot
-from PIL import Image
 from dotenv import load_dotenv
 from emoji import emojize
+from imagededup.methods import PHash
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import MessageHandler, CommandHandler, CallbackQueryHandler, Filters
 from telegram.ext import messagequeue as mq

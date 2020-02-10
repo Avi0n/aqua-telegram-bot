@@ -1,13 +1,21 @@
-FROM python:3.7-stretch
+FROM python:3.7-slim AS install-image
+RUN apt-get update
+RUN apt-get install -y --no-install-recommends build-essential gcc
 
-COPY requirements.txt /tmp/
+RUN python -m venv /opt/venv
+# Make sure we use the virtualenv:
+ENV PATH="/opt/venv/bin:$PATH"
 
-RUN pip install --no-cache-dir -r /tmp/requirements.txt
+COPY requirements.txt .
+RUN pip install -r requirements.txt
 
-RUN adduser --uid 1000 --home /home/appuser appuser --disabled-password --quiet
-WORKDIR /home/appuser
-USER appuser
 
-COPY . .
+FROM python:3.7-slim AS build-image
+COPY --from=install-image /opt/venv /opt/venv
 
-CMD [ "python3", "-u", "./main.py" ]
+COPY main.py .
+COPY get_source.py .
+
+# Make sure we use the virtualenv:
+ENV PATH="/opt/venv/bin:$PATH"
+CMD [ "python3", "-u", "main.py" ]
