@@ -12,7 +12,7 @@ services:
       - MYSQL_ROOT_PASSWORD=${MYSQL_PASS}
       - TZ=America/Los_Angeles
     volumes:
-      - ./db/data:/var/lib/mysql
+      - db:/var/lib/mysql
     ports:
       - '3306:3306'
 
@@ -39,3 +39,6 @@ services:
 #    environment:
 #      - PMA_HOST=mariadb
 #      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+
+volumes:
+  db:
