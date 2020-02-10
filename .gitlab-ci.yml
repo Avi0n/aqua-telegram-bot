@@ -13,7 +13,7 @@ docker build:
 docker push:
   stage: Push to Docker Hub
   only:
-  - stable
+  - master
   script:
   - echo "$REGISTRY_PASSWORD" | docker login -u "$REGISTRY_USER" --password-stdin
   - docker push avi0n/aqua-telegram-bot:stable && docker image rm avi0n/aqua-telegram-bot:stable
