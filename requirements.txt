@@ -1,5 +1,3 @@
-pymysql==0.9.2
-aiomysql
 python-telegram-bot
 emoji
 python-dotenv
@@ -8,3 +6,5 @@ imageio
 imageio-ffmpeg
 ImageHash
 ujson
+aiosqlite
+aiomysql
