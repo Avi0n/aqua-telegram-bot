@@ -22,11 +22,12 @@ import string
 import sys
 
 import aiomysql
+import imagehash
 import imageio
 import telegram.bot
+from PIL import Image
 from dotenv import load_dotenv
 from emoji import emojize
-from imagededup.methods import PHash
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import MessageHandler, CommandHandler, CallbackQueryHandler, Filters
 from telegram.ext import messagequeue as mq
@@ -166,7 +167,6 @@ def karma(update, context):
 
         context.bot.send_message(chat_id=update.message.chat_id, text=message, parse_mode="Markdown", timeout=20)
 
-        context.bot.send_message(chat_id=update.message.chat_id, text=message, parse_mode="Markdown", timeout=20)
 
 @run_async
 # Respond to /give
@@ -747,8 +747,9 @@ async def get_chat_id(tele_user, loop):
 
 
 def compute_hash(file_name):
-    phasher = PHash()
-    media_hash = phasher.encode_image("./" + file_name)
+    img = Image.open(file_name)
+    media_hash = imagehash.phash(img)
+    print(str(media_hash))
     # Cleanup downloaded media
     try:
         os.remove("./" + file_name)
@@ -892,7 +893,7 @@ def repost(update, context):
                 database = os.getenv("DATABASE2")
             elif update.message.chat.title == os.getenv("GROUP3"):
                 database = os.getenv("DATABASE3")
-            loop.run_until_complete(store_hash(database, repost_id, media_hash, loop))
+            loop.run_until_complete(store_hash(database, repost_id, str(media_hash), loop))
         except Exception as e:
             print("Not a photo")
             print(str(e))
