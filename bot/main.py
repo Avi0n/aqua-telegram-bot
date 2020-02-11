@@ -219,30 +219,6 @@ def delete(update, context):
         context.bot.send_message(chat_id=update.message.chat_id, text="You can only delete your own posts.")
 
 
-# TESTING TESTING TESTING
-# Retrieve user's karma from the database
-"""async def get_user_karma(database, chat_type, loop):
-    print("Database: " + database)
-    print("chat type: " + chat_type)
-    print("in get_user")
-    for fname in os.listdir(".."):
-        print(fname)
-
-    print(database)
-    async with aiosqlite.connect(database) as db:
-        db = await aiosqlite.connect('/db/room1.db')
-        sql = "SELECT * FROM user_karma WHERE karma <> 0 ORDER BY username;"
-        cursor = await db.execute("SELECT * FROM user_karma WHERE karma <> 0 ORDER BY username;")
-        row = await cursor.fetchone()
-        rows = await cursor.fetchall()
-        await cursor.close()
-        return_message = "hi"
-
-    await db.close()
-    return_message = "hi"
-    return return_message"""
-
-
 # Respond to /karma
 @run_async
 def karma(update, context):
@@ -515,8 +491,6 @@ def button(update, context):
         username = query.message.caption.split()
 
         # Find room name and assign correct database
-        print("env GROUP1: " + os.getenv("GROUP1"))
-        print("query.message.chat.title" + query.message.chat.title)
         if query.message.chat.title == os.getenv("GROUP1"):
             database = os.getenv("DATABASE1")
         elif query.message.chat.title == os.getenv("GROUP2"):
