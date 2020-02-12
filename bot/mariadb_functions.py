@@ -22,6 +22,11 @@ import aiomysql
 from emoji import emojize
 
 
+def check_first_db_run():
+    # Only for SQLite atm. Just return.
+    return
+
+
 # Retrieve user's karma from the database
 async def get_user_karma(database, chat_type, loop):
     # Set MySQL settings
