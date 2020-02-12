@@ -344,9 +344,8 @@ def repost_check(update, context):
             if int(result[0][2]) > 1:
                 message_text = "Yep, that's a repost. Here's the first time it was posted.\nIt's been posted " + \
                                str(result[0][2]) + " times in the last 30 days.\n"
-
-            context.bot.send_message(chat_id=update.message.chat_id, reply_to_message_id=result[0][0],
-                                     text=message_text)
+                context.bot.send_message(chat_id=update.message.chat_id, reply_to_message_id=result[0][0],
+                                        text=message_text)
         else:
             context.bot.send_message(chat_id=update.message.chat_id, text="Hmm... doesn't look like a repost to me.")
     except Exception as e:
