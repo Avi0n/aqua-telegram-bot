@@ -24,8 +24,8 @@ services:
     build: .
     env_file: .env
     container_name: aqua-telegram-bot
-    #volumes:
-    #  - ./db:/bot/db
+    volumes:
+      - ./db:/bot/db
     depends_on:
       - mariadb
 

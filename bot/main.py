@@ -606,6 +606,9 @@ def button(update, context):
 
 
 def main():
+    # Check to see if SQLite files exist
+    db.check_first_db_run()
+
     token = os.getenv("TEL_BOT_TOKEN")
     q = mq.MessageQueue()
     # set connection pool size for bot

@@ -17,8 +17,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import os
-from emoji import emojize
+
 import aiomysql
+from emoji import emojize
 
 
 # Retrieve user's karma from the database
@@ -102,7 +103,7 @@ async def update_user_karma(database, username, plus_or_minus, points, loop):
             try:
                 # Execute the SQL command
                 await cur.execute(sql)
-                # Fetch all the rows in a list of lists.
+                # Fetch one row
                 result = await cur.fetchone()
             except Exception as e:
                 print("Error: " + str(e))
@@ -138,36 +139,6 @@ async def update_user_karma(database, username, plus_or_minus, points, loop):
     await pool.wait_closed()
 
 
-"""
-# Check the toggle state of an emoji
-def check_for_previous_vote(message_id, username, emoji_symbol):
-    # Set MySQL settings
-    conn = pymysql.connect(host=os.getenv("MYSQL_HOST"),
-                         user=os.getenv("MYSQL_USER"),
-                         passwd=os.getenv("MYSQL_PASS"),
-                         db=database)
-    # prepare a cursor object using cursor() method
-    cursor = db.cursor()
-
-    sql = "SELECT " + emoji_symbol + " FROM message_karma WHERE message_id = " + \
-            str(message_id) + " AND username = '" + username + "';"
-    try:
-        # Execute the SQL command
-        await cursor.execute(sql)
-        # Fetch all the rows in a list of lists.
-        result = cursor.fetchone()
-    except Exception as e:
-        print("Error: " + str(e))
-    finally:
-        await cursor.close()
-        db.close()
-    if int(result) is not 0:
-        return True
-    else:
-        return False
-"""
-
-
 async def update_message_karma(database, message_id, username, emoji_points, loop):
     # Set MySQL settings
     pool = await aiomysql.create_pool(host=os.getenv("MYSQL_HOST"),
@@ -199,7 +170,7 @@ async def update_message_karma(database, message_id, username, emoji_points, loo
             try:
                 # Execute the SQL command
                 await cur.execute(sql)
-                # Fetch all the rows in a list of lists.
+                # Fetch one row
                 result = await cur.fetchone()
             except Exception as e:
                 print("Error: " + str(e))
@@ -256,7 +227,7 @@ async def delete_row(database, message_id, loop):
             try:
                 # Execute the SQL command
                 await cur.execute(sql)
-                # Fetch all the rows in a list of lists.
+                # Fetch one row
                 points_to_delete = await cur.fetchone()
             except Exception as e:
                 print("Error in delete_row: " + str(e))
@@ -294,7 +265,7 @@ async def check_emoji_points(database, message_id, loop):
             try:
                 # Execute the SQL command
                 await cur.execute(sql)
-                # Fetch all the rows in a list of lists.
+                # Fetch one row
                 result = await cur.fetchone()
             except Exception as e:
                 print("Error in check_emoji_points: " + str(e))
@@ -366,7 +337,7 @@ async def get_chat_id(tele_user, loop):
             try:
                 # Execute the SQL command
                 await cur.execute(sql)
-                # Fetch all the rows in a list of lists.
+                # Fetch one row
                 result = await cur.fetchone()
             except Exception as e:
                 print("Error in get_chat_id: " + str(e))
@@ -396,7 +367,7 @@ async def addme_async(chat_type, username, chat_id, loop):
                 try:
                     # Execute the SQL command
                     await cur.execute(sql)
-                    # Fetch all the rows in a list of lists.
+                    # Fetch one row
                     result = await cur.fetchone()
                 except Exception as e:
                     print("Error: " + str(e))
