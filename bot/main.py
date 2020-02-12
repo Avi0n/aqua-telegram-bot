@@ -36,10 +36,9 @@ from telegram.ext.dispatcher import run_async
 from telegram.utils.request import Request
 
 if os.getenv("USE_MYSQL") == "TRUE":
-    import db.mariadb_functions as db
+    import mariadb_functions as db
 else:
-    import db.sqlite_functions as db
-
+    import sqlite_functions as db
 
 # Initialize dotenv
 load_dotenv()
@@ -338,6 +337,7 @@ def repost_check(update, context):
         database = os.getenv("DATABASE3")
 
     result = loop.run_until_complete(db.compare_hash(update.message.reply_to_message.message_id, database, loop))
+    print(str(result))
     # Check to see if more than 1 record was returned
     try:
         if str(result) != "()":
@@ -345,9 +345,10 @@ def repost_check(update, context):
                 message_text = "Yep, that's a repost. Here's the first time it was posted.\nIt's been posted " + \
                                str(result[0][2]) + " times in the last 30 days.\n"
                 context.bot.send_message(chat_id=update.message.chat_id, reply_to_message_id=result[0][0],
-                                        text=message_text)
-        else:
-            context.bot.send_message(chat_id=update.message.chat_id, text="Hmm... doesn't look like a repost to me.")
+                                         text=message_text)
+            else:
+                context.bot.send_message(chat_id=update.message.chat_id,
+                                         text="Hmm... doesn't look like a repost to me.")
     except Exception as e:
         print("Error: " + str(e))
         context.bot.send_message(chat_id=update.message.chat_id, text=str(e))
