@@ -523,10 +523,10 @@ def button(update, context):
                         keyboard = [[InlineKeyboardButton(
                             str(emoji_points[0]) + " " + emojize(":thumbsup:", use_aliases=True), callback_data=1),
                             InlineKeyboardButton(
-                                str(emoji_points[1] / 2) + " " + emojize(":ok_hand:", use_aliases=True),
+                                str(emoji_points[1] // 2) + " " + emojize(":ok_hand:", use_aliases=True),
                                 callback_data=2),
                             InlineKeyboardButton(
-                                str(emoji_points[2] / 3) + " " + emojize(":heart:", use_aliases=True),
+                                str(emoji_points[2] // 3) + " " + emojize(":heart:", use_aliases=True),
                                 callback_data=3),
                             InlineKeyboardButton(emojize(":star:", use_aliases=True), callback_data=10),
                             InlineKeyboardButton("Votes", callback_data=11)]]
