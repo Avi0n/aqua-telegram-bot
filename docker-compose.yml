@@ -1,44 +1,32 @@
 version: '3.1'
 
 services:
-  mariadb:
-    build: ./db-docker
-    container_name: mariadb
-    restart: always
-    hostname: mariadb
-    command: 
-      'mysqld --innodb-flush-method=littlesync --innodb-use-native-aio=OFF --log_bin=ON'
-    environment:
-      - MYSQL_ROOT_PASSWORD=${MYSQL_PASS}
-      - TZ=America/Los_Angeles
-    volumes:
-      - db:/var/lib/mysql
-    ports:
-      - '3306:3306'
+# Uncomment this block if you want to use MariaDB
+#  mariadb:
+#    build: ./docker-mariadb
+#    container_name: mariadb
+#    restart: always
+#    hostname: mariadb
+#    command:
+#      'mysqld --innodb-flush-method=littlesync --innodb-use-native-aio=OFF --log_bin=ON'
+#    environment:
+#      - MYSQL_ROOT_PASSWORD=${MYSQL_PASS}
+#      - TZ=America/Los_Angeles
+#    volumes:
+#      - db:/var/lib/mysql
+#    ports:
+#      - '3306:3306'
 
   aqua-telegram-bot:
     restart: always
-    # Uncomment the following line if you are not a developer
-    # It will simply download the latest version of the bot rather than compiling it on your computer
-    #image: avi0n/aqua-telegram-bot:latest
-    build: .
+    image: avi0n/aqua-telegram-bot:latest
+    # Uncomment the following line if you are developer
+    # build: .
     env_file: .env
     container_name: aqua-telegram-bot
-    depends_on:
-      - mariadb
-
-#  phpmyadmin:
-#    hostname: phpmyadmin
-#    container_name: phpmyadmin
-#    image: phpmyadmin/phpmyadmin
-#    restart: always
-#    links:
-#      - mariadb:db
-#    ports:
-#      - 2001:80
-#    environment:
-#      - PMA_HOST=mariadb
-#      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
-
-volumes:
-  db:
+    volumes:
+      # Change the location of the SQLite database files by replacing "./db" with your custom path
+      - ./db:/bot/db
+    # Uncomment the following 2 lines if you want to use MariaDB
+    # depends_on:
+    #   - mariadb
