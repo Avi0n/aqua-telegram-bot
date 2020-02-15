@@ -15,26 +15,30 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
+
 import asyncio
 import logging
 import os
 import string
 import sys
 
-import aiomysql
 import imagehash
 import imageio
 import telegram.bot
 from PIL import Image
 from dotenv import load_dotenv
 from emoji import emojize
+from get_source import get_source
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import MessageHandler, CommandHandler, CallbackQueryHandler, Filters
 from telegram.ext import messagequeue as mq
 from telegram.ext.dispatcher import run_async
 from telegram.utils.request import Request
 
-from get_source import get_source
+if os.getenv("USE_MYSQL") == "TRUE":
+    import mariadb_functions as db
+else:
+    import sqlite_functions as db
 
 # Initialize dotenv
 load_dotenv()
@@ -98,232 +102,23 @@ def convert_media(inputpath, targetFormat):
     print("Done converting.")
 
 
+def compute_hash(file_name):
+    img = Image.open(file_name)
+    media_hash = imagehash.phash(img)
+    print(str(media_hash))
+    # Cleanup downloaded media
+    try:
+        os.remove("./" + file_name)
+    except Exception as e:
+        print(str(e))
+    return media_hash
+
+
 # Respond to /start
 def start(update, context):
     context.bot.send_message(chat_id=update.message.chat_id,
                              text="Send /karma to see everyone's points.\nSend /addme to let me forward" +
                                   " photos that you " + emojize(":star:", use_aliases=True) + " to you!")
-
-
-@run_async
-# Allow user to delete their own photo
-def delete(update, context):
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
-    # Find room name and assign correct database
-    if update.message.chat.title == os.getenv("GROUP1"):
-        database = os.getenv("DATABASE1")
-    elif update.message.chat.title == os.getenv("GROUP2"):
-        database = os.getenv("DATABASE2")
-    elif update.message.chat.title == os.getenv("GROUP3"):
-        database = os.getenv("DATABASE3")
-
-    username = update.message.reply_to_message.caption.split()
-    delete_message_id = update.message.reply_to_message.message_id
-
-    # Only allow original poster to delete their own message
-    if username[-1] == update.message.from_user.username:
-        try:
-            points_to_delete = loop.run_until_complete(delete_row(database, delete_message_id, loop))
-            loop.run_until_complete(update_user_karma(database, username[-1], "-", str(points_to_delete[0]), loop))
-            # Remove message that user replied to
-            context.bot.delete_message(chat_id=update.message.chat_id,
-                                       message_id=delete_message_id)
-            # Remove the "/delete" message the user sent to keep the chat clean
-            context.bot.delete_message(chat_id=update.message.chat_id, message_id=update.message.message_id)
-        except Exception as e:
-            context.bot.send_message(chat_id=update.message.chat_id, text="Error: " + str(e))
-    else:
-        context.bot.send_message(chat_id=update.message.chat_id, text="You can only delete your own posts.")
-
-
-# Respond to /karma
-@run_async
-def karma(update, context):
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    # Find out which database to use. If the chat is private, watch for user specified database
-    if update.message.chat.type == "private":
-        keyboard = [[InlineKeyboardButton(os.getenv("GROUP1"), callback_data="20"),
-                     InlineKeyboardButton(os.getenv("GROUP2"), callback_data="21")],
-                    [InlineKeyboardButton(os.getenv("GROUP3"), callback_data="22")]]
-
-        reply_markup = InlineKeyboardMarkup(keyboard)
-
-        update.message.reply_text("Please choose a room.", reply_markup=reply_markup)
-
-    else:
-        # If not a private chat, check the room name to match to a database
-        chat_type = "group"
-        if update.message.chat.title == os.getenv("GROUP1"):
-            database = os.getenv("DATABASE1")
-        elif update.message.chat.title == os.getenv("GROUP2"):
-            database = os.getenv("DATABASE2")
-        elif update.message.chat.title == os.getenv("GROUP3"):
-            database = os.getenv("DATABASE3")
-
-        message = loop.run_until_complete(get_user_karma(database, chat_type, loop))
-
-        context.bot.send_message(chat_id=update.message.chat_id, text=message, parse_mode="Markdown", timeout=20)
-
-
-@run_async
-# Respond to /give
-def give(update, context):
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
-    database = ""
-    # Find out which database to use
-    if update.message.chat.title == os.getenv("GROUP1"):
-        database = os.getenv("DATABASE1")
-    elif update.message.chat.title == os.getenv("GROUP2"):
-        database = os.getenv("DATABASE2")
-    elif update.message.chat.title == os.getenv("GROUP3"):
-        database = os.getenv("DATABASE3")
-
-    # Check to see if user used the right command format
-    if "@" in update.message.text:
-        # Remove all punctuation (@) and split the string
-        string_split = update.message.text.split()
-        username = string_split[1].translate(str.maketrans("", "", string.punctuation))
-        points = string_split[2]
-        points_no_punc = points.translate(str.maketrans("", "", string.punctuation))
-        from_username = update.message.from_user.username
-
-        try:
-            if username == from_username:
-                context.bot.send_message(chat_id=update.message.chat_id, text=update.message.from_user.username +
-                                                                              " just tried to give themselves points.")
-                context.bot.send_sticker(chat_id=update.message.chat_id,
-                                         sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
-            elif int(points) == 0:
-                context.bot.send_message(chat_id=update.message.chat_id,
-                                         text="pfft, you just tried to give someone 0 points.")
-                context.bot.send_sticker(chat_id=update.message.chat_id,
-                                         sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
-            elif int(points) < -20:
-                context.bot.send_message(chat_id=update.message.chat_id,
-                                         text="Don't you think that's a tad too many points to be taking away?")
-            elif -21 < int(points) < 0:
-                loop.run_until_complete(update_user_karma(
-                    database, username, "-", points_no_punc, loop))
-                context.bot.send_message(chat_id=update.message.chat_id,
-                                         text=from_username + " took away " + points + " points from " + username + "!")
-            elif 61 > int(points) > 0:
-                loop.run_until_complete(update_user_karma(
-                    database, username, "+", points_no_punc, loop))
-                context.bot.send_message(chat_id=update.message.chat_id,
-                                         text=from_username + " gave " + username + " " + points + " points!")
-            elif int(points) > 61:
-                context.bot.send_message(chat_id=update.message.chat_id,
-                                         text="Don't you think that's a tad too many points?")
-        except Exception as e:
-            context.bot.send_message(chat_id=update.message.chat_id,
-                                     text="Error: " + str(e))
-    else:
-        string_split = update.message.text.split()
-        username = string_split[1]
-        points = string_split[2]
-        context.bot.send_message(chat_id=update.message.chat_id,
-                                 text="The correct format is '/give @" + username + " " + points + "'")
-
-
-# Respond to /addme
-def addme(update, context):
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
-    chat_type = update.message.chat.type
-    username = update.message.from_user.username
-    chat_id = update.message.chat_id
-
-    context.bot.send_message(chat_id=chat_id,
-                             text=loop.run_until_complete(addme_async(chat_type, username, chat_id, loop)))
-
-
-async def addme_async(chat_type, username, chat_id, loop):
-    # Make sure the /addme command is being sent in a PM
-    if chat_type == "private":
-        # Set MySQL settings
-        pool = await aiomysql.create_pool(host=os.getenv("MYSQL_HOST"),
-                                          user=os.getenv("MYSQL_USER"),
-                                          password=os.getenv("MYSQL_PASS"),
-                                          db=os.getenv("DATABASE1"),
-                                          loop=loop)
-        # prepare a cursor object using cursor() method
-        # cursor = await db.cursor()
-
-        async with pool.acquire() as conn:
-            async with conn.cursor() as cur:
-                sql = "SELECT * FROM user_chat_id WHERE username = '" + \
-                      str(username) + "';"
-                try:
-                    # Execute the SQL command
-                    await cur.execute(sql)
-                    # Fetch all the rows in a list of lists.
-                    result = await cur.fetchone()
-                except Exception as e:
-                    print("Error: " + str(e))
-                if result is None:
-                    # Add user's chat_id with Aqua to database
-                    sql = "INSERT INTO user_chat_id VALUES (" + str(
-                        chat_id) + ", '" + str(username) + "');"
-                    try:
-                        # Execute the SQL command
-                        await cur.execute(sql)
-                        # Commit your changes in the database
-                        await conn.commit()
-                        message = "Added! Now whenever you " + emojize(":star:", use_aliases=True) + \
-                                  " a photo, I'll forward it to you here! " + \
-                                  emojize(":smiley:", use_aliases=True)
-                    except Exception as e:
-                        # Rollback in case there is any error
-                        await conn.rollback()
-                        print("Adding user's chat_id failed. " + str(e))
-                        message = "Error: " + str(e)
-                    finally:
-                        await cur.close()
-                else:
-                    message = "You've already been added! " + \
-                              emojize(":star:", use_aliases=True) + " away :)"
-        pool.close()
-        await pool.wait_closed()
-    else:
-        message = "That doesn't work in here. Send me a PM instead " + \
-                  emojize(":wink:", use_aliases=True)
-    return message
-
-
-# Respond to /check_repost
-def repost_check(update, context):
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
-    # Find room name and assign correct database
-    if update.message.chat.title == os.getenv("GROUP1"):
-        database = os.getenv("DATABASE1")
-    elif update.message.chat.title == os.getenv("GROUP2"):
-        database = os.getenv("DATABASE2")
-    elif update.message.chat.title == os.getenv("GROUP3"):
-        database = os.getenv("DATABASE3")
-
-    result = loop.run_until_complete(compare_hash(update.message.reply_to_message.message_id, database, loop))
-    # Check to see if more than 1 record was returned
-    try:
-        if str(result) != "()":
-            if int(result[0][2]) > 1:
-                message_text = "Yep, that's a repost. Here's the first time it was posted.\nIt's been posted " + \
-                               str(result[0][2]) + " times in the last 30 days.\n"
-
-            context.bot.send_message(chat_id=update.message.chat_id, reply_to_message_id=result[0][0],
-                                     text=message_text)
-        else:
-            context.bot.send_message(chat_id=update.message.chat_id, text="Hmm... doesn't look like a repost to me.")
-    except Exception as e:
-        print("Error: " + str(e))
-        context.bot.send_message(chat_id=update.message.chat_id, text=str(e))
 
 
 # Respond to /sauce
@@ -368,7 +163,7 @@ def source(update, context):
         # Download the media (jpg, png, mp4)
         file.download(timeout=10)
         # If it's an mp4, convert it to gif
-        for fname in os.listdir("."):
+        for fname in os.listdir(".."):
             if fname.endswith(".mp4"):
                 convert_media(fname, TargetFormat.GIF)
                 os.remove(fname)
@@ -383,450 +178,180 @@ def source(update, context):
         context.bot.send_message(chat_id=update.message.chat_id, text="Did you forget to reply to an image?")
 
     # Cleanup downloaded media
-    for fname in os.listdir("."):
+    for fname in os.listdir(".."):
         if fname.endswith(".gif"):
             os.remove("source.gif")
         elif fname.endswith(".jpg"):
             os.remove(fname)
 
 
-# Retrieve user's karma from the database
-async def get_user_karma(database, chat_type, loop):
-    # Set MySQL settings
-    pool = await aiomysql.create_pool(host=os.getenv("MYSQL_HOST"),
-                                      user=os.getenv("MYSQL_USER"),
-                                      password=os.getenv("MYSQL_PASS"),
-                                      db=database,
-                                      loop=loop)
-    # prepare a cursor object using cursor() method
-    # cursor = await db.cursor()
+@run_async
+# Allow user to delete their own photo
+def delete(update, context):
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
 
-    if database == os.getenv("DATABASE1"):
-        groupname = os.getenv("GROUP1")
-    if database == os.getenv("DATABASE2"):
-        groupname = os.getenv("GROUP2")
-    if database == os.getenv("DATABASE3"):
-        groupname = os.getenv("GROUP3")
+    # Find room name and assign correct database
+    if update.message.chat.title == os.getenv("GROUP1"):
+        database = os.getenv("DATABASE1")
+    elif update.message.chat.title == os.getenv("GROUP2"):
+        database = os.getenv("DATABASE2")
+    elif update.message.chat.title == os.getenv("GROUP3"):
+        database = os.getenv("DATABASE3")
 
-    # Add chat group name to the results of /karma
-    if chat_type == "private":
-        return_message = groupname + "\n"
+    username = update.message.reply_to_message.caption.split()
+    delete_message_id = update.message.reply_to_message.message_id
+
+    # Only allow original poster to delete their own message
+    if username[-1] == update.message.from_user.username:
+        try:
+            points_to_delete = loop.run_until_complete(db.delete_row(database, delete_message_id, loop))
+            loop.run_until_complete(db.update_user_karma(database, username[-1], "-", str(points_to_delete[0]), loop))
+            # Remove message that user replied to
+            context.bot.delete_message(chat_id=update.message.chat_id,
+                                       message_id=delete_message_id)
+            # Remove the "/delete" message the user sent to keep the chat clean
+            context.bot.delete_message(chat_id=update.message.chat_id, message_id=update.message.message_id)
+        except Exception as e:
+            context.bot.send_message(chat_id=update.message.chat_id, text="Error: " + str(e))
     else:
-        return_message = ""
-
-    sql = "SELECT * FROM user_karma WHERE karma <> 0 ORDER BY username;"
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            try:
-                # Execute the SQL command
-                await cur.execute(sql)
-                # Fetch all the rows in a list of lists.
-                results = await cur.fetchall()
-
-                return_message += "```\n"
-
-                # Find length of longest username and karma
-                longest_username_length = 0
-                longest_karma_length = 0
-                for row in results:
-                    longest_username_length = max(longest_username_length, len(row[0]))
-                    longest_karma_length = max(longest_karma_length, len(str(row[1])))
-
-                # Add each user and karma as its own row
-                for row in results:
-                    username = row[0]
-                    karma_points = row[1]
-                    return_message += username + (" " * (longest_username_length - len(username))) + \
-                                      "   " + (" " * (longest_karma_length - len(str(karma_points)))) + str(
-                        karma_points) + "\n"
-
-                return_message += "\n```" + emojize(":v:", use_aliases=True)
-
-            except Exception as e:
-                if "1046" in str(e):
-                    return_message = "The database options are:  \n- DTP  \n- DJB  \n- DCR"
-                else:
-                    return_message += "Error: " + str(e)
-                    print("get_user_karma() error: " + str(e))
-            finally:
-                await cur.close()
-    pool.close()
-    await pool.wait_closed()
-    return return_message
+        context.bot.send_message(chat_id=update.message.chat_id, text="You can only delete your own posts.")
 
 
-# Increment the total karma for a specific user
-async def update_user_karma(database, username, plus_or_minus, points, loop):
-    # Set MySQL settings
-    pool = await aiomysql.create_pool(host=os.getenv("MYSQL_HOST"),
-                                      user=os.getenv("MYSQL_USER"),
-                                      password=os.getenv("MYSQL_PASS"),
-                                      db=database, loop=loop)
-    # prepare a cursor object using cursor() method
-    # cur = await conn.cursor()
+# Respond to /karma
+@run_async
+def karma(update, context):
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    # Find out which database to use. If the chat is private, watch for user specified database
+    if update.message.chat.type == "private":
+        keyboard = [[InlineKeyboardButton(os.getenv("GROUP1"), callback_data="20"),
+                     InlineKeyboardButton(os.getenv("GROUP2"), callback_data="21")],
+                    [InlineKeyboardButton(os.getenv("GROUP3"), callback_data="22")]]
 
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            sql = "SELECT * FROM user_karma WHERE username = '" + username + "';"
-            try:
-                # Execute the SQL command
-                await cur.execute(sql)
-                # Fetch all the rows in a list of lists.
-                result = await cur.fetchone()
-            except Exception as e:
-                print("Error: " + str(e))
-            if result is None:
-                # Add username to the database along with the points that were just added
-                sql = "INSERT INTO user_karma VALUES ('" + username + "', " + points + ");"
-                try:
-                    # Execute the SQL command
-                    await cur.execute(sql)
-                    # Commit your changes in the database
-                    await conn.commit()
-                except Exception as e:
-                    # Rollback in case there is any error
-                    await conn.rollback()
-                    print("update_karma error: " + str(e))
-                finally:
-                    await cur.close()
-            else:
-                sql = "UPDATE user_karma SET karma = karma" + plus_or_minus + points + " WHERE username = '" + \
-                      username + "';"
-                try:
-                    # Execute the SQL command
-                    await cur.execute(sql)
-                    # Commit your changes in the database
-                    await conn.commit()
-                except Exception as e:
-                    # Rollback in case there is any error
-                    await conn.rollback()
-                    print("update_karma error: " + str(e))
-                finally:
-                    await cur.close()
-    pool.close()
-    await pool.wait_closed()
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
+        update.message.reply_text("Please choose a room.", reply_markup=reply_markup)
+
+    else:
+        # If not a private chat, check the room name to match to a database
+        chat_type = "group"
+        if update.message.chat.title == os.getenv("GROUP1"):
+            database = os.getenv("DATABASE1")
+        elif update.message.chat.title == os.getenv("GROUP2"):
+            database = os.getenv("DATABASE2")
+        elif update.message.chat.title == os.getenv("GROUP3"):
+            database = os.getenv("DATABASE3")
+
+        message = loop.run_until_complete(db.get_user_karma(database, chat_type, loop))
+
+        context.bot.send_message(chat_id=update.message.chat_id, text=message, parse_mode="Markdown", timeout=20)
 
 
-"""
-# Check the toggle state of an emoji
-def check_for_previous_vote(message_id, username, emoji_symbol):
-    # Set MySQL settings
-    conn = pymysql.connect(host=os.getenv("MYSQL_HOST"),
-                         user=os.getenv("MYSQL_USER"),
-                         passwd=os.getenv("MYSQL_PASS"),
-                         db=database)
-    # prepare a cursor object using cursor() method
-    cursor = db.cursor()
+@run_async
+# Respond to /give
+def give(update, context):
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
 
-    sql = "SELECT " + emoji_symbol + " FROM message_karma WHERE message_id = " + \
-            str(message_id) + " AND username = '" + username + "';"
+    database = ""
+    # Find out which database to use
+    if update.message.chat.title == os.getenv("GROUP1"):
+        database = os.getenv("DATABASE1")
+    elif update.message.chat.title == os.getenv("GROUP2"):
+        database = os.getenv("DATABASE2")
+    elif update.message.chat.title == os.getenv("GROUP3"):
+        database = os.getenv("DATABASE3")
+
+    # Check to see if user used the right command format
+    if "@" in update.message.text:
+        # Remove all punctuation (@) and split the string
+        string_split = update.message.text.split()
+        username = string_split[1].translate(str.maketrans("", "", string.punctuation))
+        points = string_split[2]
+        points_no_punc = points.translate(str.maketrans("", "", string.punctuation))
+        from_username = update.message.from_user.username
+
+        try:
+            if username == from_username:
+                context.bot.send_message(chat_id=update.message.chat_id, text=update.message.from_user.username +
+                                                                              " just tried to give themselves points.")
+                context.bot.send_sticker(chat_id=update.message.chat_id,
+                                         sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
+            elif int(points) == 0:
+                context.bot.send_message(chat_id=update.message.chat_id,
+                                         text="pfft, you just tried to give someone 0 points.")
+                context.bot.send_sticker(chat_id=update.message.chat_id,
+                                         sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
+            elif int(points) < -20:
+                context.bot.send_message(chat_id=update.message.chat_id,
+                                         text="Don't you think that's a tad too many points to be taking away?")
+            elif -21 < int(points) < 0:
+                loop.run_until_complete(db.update_user_karma(
+                    database, username, "-", points_no_punc, loop))
+                context.bot.send_message(chat_id=update.message.chat_id,
+                                         text=from_username + " took away " + points + " points from " + username + "!")
+            elif 61 > int(points) > 0:
+                loop.run_until_complete(db.update_user_karma(
+                    database, username, "+", points_no_punc, loop))
+                context.bot.send_message(chat_id=update.message.chat_id,
+                                         text=from_username + " gave " + username + " " + points + " points!")
+            elif int(points) > 61:
+                context.bot.send_message(chat_id=update.message.chat_id,
+                                         text="Don't you think that's a tad too many points?")
+        except Exception as e:
+            context.bot.send_message(chat_id=update.message.chat_id,
+                                     text="Error: " + str(e))
+    else:
+        string_split = update.message.text.split()
+        username = string_split[1]
+        points = string_split[2]
+        context.bot.send_message(chat_id=update.message.chat_id,
+                                 text="The correct format is '/give @" + username + " " + points + "'")
+
+
+# Respond to /addme
+def addme(update, context):
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    chat_type = update.message.chat.type
+    username = update.message.from_user.username
+    chat_id = update.message.chat_id
+
+    context.bot.send_message(chat_id=chat_id,
+                             text=loop.run_until_complete(db.addme_async(chat_type, username, chat_id, loop)))
+
+
+# Respond to /check_repost
+def repost_check(update, context):
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    # Find room name and assign correct database
+    if update.message.chat.title == os.getenv("GROUP1"):
+        database = os.getenv("DATABASE1")
+    elif update.message.chat.title == os.getenv("GROUP2"):
+        database = os.getenv("DATABASE2")
+    elif update.message.chat.title == os.getenv("GROUP3"):
+        database = os.getenv("DATABASE3")
+
+    result = loop.run_until_complete(db.compare_hash(update.message.reply_to_message.message_id, database, loop))
+    print(str(result))
+    # Check to see if more than 1 record was returned
     try:
-        # Execute the SQL command
-        await cursor.execute(sql)
-        # Fetch all the rows in a list of lists.
-        result = cursor.fetchone()
+        if str(result) != "()":
+            if int(result[0][2]) > 1:
+                message_text = "Yep, that's a repost. Here's the first time it was posted.\nIt's been posted " + \
+                               str(result[0][2]) + " times in the last 30 days.\n"
+                context.bot.send_message(chat_id=update.message.chat_id, reply_to_message_id=result[0][0],
+                                         text=message_text)
+            else:
+                context.bot.send_message(chat_id=update.message.chat_id,
+                                         text="Hmm... doesn't look like a repost to me.")
     except Exception as e:
         print("Error: " + str(e))
-    finally:
-        await cursor.close()
-        db.close()
-    if int(result) is not 0:
-        return True
-    else:
-        return False
-"""
-
-
-async def update_message_karma(database, message_id, username, emoji_points, loop):
-    # Set MySQL settings
-    pool = await aiomysql.create_pool(host=os.getenv("MYSQL_HOST"),
-                                      user=os.getenv("MYSQL_USER"),
-                                      password=os.getenv("MYSQL_PASS"),
-                                      db=database,
-                                      loop=loop)
-    # prepare a cursor object using cursor() method
-    # cursor = await db.cursor()
-
-    thumb_points = 0
-    ok_points = 0
-    heart_points = 0
-    # Figure out which column to update
-    if int(emoji_points) == 1:
-        emoji_symbol = "thumbsup"
-        thumb_points = 1
-    elif int(emoji_points) == 2:
-        emoji_symbol = "ok_hand"
-        ok_points = 2
-    elif int(emoji_points) == 3:
-        emoji_symbol = "heart"
-        heart_points = 3
-
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            sql = "SELECT * FROM message_karma WHERE message_id = " + \
-                  str(message_id) + " AND username = '" + username + "';"
-            try:
-                # Execute the SQL command
-                await cur.execute(sql)
-                # Fetch all the rows in a list of lists.
-                result = await cur.fetchone()
-            except Exception as e:
-                print("Error: " + str(e))
-            if result is None:
-                # Insert new row with message_id, username, and emoji point values
-                sql = "INSERT INTO message_karma VALUES (" + str(message_id) + ", '" + username + \
-                      "', " + str(thumb_points) + ", " + str(ok_points) + \
-                      ", " + str(heart_points) + ");"
-                try:
-                    # Execute the SQL command
-                    await cur.execute(sql)
-                    # Commit your changes in the database
-                    await conn.commit()
-                except Exception as e:
-                    # Rollback in case there is any error
-                    await conn.rollback()
-                    print("update_message_karma insert error: " + str(e))
-                finally:
-                    await cur.close()
-            else:
-                # Update emoji points that user has given a specific message_id
-                sql = "UPDATE message_karma SET " + emoji_symbol + " = " + emoji_symbol + " + " + str(emoji_points) + \
-                      " WHERE message_id = " + \
-                      str(message_id) + " AND username = '" + username + "';"
-                try:
-                    # Execute the SQL command
-                    await cur.execute(sql)
-                    # Commit your changes in the database
-                    await conn.commit()
-                except Exception as e:
-                    # Rollback in case there is any error
-                    await conn.rollback()
-                    print("update_message_karma error: " + str(e))
-                finally:
-                    await cur.close()
-    pool.close()
-    await pool.wait_closed()
-
-
-# Delete message_id row from database
-async def delete_row(database, message_id, loop):
-    # Set MySQL settings
-    pool = await aiomysql.create_pool(host=os.getenv("MYSQL_HOST"),
-                                      user=os.getenv("MYSQL_USER"),
-                                      password=os.getenv("MYSQL_PASS"),
-                                      db=database,
-                                      loop=loop)
-
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            # Add message_id, photo's hash, and current date to database
-            sql = "SELECT SUM(thumbsup + ok_hand + heart) FROM message_karma WHERE message_id = " + \
-                  str(message_id) + ";"
-            try:
-                # Execute the SQL command
-                await cur.execute(sql)
-                # Fetch all the rows in a list of lists.
-                points_to_delete = await cur.fetchone()
-            except Exception as e:
-                print("Error in delete_row: " + str(e))
-            # Delete hashes older than 30 days
-            sql = "DELETE from message_karma WHERE message_id = " + str(message_id) + ";"
-            try:
-                # Execute the SQL command
-                await cur.execute(sql)
-                # Commit your changes in the database
-                await conn.commit()
-            except Exception as e:
-                # Rollback in case there is any error
-                await conn.rollback()
-                print("Error in delete_row: " + str(e))
-            finally:
-                await cur.close()
-    pool.close()
-    await pool.wait_closed()
-    return points_to_delete
-
-
-# Check total karma for specific emoji for a specific message
-async def check_emoji_points(database, message_id, loop):
-    # Set MySQL settings
-    pool = await aiomysql.create_pool(host=os.getenv("MYSQL_HOST"),
-                                      user=os.getenv("MYSQL_USER"),
-                                      password=os.getenv("MYSQL_PASS"),
-                                      db=database,
-                                      loop=loop)
-
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            sql = "SELECT SUM(thumbsup), SUM(ok_hand), SUM(heart) FROM message_karma WHERE message_id = " + \
-                  str(message_id) + ";"
-            try:
-                # Execute the SQL command
-                await cur.execute(sql)
-                # Fetch all the rows in a list of lists.
-                result = await cur.fetchone()
-            except Exception as e:
-                print("Error in check_emoji_points: " + str(e))
-            finally:
-                await cur.close()
-    pool.close()
-    await pool.wait_closed()
-    return result
-
-
-# Get total karma per user for a specific message
-async def get_message_karma(database, message_id, loop):
-    # Set MySQL settings
-    pool = await aiomysql.create_pool(host=os.getenv("MYSQL_HOST"),
-                                      user=os.getenv("MYSQL_USER"),
-                                      password=os.getenv("MYSQL_PASS"),
-                                      db=database,
-                                      loop=loop)
-
-    return_message = "Votes\n\n"
-
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            sql = "SELECT username, SUM(thumbsup + ok_hand + heart) AS karma FROM message_karma WHERE message_id = " + \
-                  str(message_id) + " GROUP BY username ORDER BY username;"
-            try:
-                # Execute the SQL command
-                await cur.execute(sql)
-                # Fetch all the rows in a list of lists.
-                results = await cur.fetchall()
-
-                # Find length of longest username and karma
-                longest_username_length = 0
-                longest_karma_length = 0
-                for row in results:
-                    longest_username_length = max(longest_username_length, len(row[0]))
-                    longest_karma_length = max(longest_karma_length, len(str(row[1])))
-
-                # Add each user and karma as its own row
-                for row in results:
-                    username = row[0]
-                    karma_points = row[1]
-                    return_message += username + (" " * (longest_username_length - len(username))) + "   " + (
-                            " " * (longest_karma_length - len(str(karma_points)))) + str(karma_points) + "\n"
-            except Exception as e:
-                return_message += "Error"
-                print("Error in get_message_karma: " + str(e))
-            finally:
-                await cur.close()
-    pool.close()
-    await pool.wait_closed()
-    return return_message
-
-
-# Get user's personal chat_id with Aqua
-async def get_chat_id(tele_user, loop):
-    # Set MySQL settings
-    pool = await aiomysql.create_pool(host=os.getenv("MYSQL_HOST"),
-                                      user=os.getenv("MYSQL_USER"),
-                                      password=os.getenv("MYSQL_PASS"),
-                                      db=os.getenv("DATABASE1"),
-                                      loop=loop)
-    # prepare a cursor object using cursor() method
-    # cursor = await db.cursor()
-
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            sql = "SELECT chat_id FROM user_chat_id WHERE username = '" + str(tele_user) + "';"
-            try:
-                # Execute the SQL command
-                await cur.execute(sql)
-                # Fetch all the rows in a list of lists.
-                result = await cur.fetchone()
-            except Exception as e:
-                print("Error in get_chat_id: " + str(e))
-            finally:
-                await cur.close()
-    pool.close()
-    await pool.wait_closed()
-    return result[0]
-
-
-def compute_hash(file_name):
-    img = Image.open(file_name)
-    media_hash = imagehash.phash(img)
-    print(str(media_hash))
-    # Cleanup downloaded media
-    try:
-        os.remove("./" + file_name)
-    except Exception as e:
-        print(str(e))
-    return media_hash
-
-
-# Store hash of message_id's media in database
-async def store_hash(database, message_id, media_hash, loop):
-    # Set MySQL settings
-    pool = await aiomysql.create_pool(host=os.getenv("MYSQL_HOST"),
-                                      user=os.getenv("MYSQL_USER"),
-                                      password=os.getenv("MYSQL_PASS"),
-                                      db=database,
-                                      loop=loop)
-
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            # Add message_id, photo's hash, and current date to database
-            sql = "INSERT INTO media_hash VALUES (" + str(message_id) + ",'" + media_hash + "', + CURRENT_DATE);"
-            try:
-                # Execute the SQL command
-                await cur.execute(sql)
-                # Commit your changes in the database
-                await conn.commit()
-            except Exception as e:
-                # Rollback in case there is any error
-                await conn.rollback()
-                print("Error in store_hash: " + str(e))
-            # Delete hashes older than 30 days
-            sql = "DELETE FROM media_hash WHERE Date < NOW() - INTERVAL 30 DAY;"
-            try:
-                # Execute the SQL command
-                await cur.execute(sql)
-                # Commit your changes in the database
-                await conn.commit()
-            except Exception as e:
-                # Rollback in case there is any error
-                await conn.rollback()
-                print("Error in store_hash: " + str(e))
-            finally:
-                await cur.close()
-    pool.close()
-    await pool.wait_closed()
-
-
-# Check hash of message_id's media against all previously stored hashes
-async def compare_hash(message_id, database, loop):
-    # Set MySQL settings
-    pool = await aiomysql.create_pool(host=os.getenv("MYSQL_HOST"),
-                                      user=os.getenv("MYSQL_USER"),
-                                      password=os.getenv("MYSQL_PASS"),
-                                      db=database,
-                                      loop=loop)
-
-    async with pool.acquire() as conn:
-        async with conn.cursor() as cur:
-            # SELECT message_id, hash, COUNT(hash) FROM media_hash
-            # WHERE hash = (SELECT hash FROM media_hash WHERE message_id=4223)
-            # GROUP BY hash HAVING COUNT(*) > 1
-            sql = "SELECT message_id, hash, COUNT(hash), 'temp' AS temp_col FROM media_hash" + \
-                  " WHERE LEFT(hash, 4) = " + \
-                  "(SELECT LEFT(hash, 4) FROM media_hash WHERE message_id = " + str(message_id) + ")" + \
-                  " GROUP BY temp_col HAVING COUNT(*) > 1;"
-            try:
-                # Execute the SQL command
-                await cur.execute(sql)
-                # Fetch all the rows in a list of lists.
-                result = await cur.fetchall()
-            except Exception as e:
-                print("Error in compare_hash: " + str(e))
-            finally:
-                await cur.close()
-    pool.close()
-    await pool.wait_closed()
-    return result
+        context.bot.send_message(chat_id=update.message.chat_id, text=str(e))
 
 
 @run_async
@@ -893,7 +418,7 @@ def repost(update, context):
                 database = os.getenv("DATABASE2")
             elif update.message.chat.title == os.getenv("GROUP3"):
                 database = os.getenv("DATABASE3")
-            loop.run_until_complete(store_hash(database, repost_id, str(media_hash), loop))
+            loop.run_until_complete(db.store_hash(database, repost_id, str(media_hash), loop))
         except Exception as e:
             print("Not a photo")
             print(str(e))
@@ -949,15 +474,15 @@ def button(update, context):
     if query.message.chat.type == "private":
         chat_type = "private"
         if int(query.data) == 20:
-            message = loop.run_until_complete(get_user_karma(os.getenv("DATABASE1"), chat_type, loop))
+            message = loop.run_until_complete(db.get_user_karma(os.getenv("DATABASE1"), chat_type, loop))
             query.edit_message_text(text=message, parse_mode="Markdown", timeout=20)
         elif int(query.data) == 21:
             query.edit_message_text(
-                text=loop.run_until_complete(get_user_karma(os.getenv("DATABASE2"), chat_type, loop)),
+                text=loop.run_until_complete(db.get_user_karma(os.getenv("DATABASE2"), chat_type, loop)),
                 parse_mode="Markdown", timeout=20)
         elif int(query.data) == 22:
             query.edit_message_text(
-                text=loop.run_until_complete(get_user_karma(os.getenv("DATABASE3"), chat_type, loop)),
+                text=loop.run_until_complete(db.get_user_karma(os.getenv("DATABASE3"), chat_type, loop)),
                 parse_mode="Markdown", timeout=20)
     else:
         database = ""
@@ -966,8 +491,6 @@ def button(update, context):
         username = query.message.caption.split()
 
         # Find room name and assign correct database
-        print("env GROUP1: " + os.getenv("GROUP1"))
-        print("query.message.chat.title" + query.message.chat.title)
         if query.message.chat.title == os.getenv("GROUP1"):
             database = os.getenv("DATABASE1")
         elif query.message.chat.title == os.getenv("GROUP2"):
@@ -989,21 +512,21 @@ def button(update, context):
             else:
                 if self_vote is False:
                     try:
-                        loop.run_until_complete(update_user_karma(
+                        loop.run_until_complete(db.update_user_karma(
                             database, username[-1], "+", query.data, loop))
-                        loop.run_until_complete(update_message_karma(
+                        loop.run_until_complete(db.update_message_karma(
                             database, query.message.message_id, query.from_user.username, query.data, loop))
                         emoji_points = loop.run_until_complete(
-                            check_emoji_points(database, query.message.message_id, loop))
+                            db.check_emoji_points(database, query.message.message_id, loop))
 
                         # Update emoji points. Divide by 2 & 3 for ok_hand and heart to get the correct number of votes
                         keyboard = [[InlineKeyboardButton(
                             str(emoji_points[0]) + " " + emojize(":thumbsup:", use_aliases=True), callback_data=1),
                             InlineKeyboardButton(
-                                str(emoji_points[1] / 2) + " " + emojize(":ok_hand:", use_aliases=True),
+                                str(emoji_points[1] // 2) + " " + emojize(":ok_hand:", use_aliases=True),
                                 callback_data=2),
                             InlineKeyboardButton(
-                                str(emoji_points[2] / 3) + " " + emojize(":heart:", use_aliases=True),
+                                str(emoji_points[2] // 3) + " " + emojize(":heart:", use_aliases=True),
                                 callback_data=3),
                             InlineKeyboardButton(emojize(":star:", use_aliases=True), callback_data=10),
                             InlineKeyboardButton("Votes", callback_data=11)]]
@@ -1031,13 +554,13 @@ def button(update, context):
         elif int(query.data) == 11:
             context.bot.answer_callback_query(
                 callback_query_id=query.id,
-                text=loop.run_until_complete(get_message_karma(database, query.message.message_id, loop)),
+                text=loop.run_until_complete(db.get_message_karma(database, query.message.message_id, loop)),
                 show_alert=True, timeout=None)
         # Forward message that the user star'd
         elif int(query.data) == 10:
             try:
                 # Get user's personal chat_id with Aqua
-                tele_chat_id = loop.run_until_complete(get_chat_id(query.from_user.username, loop))
+                tele_chat_id = loop.run_until_complete(db.get_chat_id(query.from_user.username, loop))
                 # Send photo/video with link to the original message
                 if update.callback_query.message.caption is not None:
                     repost_caption = update.callback_query.message.caption + "\n\n" + update.callback_query.message.link
@@ -1083,6 +606,9 @@ def button(update, context):
 
 
 def main():
+    # Check to see if SQLite files exist
+    db.check_first_db_run()
+
     token = os.getenv("TEL_BOT_TOKEN")
     q = mq.MessageQueue()
     # set connection pool size for bot
