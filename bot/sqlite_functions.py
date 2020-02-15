@@ -28,41 +28,56 @@ def check_first_db_run():
     print("Checking if this is the first run. If so, we need to populate the databases.")
     first_run = False
 
-    db = sqlite3.connect("db/" + os.getenv("DATABASE1") + ".db")
-    sql = "SELECT * FROM user_karma;"
-    cursor = db.cursor()
-
     try:
+        db = sqlite3.connect("db/" + os.getenv("DATABASE1") + ".db")
+        sql = "SELECT * FROM user_karma;"
+        cursor = db.cursor()
+
         # Execute the SQL command
         cursor.execute(sql)
         # Fetch all the rows in a list of lists.
         result = cursor.fetchall()
-        print(str(result))
-    except Exception as e:
-        print("This is the first run. Populating databases.")
-        first_run = True
-    finally:
-        cursor.close()
-    db.close()
 
-    if first_run is True:
-        populate_db()
-    else:
+        cursor.close()
+        db.close()
+
         print("Not the first run, continuing to start the bot")
+    except:
+        print("This is the first run. Populating databases.")
+        # Polulate the database
+        populate_db()
 
     return
 
 
 def populate_db():
     print("Entered populate_db")
-    # Run 3 times, once for each database
+
+    # Create user_chat_id table
+    db = sqlite3.connect("db/" + os.getenv("DATABASE1") + ".db")
+    cursor = db.cursor()
+    sql = '''
+            CREATE TABLE user_chat_id (
+              chat_id int(11) DEFAULT NULL,
+              username varchar(255) DEFAULT NULL
+            )'''
+    try:
+        # Execute the SQL command
+        cursor.execute(sql)
+    except Exception as e:
+        print("Error in check_first_db_run while creating the table user_chat_id: " + str(e))
+    cursor.close()
+    db.close()
+
+    # Create rest of the tables. Run 3 times, once for each database
     for x in range(1, 4):
         db = sqlite3.connect("db/" + os.getenv("DATABASE" + str(x)) + ".db")
+        cursor = db.cursor()
+
         sql = '''
                 CREATE TABLE media_hash(
                   message_id int(11) NOT NULL, hash varchar(255) NOT NULL, date date NOT NULL
                 )'''
-        cursor = db.cursor()
 
         try:
             # Execute the SQL command
@@ -84,17 +99,6 @@ def populate_db():
             cursor.execute(sql)
         except Exception as e:
             print("Error in check_first_db_run while creating the table message_karma: " + str(e))
-
-        sql = '''
-                CREATE TABLE user_chat_id (
-                  chat_id int(11) DEFAULT NULL,
-                  username varchar(255) DEFAULT NULL
-                )'''
-        try:
-            # Execute the SQL command
-            cursor.execute(sql)
-        except Exception as e:
-            print("Error in check_first_db_run while creating the table user_chat_id: " + str(e))
 
         sql = '''
                 CREATE TABLE user_karma (
