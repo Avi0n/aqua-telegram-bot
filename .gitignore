@@ -2,6 +2,7 @@
 env
 .gitlab-ci.yml
 .DS_Store
+db/
 settings.json
 source.jpg
 source.gif
