@@ -25,7 +25,6 @@ from emoji import emojize
 
 # Check for first run
 def check_first_db_run():
-    print("Checking if this is the first run. If so, we need to populate the databases.")
     first_run = False
 
     try:
