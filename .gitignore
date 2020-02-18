@@ -2,6 +2,7 @@
 env
 .gitlab-ci.yml
 .DS_Store
+__pycache__
 db/
 settings.json
 source.jpg
