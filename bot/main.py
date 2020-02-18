@@ -342,11 +342,11 @@ def repost_check(update, context):
     hash_list = loop.run_until_complete(db.fetch_all_hashes(update.message.reply_to_message.message_id, database, loop))
     orig_hash_message_id = 0
 
-    i = 0
     dupes = 0
     first_dupe_found = False
     # Compare hash or message command was used on with all other hashes
-    for x in hash_list:
+    for i in range(len(hash_list)):
+        print(str(i))
         # If the hash difference is less than 10, assume it is a duplicate
         if (imagehash.hex_to_hash(photo_hash[0]) - imagehash.hex_to_hash(hash_list[i][1])) < 10:
             dupes += 1
@@ -354,7 +354,6 @@ def repost_check(update, context):
             if first_dupe_found is False:
                 orig_hash_message_id = hash_list[i][0]
                 first_dupe_found = True
-        i += 1
 
     # If duplicates were found, let the user know
     try:
@@ -443,9 +442,8 @@ def repost(update, context):
             elif update.message.chat.title == os.getenv("GROUP3"):
                 database = os.getenv("DATABASE3")
             loop.run_until_complete(db.store_hash(database, repost_id, str(media_hash), loop))
-        except Exception as e:
+        except:
             print("Not a photo")
-            print(str(e))
         else:
             # Delete original message
             context.bot.delete_message(chat_id=update.message.chat.id, message_id=update.message.message_id)
@@ -460,9 +458,8 @@ def repost(update, context):
                                        caption=repost_caption,
                                        reply_to_message_id=reply_message_id, reply_markup=reply_markup, timeout=20,
                                        parse_mode="HTML")
-        except Exception as e:
+        except:
             print("Not a document video")
-            print(str(e))
         else:
             # Delete original message
             context.bot.delete_message(
@@ -478,9 +475,8 @@ def repost(update, context):
                                    caption=repost_caption,
                                    reply_to_message_id=reply_message_id, reply_markup=reply_markup, timeout=20,
                                    parse_mode="HTML")
-        except Exception as e:
+        except:
             print("Not a video video")
-            print(str(e))
         else:
             # Delete original message
             context.bot.delete_message(chat_id=update.message.chat.id, message_id=update.message.message_id)
