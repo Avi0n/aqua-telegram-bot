@@ -127,7 +127,6 @@ def sauce(update, context):
 
 # Respond to /source
 def source(update, context):
-    authorized_room = True
     media_id = None
 
     try:
@@ -136,11 +135,24 @@ def source(update, context):
         print(str(e))
         username = None
 
+    if os.getenv("SOURCE_COMMAND_AUTH_ROOMS_ONLY") == "TRUE":
+        # Make sure the command is being used in an authorized room
+        if update.message.chat.title == os.getenv("GROUP1"):
+            authorized_room = True
+        elif update.message.chat.title == os.getenv("GROUP2"):
+            authorized_room = True
+        elif update.message.chat.title == os.getenv("GROUP3"):
+            authorized_room = True
+        else:
+            authorized_room = False
+    else:
+        authorized_room = True
+
     if authorized_room is True and username is not None:
         # Get media's file_id
         while True:
             try:
-                media_id = update.message.reply_to_message.photo[1].file_id
+                media_id = update.message.reply_to_message.photo[-1].file_id
                 break
             except Exception as e:
                 print("Not a photo")
@@ -346,7 +358,6 @@ def repost_check(update, context):
     first_dupe_found = False
     # Compare hash or message command was used on with all other hashes
     for i in range(len(hash_list)):
-        print(str(i))
         # If the hash difference is less than 10, assume it is a duplicate
         if (imagehash.hex_to_hash(photo_hash[0]) - imagehash.hex_to_hash(hash_list[i][1])) < 10:
             dupes += 1
