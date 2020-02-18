@@ -20,6 +20,7 @@ import logging
 import os
 import string
 import sys
+from pathlib import Path
 
 import imagehash
 import imageio
@@ -127,14 +128,22 @@ def sauce(update, context):
 
 # Respond to /source
 def source(update, context):
-    authorized_room = True
+    # Check if only authorized rooms can use this command
+    if os.getenv("SOURCE_COMMAND_AUTH_ROOMS_ONLY") == "TRUE":
+        # Make sure the command is being used in an authorized room
+        if update.message.chat.title in (os.getenv("GROUP1"), os.getenv("GROUP2"), os.getenv("GROUP3")):
+            authorized_room = True
+        else:
+            authorized_room = False
+    else:
+        authorized_room = True
 
     # Check if the user replied to anything
     if update.message.reply_to_message is None:
         context.bot.send_message(chat_id=update.message.chat_id, text="Did you forget to reply to an image?")
     
-    # Check if the user is not in an "authorized room"
-    elif not authorized_room:
+    # Catch this command being used in an unauthorized room
+    elif authorized_room is False:
         print("You're not authorized to use that command here.")
     
     else:
@@ -336,7 +345,6 @@ def repost_check(update, context):
     first_dupe_found = False
     # Compare hash or message command was used on with all other hashes
     for i in range(len(hash_list)):
-        print(str(i))
         # If the hash difference is less than 10, assume it is a duplicate
         if (imagehash.hex_to_hash(photo_hash[0]) - imagehash.hex_to_hash(hash_list[i][1])) < 10:
             dupes += 1
@@ -616,8 +624,14 @@ def button(update, context):
 
 
 def main():
-    # Check to see if SQLite files exist
-    db.check_first_db_run()
+    # Check to see if db folder exists
+    if os.path.isdir("db"):
+        # Check to see if SQLite files exist
+        db.check_first_db_run()
+    else:
+        Path("db").mkdir(parents=True, exist_ok=True)
+        # Check to see if SQLite files exist
+        db.check_first_db_run()
 
     token = os.getenv("TEL_BOT_TOKEN")
     q = mq.MessageQueue()
