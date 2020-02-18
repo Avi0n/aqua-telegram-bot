@@ -362,10 +362,10 @@ def repost_check(update, context):
             if orig_hash_message_id == update.message.reply_to_message.message_id:
                 context.bot.send_message(chat_id=update.message.chat_id, text="This is the first time this photo has "
                                                                               "been posted in the last 30 days, but "
-                                                                              "it has been re-posted " + str(dupes) +
+                                                                              "it has been reposted " + str(dupes) +
                                                                               " times since then.")
             else:
-                message_text = "Yep, that's a re-post. Here's the first time it was posted.\nIt's been posted " + \
+                message_text = "Yep, that's a repost. Here's the first time it was posted.\nIt's been posted " + \
                                str(dupes) + " times in the last 30 days.\n"
                 context.bot.send_message(chat_id=update.message.chat_id, reply_to_message_id=orig_hash_message_id,
                                          text=message_text)
@@ -423,7 +423,7 @@ def repost(update, context):
         # Try sending photo
         try:
             # Send message with inline keyboard
-            # Get message_id of re-posted image
+            # Get message_id of reposted image
             repost_id = context.bot.send_photo(chat_id=update.message.chat.id, photo=update.message.photo[-1].file_id,
                                                caption=repost_caption,
                                                reply_to_message_id=reply_message_id, reply_markup=reply_markup,
