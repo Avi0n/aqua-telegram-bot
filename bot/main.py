@@ -15,7 +15,6 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
-
 import asyncio
 import logging
 import os
@@ -323,6 +322,7 @@ def addme(update, context):
                              text=loop.run_until_complete(db.addme_async(chat_type, username, chat_id, loop)))
 
 
+@run_async
 # Respond to /check_repost
 def repost_check(update, context):
     loop = asyncio.new_event_loop()
@@ -336,21 +336,45 @@ def repost_check(update, context):
     elif update.message.chat.title == os.getenv("GROUP3"):
         database = os.getenv("DATABASE3")
 
-    result = loop.run_until_complete(db.compare_hash(update.message.reply_to_message.message_id, database, loop))
-    print(str(result))
-    # Check to see if more than 1 record was returned
+    # Fetch hash of message_id that /repost_challenge was used on
+    photo_hash = loop.run_until_complete(db.fetch_one_hash(update.message.reply_to_message.message_id, database, loop))
+    # Fetch all stored hashes
+    hash_list = loop.run_until_complete(db.fetch_all_hashes(update.message.reply_to_message.message_id, database, loop))
+    orig_hash_message_id = 0
+
+    i = 0
+    dupes = 0
+    first_dupe_found = False
+    # Compare hash or message command was used on with all other hashes
+    for x in hash_list:
+        # If the hash difference is less than 10, assume it is a duplicate
+        if (imagehash.hex_to_hash(photo_hash[0]) - imagehash.hex_to_hash(hash_list[i][1])) < 10:
+            dupes += 1
+            # If this is the first duplicate found, set it's message_id aside
+            if first_dupe_found is False:
+                orig_hash_message_id = hash_list[i][0]
+                first_dupe_found = True
+        i += 1
+
+    # If duplicates were found, let the user know
     try:
-        if str(result) != "()":
-            if int(result[0][2]) > 1:
-                message_text = "Yep, that's a repost. Here's the first time it was posted.\nIt's been posted " + \
-                               str(result[0][2]) + " times in the last 30 days.\n"
-                context.bot.send_message(chat_id=update.message.chat_id, reply_to_message_id=result[0][0],
-                                         text=message_text)
+        if dupes > 1:
+            # Make sure user isn't using command on the first occurrence of the photo
+            if orig_hash_message_id == update.message.reply_to_message.message_id:
+                context.bot.send_message(chat_id=update.message.chat_id, text="This is the first time this photo has "
+                                                                              "been posted in the last 30 days, but "
+                                                                              "it has been re-posted " + str(dupes) +
+                                                                              " times since then.")
             else:
-                context.bot.send_message(chat_id=update.message.chat_id,
-                                         text="Hmm... doesn't look like a repost to me.")
+                message_text = "Yep, that's a re-post. Here's the first time it was posted.\nIt's been posted " + \
+                               str(dupes) + " times in the last 30 days.\n"
+                context.bot.send_message(chat_id=update.message.chat_id, reply_to_message_id=orig_hash_message_id,
+                                         text=message_text)
+        else:
+            context.bot.send_message(chat_id=update.message.chat_id,
+                                     text="Hmm... doesn't look like a repost to me.")
     except Exception as e:
-        print("Error: " + str(e))
+        print("Error in repost_check(): " + str(e))
         context.bot.send_message(chat_id=update.message.chat_id, text=str(e))
 
 

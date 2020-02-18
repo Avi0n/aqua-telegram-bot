@@ -46,6 +46,7 @@ def check_first_db_run():
         print("This is the first run. Populating databases.")
         # Polulate the database
         populate_db()
+        print("Done populating the database, starting the bot.")
 
     return
 
@@ -461,11 +462,32 @@ async def store_hash(database, message_id, media_hash, loop):
     await db.close()
 
 
-# Check hash of message_id's media against all previously stored hashes
-async def compare_hash(message_id, database, loop):
+# Fetch hash of message_id
+async def fetch_one_hash(message_id, database, loop):
     db = await aiosqlite.connect("db/" + database + ".db")
-    sql = "SELECT message_id, hash, COUNT(hash) FROM media_hash WHERE SUBSTR(hash, 1, 4) = SUBSTR(" + \
-          "(SELECT hash FROM media_hash WHERE message_id = " + str(message_id) + "), 1, 4);"
+    #sql = "SELECT message_id, hash, COUNT(hash) FROM media_hash WHERE SUBSTR(hash, 1, 4) = SUBSTR(" + \
+    #      "(SELECT hash FROM media_hash WHERE message_id = " + str(message_id) + "), 1, 4);"
+    sql = "SELECT hash FROM media_hash WHERE message_id = " + str(message_id) + ";"
+    cursor = await db.cursor()
+
+    try:
+        # Execute the SQL command
+        await cursor.execute(sql)
+        # Fetch one row
+        result = await cursor.fetchone()
+    except Exception as e:
+        print("Error in compare_hash: " + str(e))
+        result = str(e)
+    finally:
+        await cursor.close()
+    await db.close()
+    return result
+
+
+# Fetch all stored hashes
+async def fetch_all_hashes(message_id, database, loop):
+    db = await aiosqlite.connect("db/" + database + ".db")
+    sql = "SELECT message_id, hash FROM media_hash"
     cursor = await db.cursor()
 
     try:
@@ -473,7 +495,6 @@ async def compare_hash(message_id, database, loop):
         await cursor.execute(sql)
         # Fetch all the rows in a list of lists.
         result = await cursor.fetchall()
-        print(str(result))
     except Exception as e:
         print("Error in compare_hash: " + str(e))
         result = str(e)
