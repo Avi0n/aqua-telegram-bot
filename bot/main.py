@@ -128,60 +128,50 @@ def sauce(update, context):
 # Respond to /source
 def source(update, context):
     authorized_room = True
-    media_id = None
 
-    try:
-        username = update.message.reply_to_message.from_user.username
-    except Exception as e:
-        print(str(e))
-        username = None
-
-    if authorized_room is True and username is not None:
+    # Check if the user replied to anything
+    if update.message.reply_to_message is None:
+        context.bot.send_message(chat_id=update.message.chat_id, text="Did you forget to reply to an image?")
+    
+    # Check if the user is not in an "authorized room"
+    elif not authorized_room:
+        print("You're not authorized to use that command here.")
+    
+    else:
         # Get media's file_id
-        while True:
-            try:
-                media_id = update.message.reply_to_message.photo[1].file_id
-                break
-            except Exception as e:
-                print("Not a photo")
+        try:
+            media_id = update.message.reply_to_message.photo[1].file_id
+        except:
             try:
                 media_id = update.message.reply_to_message.document.file_id
-                break
-            except Exception as e:
-                print("Not a document")
-            try:
-                media_id = update.message.reply_to_message.video.file_id
-                break
-            except Exception as e:
-                print("Not a video")
-            finally:
-                break
+            except:
+                try:
+                    media_id = update.message.reply_to_message.video.file_id
+                except:
+                    print("This file doesn't appear to be a photo, document, or video.")
+                    media_id = None
 
-        # Get the download link from Telegram
-        file = context.bot.get_file(file_id=media_id)
-        # Download the media (jpg, png, mp4)
-        file.download(timeout=10)
-        # If it's an mp4, convert it to gif
-        for fname in os.listdir(".."):
-            if fname.endswith(".mp4"):
-                convert_media(fname, TargetFormat.GIF)
-                os.remove(fname)
-                break
+        if media_id is not None:
+            # Get the download link from Telegram
+            file = context.bot.get_file(file_id=media_id)
+            # Download the media (jpg, png, mp4)
+            file.download(timeout=10)
+            # If it's an mp4, convert it to gif
+            for fname in os.listdir("."):
+                if fname.endswith(".mp4"):
+                    convert_media(fname, TargetFormat.GIF)
+                    os.remove(fname)
+                    break
 
-        context.bot.send_message(chat_id=update.message.chat_id, text=get_source(), parse_mode='Markdown',
-                                 disable_web_page_preview=True)
+            context.bot.send_message(chat_id=update.message.chat_id, text=get_source(), parse_mode='Markdown',
+                                    disable_web_page_preview=True)
 
-    # If this else statement runs, the user is either not in an "authorized room", or they didn't reply to an image
-    else:
-        print("You're not authorized to use that command here.")
-        context.bot.send_message(chat_id=update.message.chat_id, text="Did you forget to reply to an image?")
-
-    # Cleanup downloaded media
-    for fname in os.listdir(".."):
-        if fname.endswith(".gif"):
-            os.remove("source.gif")
-        elif fname.endswith(".jpg"):
-            os.remove(fname)
+            # Cleanup downloaded media
+            for fname in os.listdir("."):
+                if fname.endswith(".gif"):
+                    os.remove("source.gif")
+                elif fname.endswith(".jpg"):
+                    os.remove(fname)
 
 
 @run_async
