@@ -30,7 +30,8 @@ from dotenv import load_dotenv
 from emoji import emojize
 from get_source import get_source
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import MessageHandler, CommandHandler, CallbackQueryHandler, Filters
+from telegram.ext import MessageHandler, CommandHandler, \
+    CallbackQueryHandler, Filters
 from telegram.ext import messagequeue as mq
 from telegram.ext.dispatcher import run_async
 from telegram.utils.request import Request
@@ -73,7 +74,8 @@ class MQBot(telegram.bot.Bot):
 
     @mq.queuedmessage
     def send_message(self, *args, **kwargs):
-        # Wrapped method would accept new 'queued' and 'isgroup' OPTIONAL arguments
+        # Wrapped method would accept new 'queued' and 'isgroup'
+        # OPTIONAL arguments
         return super(MQBot, self).send_message(*args, **kwargs)
 
 
@@ -86,7 +88,8 @@ class TargetFormat(object):
 
 
 def convert_media(inputpath, targetFormat):
-    """Reference: http://imageio.readthedocs.io/en/latest/examples.html#convert-a-movie"""
+    # Reference:
+    # http://imageio.readthedocs.io/en/latest/examples.html#convert-a-movie
     outputpath = "source" + targetFormat
     print("converting\r\n\t{0}\r\nto\r\n\t{1}".format(inputpath, outputpath))
 
@@ -157,18 +160,15 @@ def source(update, context):
         # Get media's file_id
         try:
             media_id = update.message.reply_to_message.photo[1].file_id
-        except:
+        except IndexError:
             try:
                 media_id = update.message.reply_to_message.document.file_id
-            except:
+            except IndexError:
                 try:
                     media_id = update.message.reply_to_message.video.file_id
-                except:
-                    print(
-                        "This file doesn't appear to be a photo, document, or video."
-                    )
+                except IndexError:
+                    pass
                     media_id = None
-
         if media_id is not None:
             # Get the download link from Telegram
             file = context.bot.get_file(file_id=media_id)
@@ -238,7 +238,8 @@ def delete(update, context):
 def karma(update, context):
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    # Find out which database to use. If the chat is private, watch for user specified database
+    # Find out which database to use.
+    # If the chat is private, watch for user specified database
     if update.message.chat.type == "private":
         keyboard = [[
             InlineKeyboardButton(os.getenv("GROUP1"), callback_data="20"),
@@ -314,9 +315,7 @@ def give(update, context):
             elif int(points) < -20:
                 context.bot.send_message(
                     chat_id=update.message.chat_id,
-                    text=
-                    "Don't you think that's a tad too many points to be taking away?"
-                )
+                    text="That's too many points to be taking away.")
             elif -21 < int(points) < 0:
                 loop.run_until_complete(
                     db.update_user_karma(database, username, "-",
@@ -412,7 +411,9 @@ def repost_check(update, context):
                     "it has been reposted " + str(dupes) +
                     " times since then.")
             else:
-                message_text = "Yep, that's a repost. Here's the first time it was posted.\nIt's been posted " + \
+                message_text = "Yep, that's a repost." \
+                               + "Here's the first time it was posted." \
+                               + "\nIt's been posted " + \
                                str(dupes) + " times in the last 30 days.\n"
                 context.bot.send_message(
                     chat_id=update.message.chat_id,
@@ -428,7 +429,7 @@ def repost_check(update, context):
 
 
 @run_async
-# Forward message that was posted by another user to the channel with emoji buttons
+# Repost media to the channel with an inline emoji keyboard
 def repost(update, context):
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
@@ -454,8 +455,6 @@ def repost(update, context):
             print("User doesn't want this photo to be reposted. Skipping.")
             return
 
-    repost_caption = None
-
     keyboard = [[
         InlineKeyboardButton(str(0) + " " +
                              emojize(":thumbsup:", use_aliases=True),
@@ -474,7 +473,9 @@ def repost(update, context):
 
     # Give credit to who originally posted the photo/video
     if update.message.caption is not None:
-        repost_caption = update.message.caption + "\n\nPosted by " + update.message.from_user.username
+        repost_caption = update.message.caption \
+                         + "\n\nPosted by " \
+                         + update.message.from_user.username
     else:
         repost_caption = "\n\nPosted by " + update.message.from_user.username
 
@@ -506,8 +507,8 @@ def repost(update, context):
                 database = os.getenv("DATABASE3")
             loop.run_until_complete(
                 db.store_hash(database, repost_id, str(media_hash), loop))
-        except:
-            print("Not a photo")
+        except IndexError:
+            pass
         else:
             # Delete original message
             context.bot.delete_message(chat_id=update.message.chat.id,
@@ -527,8 +528,8 @@ def repost(update, context):
                 reply_markup=reply_markup,
                 timeout=20,
                 parse_mode="HTML")
-        except:
-            print("Not a document video")
+        except IndexError:
+            pass
         else:
             # Delete original message
             context.bot.delete_message(chat_id=update.message.chat.id,
@@ -547,8 +548,8 @@ def repost(update, context):
                                    reply_markup=reply_markup,
                                    timeout=20,
                                    parse_mode="HTML")
-        except:
-            print("Not a video video")
+        except IndexError:
+            pass
         else:
             # Delete original message
             context.bot.delete_message(chat_id=update.message.chat.id,
@@ -630,7 +631,8 @@ def button(update, context):
                                                   query.message.message_id,
                                                   loop))
 
-                        # Update emoji points. Divide by 2 & 3 for ok_hand and heart to get the correct number of votes
+                        # Update emoji points. Divide by 2 & 3 for ok_hand and
+                        # heart to get the correct number of votes
                         keyboard = [[
                             InlineKeyboardButton(
                                 str(emoji_points[0]) + " " +
@@ -705,9 +707,12 @@ def button(update, context):
                     db.get_chat_id(query.from_user.username, loop))
                 # Send photo/video with link to the original message
                 if update.callback_query.message.caption is not None:
-                    repost_caption = update.callback_query.message.caption + "\n\n" + update.callback_query.message.link
+                    repost_caption = update.callback_query.message.caption \
+                                     + "\n\n" \
+                                     + update.callback_query.message.link
                 else:
-                    repost_caption = "\n\n" + update.callback_query.message.link
+                    repost_caption = "\n\n" \
+                                     + update.callback_query.message.link
 
                 while True:
                     # Try sending photo
@@ -719,7 +724,7 @@ def button(update, context):
                                                caption=repost_caption,
                                                timeout=20,
                                                parse_mode="HTML")
-                    except:
+                    except IndexError:
                         print("Not a photo")
                     # Try sending document animation
                     try:
@@ -731,7 +736,7 @@ def button(update, context):
                             caption=repost_caption,
                             timeout=20,
                             parse_mode="HTML")
-                    except:
+                    except IndexError:
                         print("Not a document video")
                     # Try sending video animation
                     try:
@@ -742,7 +747,7 @@ def button(update, context):
                             caption=repost_caption,
                             timeout=20,
                             parse_mode="HTML")
-                    except:
+                    except IndexError:
                         print("Not a video video")
                     finally:
                         context.bot.answer_callback_query(
@@ -830,7 +835,7 @@ def main():
         updater.start_polling()
     elif os.getenv("USE_WEBHOOK") == "TRUE":
         # Create webhook
-        # Note: The following webhook configuration is setup to use a reverse proxy
+        # The following webhook configuration is setup to use a reverse proxy
         # See https://github.com/python-telegram-bot/python-telegram-bot/wiki/Webhooks for more info
         updater.start_webhook(listen="0.0.0.0",
                               port=5001,
