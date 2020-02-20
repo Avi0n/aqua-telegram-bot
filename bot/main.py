@@ -443,7 +443,7 @@ def repost(update, context):
     try:
         if update.message.reply_to_message.message_id is not None:
             reply_message_id = update.message.reply_to_message.message_id
-    except IndexError:
+    except AttributeError:
         pass
 
     # Check to see if user doesn't want their photo to be deleted
