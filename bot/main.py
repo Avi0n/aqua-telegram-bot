@@ -120,12 +120,11 @@ def compute_hash(file_name):
 
 # Respond to /start
 def start(update, context):
-    context.bot.send_message(
-        chat_id=update.message.chat_id,
-        text=
-        "Send /karma to see everyone's points.\nSend /addme to let me forward"
-        + " photos that you " + emojize(":star:", use_aliases=True) +
-        " to you!")
+    context.bot.send_message(chat_id=update.message.chat_id,
+                             text="Send /karma to see everyone's points.\n" +
+                             "Send /addme to let me forward" +
+                             " photos that you " +
+                             emojize(":star:", use_aliases=True) + " to you!")
 
 
 # Respond to /sauce
@@ -402,7 +401,8 @@ def repost_check(update, context):
     # If duplicates were found, let the user know
     try:
         if dupes > 1:
-            # Make sure user isn't using command on the first occurrence of the photo
+            # Make sure user isn't using command on the
+            # first occurrence of the photo
             if orig_hash_message_id == update.message.reply_to_message.message_id:
                 context.bot.send_message(
                     chat_id=update.message.chat_id,
@@ -443,8 +443,8 @@ def repost(update, context):
     try:
         if update.message.reply_to_message.message_id is not None:
             reply_message_id = update.message.reply_to_message.message_id
-    except:
-        print("Not a reply")
+    except IndexError:
+        pass
 
     # Check to see if user doesn't want their photo to be deleted
     if update.message.caption is not None:
@@ -516,7 +516,8 @@ def repost(update, context):
             return
         # Try sending document animation
         try:
-            # If user posts a document animation in reply to another message, ignore it
+            # If user posts a document animation in reply to another message,
+            # ignore it
             if reply_message_id is not None:
                 return
             # Send message with inline keyboard
@@ -537,7 +538,8 @@ def repost(update, context):
             return
         # Try sending video animation
         try:
-            # If user posts a video animation in reply to another message, ignore it
+            # If user posts a video animation in reply to another message,
+            # ignore it
             if reply_message_id is not None:
                 return
             # Send message with inline keyboard
@@ -836,7 +838,8 @@ def main():
     elif os.getenv("USE_WEBHOOK") == "TRUE":
         # Create webhook
         # The following webhook configuration is setup to use a reverse proxy
-        # See https://github.com/python-telegram-bot/python-telegram-bot/wiki/Webhooks for more info
+        # See https://github.com/python-telegram-bot/python-telegram-bot\
+        # /wiki/Webhooks for more info
         updater.start_webhook(listen="0.0.0.0",
                               port=5001,
                               url_path=os.getenv("TEL_BOT_TOKEN"))
