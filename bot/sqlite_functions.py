@@ -163,10 +163,9 @@ async def get_user_karma(database, chat_type, loop):
             username = row[0]
             karma_points = row[1]
             return_message += username + (
-                        " " * (longest_username_length - len(username))) + \
-                              "   " + (" " * (
-                        longest_karma_length - len(str(karma_points)))) + str(
-                karma_points) + "\n"
+                " " * (longest_username_length - len(username))) + "   " + (
+                    " " * (longest_karma_length -
+                           len(str(karma_points)))) + str(karma_points) + "\n"
 
         return_message += "\n```" + emojize(":v:", use_aliases=True)
 
@@ -193,8 +192,10 @@ async def update_user_karma(database, username, plus_or_minus, points, loop):
     except Exception as e:
         print("Error: " + str(e))
     if result is None:
-        # Add username to the database along with the points that were just added
-        sql = "INSERT INTO user_karma VALUES ('" + username + "', " + points + ");"
+        # Add username to the database along with
+        # the points that were just added
+        sql = "INSERT INTO user_karma VALUES ('" + username + "', " \
+              + points + ");"
         try:
             # Execute the SQL command
             await cursor.execute(sql)
@@ -207,8 +208,8 @@ async def update_user_karma(database, username, plus_or_minus, points, loop):
         finally:
             await cursor.close()
     else:
-        sql = "UPDATE user_karma SET karma = karma" + plus_or_minus + points + " WHERE username = '" + \
-              username + "';"
+        sql = "UPDATE user_karma SET karma = karma" + plus_or_minus + points \
+              + " WHERE username = '" + username + "';"
         try:
             # Execute the SQL command
             await cursor.execute(sql)
@@ -254,9 +255,9 @@ async def update_message_karma(database, message_id, username, emoji_points,
         print("Error: " + str(e))
     if result is None:
         # Insert new row with message_id, username, and emoji point values
-        sql = "INSERT INTO message_karma VALUES (" + str(message_id) + ", '" + username + \
-              "', " + str(thumb_points) + ", " + str(ok_points) + \
-              ", " + str(heart_points) + ");"
+        sql = "INSERT INTO message_karma VALUES (" + str(message_id) + ", '" \
+              + username + "', " + str(thumb_points) + ", " + str(ok_points) \
+              + ", " + str(heart_points) + ");"
         try:
             # Execute the SQL command
             await cursor.execute(sql)
@@ -270,9 +271,10 @@ async def update_message_karma(database, message_id, username, emoji_points,
             await cursor.close()
     else:
         # Update emoji points that user has given a specific message_id
-        sql = "UPDATE message_karma SET " + emoji_symbol + " = " + emoji_symbol + " + " + str(emoji_points) + \
-              " WHERE message_id = " + \
-              str(message_id) + " AND username = '" + username + "';"
+        sql = "UPDATE message_karma SET " + emoji_symbol + " = " \
+              + emoji_symbol + " + " + str(emoji_points) \
+              + " WHERE message_id = " + str(message_id) \
+              + " AND username = '" + username + "';"
         try:
             # Execute the SQL command
             await cursor.execute(sql)
@@ -291,8 +293,8 @@ async def update_message_karma(database, message_id, username, emoji_points,
 async def delete_row(database, message_id, loop):
     db = await aiosqlite.connect("db/" + database + ".db")
     # Add message_id, photo's hash, and current date to database
-    sql = "SELECT SUM(thumbsup + ok_hand + heart) FROM message_karma WHERE message_id = " + \
-          str(message_id) + ";"
+    sql = "SELECT SUM(thumbsup + ok_hand + heart) FROM message_karma " \
+          + "WHERE message_id = " + str(message_id) + ";"
     cursor = await db.cursor()
 
     try:
@@ -323,8 +325,8 @@ async def delete_row(database, message_id, loop):
 # Check total karma for specific emoji for a specific message
 async def check_emoji_points(database, message_id, loop):
     db = await aiosqlite.connect("db/" + database + ".db")
-    sql = "SELECT SUM(thumbsup), SUM(ok_hand), SUM(heart) FROM message_karma WHERE message_id = " + \
-          str(message_id) + ";"
+    sql = "SELECT SUM(thumbsup), SUM(ok_hand), SUM(heart) FROM message_karma" \
+          + " WHERE message_id = " + str(message_id) + ";"
     cursor = await db.cursor()
 
     try:
@@ -345,8 +347,9 @@ async def get_message_karma(database, message_id, loop):
     return_message = "Votes\n\n"
 
     db = await aiosqlite.connect("db/" + database + ".db")
-    sql = "SELECT username, SUM(thumbsup + ok_hand + heart) AS karma FROM message_karma WHERE message_id = " + \
-          str(message_id) + " GROUP BY username ORDER BY username;"
+    sql = "SELECT username, SUM(thumbsup + ok_hand + heart) AS karma " \
+          + "FROM message_karma WHERE message_id = " + str(message_id) \
+          + " GROUP BY username ORDER BY username;"
     cursor = await db.cursor()
 
     try:
@@ -423,9 +426,10 @@ async def addme_async(chat_type, username, chat_id, loop):
                 await cursor.execute(sql)
                 # Commit your changes in the database
                 await db.commit()
-                message = "Added! Now whenever you " + emojize(":star:", use_aliases=True) + \
-                          " a photo, I'll forward it to you here! " + \
-                          emojize(":smiley:", use_aliases=True)
+                message = "Added! Now whenever you " \
+                          + emojize(":star:", use_aliases=True) \
+                          + " a photo, I'll forward it to you here! " \
+                          + emojize(":smiley:", use_aliases=True)
             except Exception as e:
                 # Rollback in case there is any error
                 await db.rollback()
@@ -461,7 +465,9 @@ async def store_hash(database, message_id, media_hash, loop):
         await db.rollback()
         print("Error in store_hash: " + str(e))
     # Delete hashes older than 30 days
-    sql = "DELETE FROM media_hash WHERE Date NOT BETWEEN date('now','-30 days') AND date('now');"
+    sql = "DELETE FROM media_hash " \
+          + "WHERE Date NOT BETWEEN date('now','-30 days') " \
+          + "AND date('now');"
     try:
         # Execute the SQL command
         await cursor.execute(sql)
@@ -479,8 +485,7 @@ async def store_hash(database, message_id, media_hash, loop):
 # Fetch hash of message_id
 async def fetch_one_hash(message_id, database, loop):
     db = await aiosqlite.connect("db/" + database + ".db")
-    #sql = "SELECT message_id, hash, COUNT(hash) FROM media_hash WHERE SUBSTR(hash, 1, 4) = SUBSTR(" + \
-    #      "(SELECT hash FROM media_hash WHERE message_id = " + str(message_id) + "), 1, 4);"
+    # Fetch a specific message_id's associated hash
     sql = "SELECT hash FROM media_hash WHERE message_id = " + str(
         message_id) + ";"
     cursor = await db.cursor()
