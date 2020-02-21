@@ -411,7 +411,7 @@ def repost_check(update, context):
                     "it has been reposted " + str(dupes) +
                     " times since then.")
             else:
-                message_text = "Yep, that's a repost." \
+                message_text = "Yep, that's a repost. " \
                                + "Here's the first time it was posted." \
                                + "\nIt's been posted " + \
                                str(dupes) + " times in the last 30 days.\n"
