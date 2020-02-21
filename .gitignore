@@ -2,6 +2,7 @@
 env
 .gitlab-ci.yml
 .DS_Store
+.idea
 __pycache__
 db/
 settings.json
