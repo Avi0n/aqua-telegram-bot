@@ -550,7 +550,7 @@ def repost(update, context):
                                    reply_markup=reply_markup,
                                    timeout=20,
                                    parse_mode="HTML")
-        except IndexError:
+        except AttributeError:
             pass
         else:
             # Delete original message
