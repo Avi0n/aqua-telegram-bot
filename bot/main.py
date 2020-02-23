@@ -726,8 +726,8 @@ def button(update, context):
                                                caption=repost_caption,
                                                timeout=20,
                                                parse_mode="HTML")
-                    except IndexError:
-                        print("Not a photo")
+                    except (IndexError, AttributeError):
+                        pass
                     # Try sending document animation
                     try:
                         # Send message with inline keyboard
@@ -738,8 +738,8 @@ def button(update, context):
                             caption=repost_caption,
                             timeout=20,
                             parse_mode="HTML")
-                    except IndexError:
-                        print("Not a document video")
+                    except (IndexError, AttributeError):
+                        pass
                     # Try sending video animation
                     try:
                         # Send message with inline keyboard
@@ -749,8 +749,8 @@ def button(update, context):
                             caption=repost_caption,
                             timeout=20,
                             parse_mode="HTML")
-                    except IndexError:
-                        print("Not a video video")
+                    except (IndexError, AttributeError):
+                        pass
                     finally:
                         context.bot.answer_callback_query(
                             callback_query_id=query.id,
