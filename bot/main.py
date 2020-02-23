@@ -529,7 +529,7 @@ def repost(update, context):
                 reply_markup=reply_markup,
                 timeout=20,
                 parse_mode="HTML")
-        except IndexError:
+        except AttributeError:
             pass
         else:
             # Delete original message
@@ -780,7 +780,7 @@ def main():
         db.check_first_db_run()
 
     token = os.getenv("TEL_BOT_TOKEN")
-    q = mq.MessageQueue()
+    q = mq.MessageQueue(group_burst_limit=19, group_time_limit_ms=60050)
     # set connection pool size for bot
     request = Request(con_pool_size=54)
     qbot = MQBot(token, request=request, mqueue=q)
