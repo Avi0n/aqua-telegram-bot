@@ -39,8 +39,6 @@ def check_first_db_run():
 
         cursor.close()
         db.close()
-
-        print("Not the first run, continuing to start the bot")
     except Exception as e:
         if "no such table" in str(e):
             print("This is the first run. Populating databases.")
