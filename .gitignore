@@ -3,6 +3,7 @@ env
 .gitlab-ci.yml
 .DS_Store
 .idea
+.vscode
 __pycache__
 db/
 settings.json
