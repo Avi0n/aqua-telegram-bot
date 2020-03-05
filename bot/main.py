@@ -776,12 +776,12 @@ def button(update, context):
 def main():
     print("Starting the bot.")
     # Check to see if db folder exists
-    if Path("db").exists() is True:
+    if Path("./bot/db").exists() is True:
         # Check to see if SQLite files exist
         db.check_first_db_run()
     else:
         print("db folder does not exist, creating it.")
-        Path("db").mkdir(parents=True, exist_ok=True)
+        Path("./bot/db").mkdir(parents=True, exist_ok=True)
         # Check to see if SQLite files exist
         db.check_first_db_run()
 

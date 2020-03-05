@@ -28,7 +28,7 @@ def check_first_db_run():
     first_run = False
 
     try:
-        db = sqlite3.connect("db/" + os.getenv("DATABASE1") + ".db")
+        db = sqlite3.connect("./bot/db/" + os.getenv("DATABASE1") + ".db")
         sql = "SELECT * FROM user_karma;"
         cursor = db.cursor()
 
@@ -56,7 +56,7 @@ def populate_db():
     print("Entered populate_db")
 
     # Create user_chat_id table
-    db = sqlite3.connect("db/" + os.getenv("DATABASE1") + ".db")
+    db = sqlite3.connect("./bot/db/" + os.getenv("DATABASE1") + ".db")
     cursor = db.cursor()
     sql = '''
             CREATE TABLE user_chat_id (
@@ -74,7 +74,7 @@ def populate_db():
 
     # Create rest of the tables. Run 3 times, once for each database
     for x in range(1, 4):
-        db = sqlite3.connect("db/" + os.getenv("DATABASE" + str(x)) + ".db")
+        db = sqlite3.connect("./bot/db/" + os.getenv("DATABASE" + str(x)) + ".db")
         cursor = db.cursor()
 
         sql = '''
@@ -138,7 +138,7 @@ async def get_user_karma(database, chat_type, loop):
     else:
         return_message = ""
 
-    db = await aiosqlite.connect("db/" + database + ".db")
+    db = await aiosqlite.connect("./bot/db/" + database + ".db")
     sql = "SELECT * FROM user_karma WHERE karma <> 0 ORDER BY username;"
     cursor = await db.cursor()
     try:
@@ -178,7 +178,7 @@ async def get_user_karma(database, chat_type, loop):
 
 # Increment the total karma for a specific user
 async def update_user_karma(database, username, plus_or_minus, points, loop):
-    db = await aiosqlite.connect("db/" + database + ".db")
+    db = await aiosqlite.connect("./bot/db/" + database + ".db")
     sql = "SELECT * FROM user_karma WHERE username = '" + username + "';"
     cursor = await db.cursor()
 
@@ -239,7 +239,7 @@ async def update_message_karma(database, message_id, username, emoji_points,
         emoji_symbol = "heart"
         heart_points = 3
 
-    db = await aiosqlite.connect("db/" + database + ".db")
+    db = await aiosqlite.connect("./bot/db/" + database + ".db")
     sql = "SELECT * FROM message_karma WHERE message_id = " + \
           str(message_id) + " AND username = '" + username + "';"
     cursor = await db.cursor()
@@ -289,7 +289,7 @@ async def update_message_karma(database, message_id, username, emoji_points,
 
 # Delete message_id row from database
 async def delete_row(database, message_id, loop):
-    db = await aiosqlite.connect("db/" + database + ".db")
+    db = await aiosqlite.connect("./bot/db/" + database + ".db")
     # Add message_id, photo's hash, and current date to database
     sql = "SELECT SUM(thumbsup + ok_hand + heart) FROM message_karma " \
           + "WHERE message_id = " + str(message_id) + ";"
@@ -322,7 +322,7 @@ async def delete_row(database, message_id, loop):
 
 # Check total karma for specific emoji for a specific message
 async def check_emoji_points(database, message_id, loop):
-    db = await aiosqlite.connect("db/" + database + ".db")
+    db = await aiosqlite.connect("./bot/db/" + database + ".db")
     sql = "SELECT SUM(thumbsup), SUM(ok_hand), SUM(heart) FROM message_karma" \
           + " WHERE message_id = " + str(message_id) + ";"
     cursor = await db.cursor()
@@ -344,7 +344,7 @@ async def check_emoji_points(database, message_id, loop):
 async def get_message_karma(database, message_id, loop):
     return_message = "Votes\n\n"
 
-    db = await aiosqlite.connect("db/" + database + ".db")
+    db = await aiosqlite.connect("./bot/db/" + database + ".db")
     sql = "SELECT username, SUM(thumbsup + ok_hand + heart) AS karma " \
           + "FROM message_karma WHERE message_id = " + str(message_id) \
           + " GROUP BY username ORDER BY username;"
@@ -382,7 +382,7 @@ async def get_message_karma(database, message_id, loop):
 
 # Get user's personal chat_id with Aqua
 async def get_chat_id(tele_user, loop):
-    db = await aiosqlite.connect("db/" + os.getenv("DATABASE1") + ".db")
+    db = await aiosqlite.connect("./bot/db/" + os.getenv("DATABASE1") + ".db")
     sql = "SELECT chat_id FROM user_chat_id WHERE username = '" + str(
         tele_user) + "';"
     cursor = await db.cursor()
@@ -403,7 +403,7 @@ async def get_chat_id(tele_user, loop):
 async def addme_async(chat_type, username, chat_id, loop):
     # Make sure the /addme command is being sent in a PM
     if chat_type == "private":
-        db = await aiosqlite.connect("db/" + os.getenv("DATABASE1") + ".db")
+        db = await aiosqlite.connect("./bot/db/" + os.getenv("DATABASE1") + ".db")
         sql = "SELECT * FROM user_chat_id WHERE username = '" + str(
             username) + "';"
         cursor = await db.cursor()
@@ -447,7 +447,7 @@ async def addme_async(chat_type, username, chat_id, loop):
 
 # Store hash of message_id's media in database
 async def store_hash(database, message_id, media_hash, loop):
-    db = await aiosqlite.connect("db/" + database + ".db")
+    db = await aiosqlite.connect("./bot/db/" + database + ".db")
     # Add message_id, photo's hash, and current date to database
     sql = "INSERT INTO media_hash VALUES (" + str(
         message_id) + ",'" + media_hash + "', + date('now'));"
@@ -482,7 +482,7 @@ async def store_hash(database, message_id, media_hash, loop):
 
 # Fetch hash of message_id
 async def fetch_one_hash(message_id, database, loop):
-    db = await aiosqlite.connect("db/" + database + ".db")
+    db = await aiosqlite.connect("./bot/db/" + database + ".db")
     # Fetch a specific message_id's associated hash
     sql = "SELECT hash FROM media_hash WHERE message_id = " + str(
         message_id) + ";"
@@ -504,7 +504,7 @@ async def fetch_one_hash(message_id, database, loop):
 
 # Fetch all stored hashes
 async def fetch_all_hashes(message_id, database, loop):
-    db = await aiosqlite.connect("db/" + database + ".db")
+    db = await aiosqlite.connect("./bot/db/" + database + ".db")
     sql = "SELECT message_id, hash FROM media_hash"
     cursor = await db.cursor()
 
