@@ -278,6 +278,12 @@ def karma(update, context):
 @run_async
 # Respond to /give
 def give(update, context):
+    # If the command is being used in a private chat, return
+    if update.message.chat.type == "private":
+        context.bot.send_message(chat_id=update.message.chat_id,
+                                 text="You can't use that command here.")
+        return
+
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
