@@ -28,7 +28,7 @@ def check_first_db_run():
     first_run = False
 
     try:
-        db = sqlite3.connect("db/" + os.getenv("DATABASE1") + ".db")
+        db = sqlite3.connect("db/user_chat_ids.db")
         sql = "SELECT * FROM user_karma;"
         cursor = db.cursor()
 
@@ -41,61 +41,76 @@ def check_first_db_run():
         db.close()
     except Exception as e:
         if "no such table" in str(e):
-            print("This is the first run. Populating databases.")
-            # Populate the database
-            populate_db()
+            print("This is the first run. Populating initial database.")
+            # Populate db with initial table
+            db = sqlite3.connect("db/user_chat_ids.db")
+            cursor = db.cursor()
+
+            # Create table
+            sql = '''
+                    CREATE TABLE user_chat_id (
+                    chat_id int(11) DEFAULT NULL,
+                    username varchar(255) DEFAULT NULL
+                    )'''
+            try:
+                # Execute the SQL command
+                cursor.execute(sql)
+            except Exception as ex:
+                print(
+                    "Error in populate_db while creating the table user_chat_id: "
+                    + str(ex))
+            cursor.close()
+            db.close()
+
             print("Done populating the database, starting the bot.")
         else:
             print("Error: " + str(e) + "\n"
                   "There was an error populating the database.")
-
     return
 
 
-def populate_db():
+def populate_db(room_name):
     print("Entered populate_db")
+    populated_status = False
 
-    # Create user_chat_id table
-    db = sqlite3.connect("db/" + os.getenv("DATABASE1") + ".db")
-    cursor = db.cursor()
-    sql = '''
-            CREATE TABLE user_chat_id (
-              chat_id int(11) DEFAULT NULL,
-              username varchar(255) DEFAULT NULL
-            )'''
     try:
-        # Execute the SQL command
-        cursor.execute(sql)
-    except Exception as e:
-        print("Error in populate_db while creating the table user_chat_id: " +
-              str(e))
-    cursor.close()
-    db.close()
-
-    # Create rest of the tables. Run 3 times, once for each database
-    for x in range(1, 4):
-        db = sqlite3.connect("db/" + os.getenv("DATABASE" + str(x)) + ".db")
+        db = sqlite3.connect("db/" + room_name + ".db")
+        sql = "SELECT * FROM user_karma;"
         cursor = db.cursor()
 
+        # Execute the SQL command
+        cursor.execute(sql)
+        # Fetch all the rows in a list of lists.
+        result = cursor.fetchall()
+
+        cursor.close()
+        db.close()
+
+        populated_status = True
+    except:
+        db = sqlite3.connect("db/" + room_name + ".db")
+        cursor = db.cursor()
+
+        # Create tables
         sql = '''
                 CREATE TABLE media_hash(
-                  message_id int(11) NOT NULL, hash varchar(255) NOT NULL, date date NOT NULL
+                    message_id int(11) NOT NULL, hash varchar(255) NOT NULL,
+                    date date NOT NULL
                 )'''
-
         try:
             # Execute the SQL command
             cursor.execute(sql)
         except Exception as e:
-            print("First run? Error in check_first_db_run: " + str(e))
+            print("Error in check_first_db_run: " + str(e))
             first_run = True
 
         sql = '''
                 CREATE TABLE message_karma (
-                  message_id int(11) NOT NULL,
-                  username varchar(20) DEFAULT NULL,
-                  thumbsup tinyint(4) NOT NULL,
-                  ok_hand tinyint(4) NOT NULL,
-                  heart tinyint(4) NOT NULL
+                    message_id int(11) NOT NULL,
+                    username varchar(20) DEFAULT NULL,
+                    thumbsup tinyint(4) NOT NULL,
+                    ok_hand tinyint(4) NOT NULL,
+                    heart tinyint(4) NOT NULL
                 )'''
         try:
             # Execute the SQL command
@@ -107,8 +122,8 @@ def populate_db():
 
         sql = '''
                 CREATE TABLE user_karma (
-                  username varchar(255) NOT NULL,
-                  karma int(11) DEFAULT NULL
+                    username varchar(255) NOT NULL,
+                    karma int(11) DEFAULT NULL
                 )'''
         try:
             # Execute the SQL command
@@ -118,23 +133,18 @@ def populate_db():
                 "Error in populate_db while creating the table user_karma: " +
                 str(e))
 
-    cursor.close()
-    db.close()
-    return
+        cursor.close()
+        db.close()
+    # Return True if db already existed
+    return populated_status
 
 
 # Retrieve user's karma from the database
 async def get_user_karma(database, chat_type, loop):
-    if database == os.getenv("DATABASE1"):
-        groupname = os.getenv("GROUP1")
-    if database == os.getenv("DATABASE2"):
-        groupname = os.getenv("GROUP2")
-    if database == os.getenv("DATABASE3"):
-        groupname = os.getenv("GROUP3")
 
     # Add chat group name to the results of /karma
     if chat_type == "private":
-        return_message = groupname + "\n"
+        return_message = database + "\n"
     else:
         return_message = ""
 
