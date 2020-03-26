@@ -413,7 +413,7 @@ async def get_chat_id(tele_user, loop):
 async def addme_async(chat_type, username, chat_id, loop):
     # Make sure the /addme command is being sent in a PM
     if chat_type == "private":
-        db = await aiosqlite.connect("db/" + os.getenv("DATABASE1") + ".db")
+        db = await aiosqlite.connect("db/user_chat_ids.db")
         sql = "SELECT * FROM user_chat_id WHERE username = '" + str(
             username) + "';"
         cursor = await db.cursor()
