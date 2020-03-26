@@ -118,13 +118,60 @@ def compute_hash(file_name):
     return media_hash
 
 
+def check_auth_room(room_name):
+    # If AUTH_ROOMS_ONLY is set to TRUE in .env, only allow bot to
+    # be used in specified rooms
+    if os.getenv("AUTH_ROOMS_ONLY") == "TRUE":
+        authorized_status = False
+        group_names = [
+            os.getenv("GROUP1"),
+            os.getenv("GROUP2"),
+            os.getenv("GROUP3")
+        ]
+
+        for x in range(len(group_names)):
+            print(room_name)
+            print(group_names[x])
+            if room_name == group_names[x]:
+                authorized_status = True
+                break
+    # If AUTH_ROOMS_ONLY is set to FALSE in .env, anyone can use
+    # the bot
+    else:
+        authorized_status = True
+    print(str(authorized_status))
+    return authorized_status
+
+
 # Respond to /start
 def start(update, context):
-    context.bot.send_message(chat_id=update.message.chat_id,
-                             text="Send /karma to see everyone's points.\n" +
-                             "Send /addme to let me forward" +
-                             " photos that you " +
-                             emojize(":star:", use_aliases=True) + " to you!")
+    if check_auth_room(update.message.chat.title) is False:
+        return
+
+    if update.message.chat.type == "private":
+        context.bot.send_message(
+            chat_id=update.message.chat_id,
+            text="Use /karma to see everyone's points.\n" +
+            "Use /addme to let me forward" + " photos that you " +
+            emojize(":star:", use_aliases=True) + " to you!")
+    else:
+        bad_punc = ["\\", "/", ":", "*", '"', "<", ">", "|"]
+        for x in range(len(bad_punc)):
+            print(bad_punc[x])
+            if bad_punc[x] in update.message.chat.title:
+                context.bot.send_message(
+                    chat_id=update.message.chat_id,
+                    text="To use this bot, your group name cannot" +
+                    " contain the following characters:\n" + '\ / : * " < > |')
+                return
+        # Populate db with room's name
+        if db.populate_db(update.message.chat.title) is True:
+            context.bot.send_message(chat_id=update.message.chat_id,
+                                     text="Your group has already been added.")
+        else:
+            context.bot.send_message(chat_id=update.message.chat_id,
+                                     text="Your group has been added!" +
+                                     " Have fun :)")
 
 
 # Respond to /sauce
@@ -143,6 +190,7 @@ def source(update, context):
             authorized_room = True
         else:
             authorized_room = False
+            return
     else:
         authorized_room = True
 
@@ -150,11 +198,6 @@ def source(update, context):
     if update.message.reply_to_message is None:
         context.bot.send_message(chat_id=update.message.chat_id,
                                  text="Did you forget to reply to an image?")
-
-    # Catch this command being used in an unauthorized room
-    elif authorized_room is False:
-        print("You're not authorized to use that command here.")
-
     else:
         # Get media's file_id
         try:
@@ -205,13 +248,7 @@ def delete(update, context):
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
-    # Find room name and assign correct database
-    if update.message.chat.title == os.getenv("GROUP1"):
-        database = os.getenv("DATABASE1")
-    elif update.message.chat.title == os.getenv("GROUP2"):
-        database = os.getenv("DATABASE2")
-    elif update.message.chat.title == os.getenv("GROUP3"):
-        database = os.getenv("DATABASE3")
+    database = update.message.chat.title
 
     username = update.message.reply_to_message.caption.split()
     delete_message_id = update.message.reply_to_message.message_id
@@ -245,7 +282,8 @@ def karma(update, context):
     asyncio.set_event_loop(loop)
     # Find out which database to use.
     # If the chat is private, watch for user specified database
-    if update.message.chat.type == "private":
+    if os.getenv("AUTH_ROOMS_ONLY"
+                 ) == "TRUE" and update.message.chat.type == "private":
         keyboard = [[
             InlineKeyboardButton(os.getenv("GROUP1"), callback_data="20"),
             InlineKeyboardButton(os.getenv("GROUP2"), callback_data="21")
@@ -258,16 +296,8 @@ def karma(update, context):
 
     else:
         # If not a private chat, check the room name to match to a database
-        chat_type = "group"
-        if update.message.chat.title == os.getenv("GROUP1"):
-            database = os.getenv("DATABASE1")
-        elif update.message.chat.title == os.getenv("GROUP2"):
-            database = os.getenv("DATABASE2")
-        elif update.message.chat.title == os.getenv("GROUP3"):
-            database = os.getenv("DATABASE3")
-
         message = loop.run_until_complete(
-            db.get_user_karma(database, chat_type, loop))
+            db.get_user_karma(update.message.chat.title, "group", loop))
 
         context.bot.send_message(chat_id=update.message.chat_id,
                                  text=message,
@@ -287,14 +317,8 @@ def give(update, context):
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
-    database = ""
     # Find out which database to use
-    if update.message.chat.title == os.getenv("GROUP1"):
-        database = os.getenv("DATABASE1")
-    elif update.message.chat.title == os.getenv("GROUP2"):
-        database = os.getenv("DATABASE2")
-    elif update.message.chat.title == os.getenv("GROUP3"):
-        database = os.getenv("DATABASE3")
+    database = update.message.chat.title
 
     # Check to see if user used the right command format
     if "@" in update.message.text:
@@ -380,12 +404,7 @@ def repost_check(update, context):
     asyncio.set_event_loop(loop)
 
     # Find room name and assign correct database
-    if update.message.chat.title == os.getenv("GROUP1"):
-        database = os.getenv("DATABASE1")
-    elif update.message.chat.title == os.getenv("GROUP2"):
-        database = os.getenv("DATABASE2")
-    elif update.message.chat.title == os.getenv("GROUP3"):
-        database = os.getenv("DATABASE3")
+    database = update.message.chat.title
 
     # Fetch hash of message_id that /repost_challenge was used on
     photo_hash = loop.run_until_complete(
@@ -511,12 +530,8 @@ def repost(update, context):
             file_name = file.download(timeout=10)
             media_hash = compute_hash(file_name)
             # Find room name and assign correct database
-            if update.message.chat.title == os.getenv("GROUP1"):
-                database = os.getenv("DATABASE1")
-            elif update.message.chat.title == os.getenv("GROUP2"):
-                database = os.getenv("DATABASE2")
-            elif update.message.chat.title == os.getenv("GROUP3"):
-                database = os.getenv("DATABASE3")
+            database = update.message.chat.title
+
             loop.run_until_complete(
                 db.store_hash(database, repost_id, str(media_hash), loop))
         except IndexError:
@@ -579,37 +594,34 @@ def button(update, context):
     asyncio.set_event_loop(loop)
 
     query = update.callback_query
-    if query.message.chat.type == "private":
-        chat_type = "private"
-        if int(query.data) == 20:
-            message = loop.run_until_complete(
-                db.get_user_karma(os.getenv("DATABASE1"), chat_type, loop))
-            query.edit_message_text(text=message,
-                                    parse_mode="Markdown",
-                                    timeout=20)
-        elif int(query.data) == 21:
-            query.edit_message_text(text=loop.run_until_complete(
-                db.get_user_karma(os.getenv("DATABASE2"), chat_type, loop)),
-                                    parse_mode="Markdown",
-                                    timeout=20)
-        elif int(query.data) == 22:
-            query.edit_message_text(text=loop.run_until_complete(
-                db.get_user_karma(os.getenv("DATABASE3"), chat_type, loop)),
-                                    parse_mode="Markdown",
-                                    timeout=20)
-    else:
-        database = ""
 
+    # Find room name and assign correct database
+    database = query.message.chat.title
+
+    if query.message.chat.type == "private":
+        if os.getenv("AUTH_ROOMS_ONLY") == "TRUE":
+            chat_type = "private"
+            if int(query.data) == 20:
+                message = loop.run_until_complete(
+                    db.get_user_karma(os.getenv("GROUP1"), chat_type, loop))
+                query.edit_message_text(text=message,
+                                        parse_mode="Markdown",
+                                        timeout=20)
+            elif int(query.data) == 21:
+                query.edit_message_text(text=loop.run_until_complete(
+                    db.get_user_karma(os.getenv("GROUP2"), chat_type, loop)),
+                                        parse_mode="Markdown",
+                                        timeout=20)
+            elif int(query.data) == 22:
+                query.edit_message_text(text=loop.run_until_complete(
+                    db.get_user_karma(os.getenv("GROUP3"), chat_type, loop)),
+                                        parse_mode="Markdown",
+                                        timeout=20)
+        else:
+            return
+    else:
         # Find original poster
         username = query.message.caption.split()
-
-        # Find room name and assign correct database
-        if query.message.chat.title == os.getenv("GROUP1"):
-            database = os.getenv("DATABASE1")
-        elif query.message.chat.title == os.getenv("GROUP2"):
-            database = os.getenv("DATABASE2")
-        elif query.message.chat.title == os.getenv("GROUP3"):
-            database = os.getenv("DATABASE3")
 
         if int(query.data) != 10 and int(query.data) != 11:
             self_vote = False
@@ -788,8 +800,6 @@ def main():
     else:
         print("db folder does not exist, creating it.")
         Path("db").mkdir(parents=True, exist_ok=True)
-        # Check to see if SQLite files exist
-        db.check_first_db_run()
 
     token = os.getenv("TEL_BOT_TOKEN")
     q = mq.MessageQueue(group_burst_limit=19, group_time_limit_ms=60050)
