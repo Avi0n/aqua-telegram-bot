@@ -42,23 +42,38 @@ def check_first_db_run():
     except Exception as e:
         if "no such table" in str(e):
             print("This is the first run. Populating initial database.")
-            # Populate db with initial table
+            # Populate db with initial tables
             db = sqlite3.connect("db/user_chat_ids.db")
             cursor = db.cursor()
 
             # Create table
             sql = '''
-                    CREATE TABLE user_chat_id (
-                    chat_id int(11) DEFAULT NULL,
+                    CREATE TABLE user_chat_ids (
+                    chat_id int(50) DEFAULT NULL,
                     username varchar(255) DEFAULT NULL
                     )'''
             try:
                 # Execute the SQL command
                 cursor.execute(sql)
             except Exception as ex:
-                print(
-                    "Error in populate_db while creating the table user_chat_id: "
-                    + str(ex))
+                print("Error in check_first_db_run while creating the table" +
+                      " user_chat_id: " + str(ex))
+            cursor.close()
+            db.close()
+
+            # Create 2nd initial table
+            db = sqlite3.connect("db/group_members.db")
+            cursor = db.cursor()
+            sql = '''
+                    CREATE TABLE group_members (
+                    user_id int(11) DEFAULT NULL
+                    )'''
+            try:
+                # Execute the SQL command
+                cursor.execute(sql)
+            except Exception as ex:
+                print("Error in check_first_db_run while creating the table" +
+                      " group_members: " + str(ex))
             cursor.close()
             db.close()
 
@@ -116,9 +131,8 @@ def populate_db(room_name):
             # Execute the SQL command
             cursor.execute(sql)
         except Exception as e:
-            print(
-                "Error in populate_db while creating the table message_karma: "
-                + str(e))
+            print("Error in populate_db while creating the table" +
+                  "message_karma: " + str(e))
 
         sql = '''
                 CREATE TABLE user_karma (
@@ -129,12 +143,24 @@ def populate_db(room_name):
             # Execute the SQL command
             cursor.execute(sql)
         except Exception as e:
-            print(
-                "Error in populate_db while creating the table user_karma: " +
-                str(e))
-
+            print("Error in populate_db while creating the table" +
+                  " user_karma: " + str(e))
         cursor.close()
         db.close()
+
+        # Add group's chat_id to the group_members table
+        db = sqlite3.connect("db/group_members.db")
+        cursor = db.cursor()
+        sql = f"ALTER TABLE group_members ADD COLUMN '{room_name}' VARCHAR(50)"
+        try:
+            # Execute the SQL command
+            cursor.execute(sql)
+        except Exception as e:
+            print("Error in populate_db while altering the table" +
+                  " group_members: " + str(e))
+        cursor.close()
+        db.close()
+
     # Return True if db already existed
     return populated_status
 
