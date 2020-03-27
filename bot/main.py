@@ -145,7 +145,7 @@ def check_auth_room(room_name):
 
 # Respond to /start
 def start(update, context):
-    if check_auth_room(update.message.chat.title) is False:
+    if check_auth_room(str(update.message.chat.id)) is False:
         return
 
     if update.message.chat.type == "private":
@@ -155,22 +155,17 @@ def start(update, context):
             "Use /addme to let me forward" + " photos that you " +
             emojize(":star:", use_aliases=True) + " to you!")
     else:
-        bad_punc = ["\\", "/", ":", "*", '"', "<", ">", "|"]
-        for x in range(len(bad_punc)):
-            print(bad_punc[x])
-            if bad_punc[x] in update.message.chat.title:
-                context.bot.send_message(
-                    chat_id=update.message.chat_id,
-                    text="To use this bot, your group name cannot" +
-                    " contain the following characters:\n" + '\ / : * " < > |')
-                return
-        # Populate db with room's name
-        if db.populate_db(update.message.chat.title) is True:
+        # Populate db with room's id
+        if db.populate_db(str(update.message.chat.id)) is True:
             context.bot.send_message(chat_id=update.message.chat_id,
                                      text="Your group has already been added.")
         else:
             context.bot.send_message(chat_id=update.message.chat_id,
-                                     text="Your group has been added!" +
+                                     text="Your group has been added! I will" +
+                                     " now repost photos/videos/gifs with" +
+                                     " reaction emojis! You can put" +
+                                     ' "no aqua" somewhere in the caption if' +
+                                     " you don't want me to repost." +
                                      " Have fun :)")
 
 
@@ -248,7 +243,7 @@ def delete(update, context):
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
-    database = update.message.chat.title
+    database = str(update.message.chat.id)
 
     username = update.message.reply_to_message.caption.split()
     delete_message_id = update.message.reply_to_message.message_id
@@ -297,7 +292,7 @@ def karma(update, context):
     else:
         # If not a private chat, check the room name to match to a database
         message = loop.run_until_complete(
-            db.get_user_karma(update.message.chat.title, "group", loop))
+            db.get_user_karma(str(update.message.chat.id), "group", loop))
 
         context.bot.send_message(chat_id=update.message.chat_id,
                                  text=message,
@@ -318,7 +313,7 @@ def give(update, context):
     asyncio.set_event_loop(loop)
 
     # Find out which database to use
-    database = update.message.chat.title
+    database = str(update.message.chat.id)
 
     # Check to see if user used the right command format
     if "@" in update.message.text:
@@ -404,7 +399,7 @@ def repost_check(update, context):
     asyncio.set_event_loop(loop)
 
     # Find room name and assign correct database
-    database = update.message.chat.title
+    database = str(update.message.chat.id)
 
     # Fetch hash of message_id that /repost_challenge was used on
     photo_hash = loop.run_until_complete(
@@ -530,7 +525,7 @@ def repost(update, context):
             file_name = file.download(timeout=10)
             media_hash = compute_hash(file_name)
             # Find room name and assign correct database
-            database = update.message.chat.title
+            database = str(update.message.chat.id)
 
             loop.run_until_complete(
                 db.store_hash(database, repost_id, str(media_hash), loop))
@@ -596,7 +591,7 @@ def button(update, context):
     query = update.callback_query
 
     # Find room name and assign correct database
-    database = query.message.chat.title
+    database = str(query.message.chat.id)
 
     if query.message.chat.type == "private":
         if os.getenv("AUTH_ROOMS_ONLY") == "TRUE":
@@ -795,11 +790,12 @@ def main():
     print("Starting the bot.")
     # Check to see if db folder exists
     if Path("db").exists() is True:
-        # Check to see if SQLite files exist
-        db.check_first_db_run()
+        pass
     else:
         print("db folder does not exist, creating it.")
         Path("db").mkdir(parents=True, exist_ok=True)
+        # Check to see if SQLite files exist
+        db.check_first_db_run()
 
     token = os.getenv("TEL_BOT_TOKEN")
     q = mq.MessageQueue(group_burst_limit=19, group_time_limit_ms=60050)
