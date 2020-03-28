@@ -180,56 +180,52 @@ def source(update, context):
     # Check if only authorized rooms can use this command
     if os.getenv("SOURCE_COMMAND_AUTH_ROOMS_ONLY") == "TRUE":
         # Make sure the command is being used in an authorized room
-        if update.message.chat.title in (os.getenv("GROUP1"),
-                                         os.getenv("GROUP2"),
-                                         os.getenv("GROUP3")):
-            authorized_room = True
-        else:
-            authorized_room = False
-            return
-    else:
-        authorized_room = True
-
-    # Check if the user replied to anything
-    if update.message.reply_to_message is None:
-        context.bot.send_message(chat_id=update.message.chat_id,
-                                 text="Did you forget to reply to an image?")
-    else:
-        # Get media's file_id
-        try:
-            media_id = update.message.reply_to_message.photo[1].file_id
-        except IndexError:
-            try:
-                media_id = update.message.reply_to_message.document.file_id
-            except IndexError:
+        if update.message.chat.id in (os.getenv("GROUP1ID"),
+                                      os.getenv("GROUP2ID"),
+                                      os.getenv("GROUP3ID")):
+            # Check if the user replied to anything
+            if update.message.reply_to_message is None:
+                context.bot.send_message(
+                    chat_id=update.message.chat_id,
+                    text="Did you forget to reply to an image?")
+            else:
+                # Get media's file_id
                 try:
-                    media_id = update.message.reply_to_message.video.file_id
+                    media_id = update.message.reply_to_message.photo[1].file_id
                 except IndexError:
-                    pass
-                    media_id = None
-        if media_id is not None:
-            # Get the download link from Telegram
-            file = context.bot.get_file(file_id=media_id)
-            # Download the media (jpg, png, mp4)
-            file.download(timeout=10)
-            # If it's an mp4, convert it to gif
-            for fname in os.listdir("."):
-                if fname.endswith(".mp4"):
-                    convert_media(fname, TargetFormat.GIF)
-                    os.remove(fname)
-                    break
+                    try:
+                        media_id = update.message.reply_to_message.document.file_id
+                    except IndexError:
+                        try:
+                            media_id = update.message.reply_to_message.video.file_id
+                        except IndexError:
+                            pass
+                            media_id = None
+                if media_id is not None:
+                    # Get the download link from Telegram
+                    file = context.bot.get_file(file_id=media_id)
+                    # Download the media (jpg, png, mp4)
+                    file.download(timeout=10)
+                    # If it's an mp4, convert it to gif
+                    for fname in os.listdir("."):
+                        if fname.endswith(".mp4"):
+                            convert_media(fname, TargetFormat.GIF)
+                            os.remove(fname)
+                            break
 
-            context.bot.send_message(chat_id=update.message.chat_id,
-                                     text=get_source(),
-                                     parse_mode='Markdown',
-                                     disable_web_page_preview=True)
+                    context.bot.send_message(chat_id=update.message.chat_id,
+                                             text=get_source(),
+                                             parse_mode='Markdown',
+                                             disable_web_page_preview=True)
 
-            # Cleanup downloaded media
-            for fname in os.listdir("."):
-                if fname.endswith(".gif"):
-                    os.remove("source.gif")
-                elif fname.endswith(".jpg"):
-                    os.remove(fname)
+                    # Cleanup downloaded media
+                    for fname in os.listdir("."):
+                        if fname.endswith(".gif"):
+                            os.remove("source.gif")
+                        elif fname.endswith(".jpg"):
+                            os.remove(fname)
+        else:
+            return
 
 
 @run_async
