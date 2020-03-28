@@ -57,7 +57,7 @@ def check_first_db_run():
                 cursor.execute(sql)
             except Exception as ex:
                 print("Error in check_first_db_run while creating the table" +
-                      " user_chat_id: " + str(ex))
+                      " user_chat_ids: " + str(ex))
             cursor.close()
             db.close()
 
@@ -84,12 +84,12 @@ def check_first_db_run():
     return
 
 
-def populate_db(room_name):
+def populate_db(database, loop):
     print("Entered populate_db")
     populated_status = False
 
     try:
-        db = sqlite3.connect("db/" + room_name + ".db")
+        db = sqlite3.connect("db/" + database + ".db")
         sql = "SELECT * FROM user_karma;"
         cursor = db.cursor()
 
@@ -103,13 +103,14 @@ def populate_db(room_name):
 
         populated_status = True
     except:
-        db = sqlite3.connect("db/" + room_name + ".db")
+        db = sqlite3.connect("db/" + database + ".db")
         cursor = db.cursor()
 
         # Create tables
         sql = '''
                 CREATE TABLE media_hash(
-                    message_id int(11) NOT NULL, hash varchar(255) NOT NULL,
+                    message_id int(11) NOT NULL,
+                    hash varchar(255) NOT NULL,
                     date date NOT NULL
                 )'''
         try:
@@ -123,9 +124,9 @@ def populate_db(room_name):
                 CREATE TABLE message_karma (
                     message_id int(11) NOT NULL,
                     username varchar(20) DEFAULT NULL,
-                    thumbsup tinyint(4) NOT NULL,
-                    ok_hand tinyint(4) NOT NULL,
-                    heart tinyint(4) NOT NULL
+                    thumbsup int(3) NOT NULL,
+                    ok_hand int(3) NOT NULL,
+                    heart int(3) NOT NULL
                 )'''
         try:
             # Execute the SQL command
@@ -151,7 +152,7 @@ def populate_db(room_name):
         # Add group's chat_id to the group_members table
         db = sqlite3.connect("db/group_members.db")
         cursor = db.cursor()
-        sql = f"ALTER TABLE group_members ADD COLUMN '{room_name}' VARCHAR(50)"
+        sql = f"ALTER TABLE group_members ADD COLUMN '{database}' VARCHAR(50)"
         try:
             # Execute the SQL command
             cursor.execute(sql)
@@ -167,13 +168,6 @@ def populate_db(room_name):
 
 # Retrieve user's karma from the database
 async def get_user_karma(database, chat_type, loop):
-
-    # Add chat group name to the results of /karma
-    if chat_type == "private":
-        return_message = database + "\n"
-    else:
-        return_message = ""
-
     db = await aiosqlite.connect("db/" + database + ".db")
     sql = "SELECT * FROM user_karma WHERE karma <> 0 ORDER BY username;"
     cursor = await db.cursor()
@@ -183,7 +177,7 @@ async def get_user_karma(database, chat_type, loop):
         # Fetch all the rows in a list of lists.
         results = await cursor.fetchall()
 
-        return_message += "```\n"
+        return_message = "```\n"
 
         # Find length of longest username and karma
         longest_username_length = 0
@@ -326,7 +320,7 @@ async def update_message_karma(database, message_id, username, emoji_points,
 # Delete message_id row from database
 async def delete_row(database, message_id, loop):
     db = await aiosqlite.connect("db/" + database + ".db")
-    # Add message_id, photo's hash, and current date to database
+    # Fetch number of points that need to be deleted
     sql = "SELECT SUM(thumbsup + ok_hand + heart) FROM message_karma " \
           + "WHERE message_id = " + str(message_id) + ";"
     cursor = await db.cursor()
@@ -338,9 +332,8 @@ async def delete_row(database, message_id, loop):
         points_to_delete = await cursor.fetchone()
     except Exception as e:
         print("Error in delete_row: " + str(e))
-    # Delete hashes older than 30 days
-    sql = "DELETE from message_karma WHERE message_id = " + str(
-        message_id) + ";"
+    # Delete row that matches message_id
+    sql = f"DELETE from message_karma WHERE message_id = {str(message_id)};"
     try:
         # Execute the SQL command
         await cursor.execute(sql)
@@ -419,7 +412,7 @@ async def get_message_karma(database, message_id, loop):
 # Get user's personal chat_id with Aqua
 async def get_chat_id(tele_user, loop):
     db = await aiosqlite.connect("db/" + os.getenv("DATABASE1") + ".db")
-    sql = "SELECT chat_id FROM user_chat_id WHERE username = '" + str(
+    sql = "SELECT chat_id FROM user_chat_ids WHERE username = '" + str(
         tele_user) + "';"
     cursor = await db.cursor()
 
@@ -440,7 +433,7 @@ async def addme_async(chat_type, username, chat_id, loop):
     # Make sure the /addme command is being sent in a PM
     if chat_type == "private":
         db = await aiosqlite.connect("db/user_chat_ids.db")
-        sql = "SELECT * FROM user_chat_id WHERE username = '" + str(
+        sql = "SELECT * FROM user_chat_ids WHERE username = '" + str(
             username) + "';"
         cursor = await db.cursor()
 
@@ -453,7 +446,7 @@ async def addme_async(chat_type, username, chat_id, loop):
             print("Error: " + str(e))
         if result is None:
             # Add user's chat_id with Aqua to database
-            sql = "INSERT INTO user_chat_id VALUES (" + str(
+            sql = "INSERT INTO user_chat_ids VALUES (" + str(
                 chat_id) + ", '" + str(username) + "');"
             try:
                 # Execute the SQL command

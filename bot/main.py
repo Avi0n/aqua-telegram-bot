@@ -118,45 +118,44 @@ def compute_hash(file_name):
     return media_hash
 
 
-def check_auth_room(room_name):
+def check_auth_room(room_id):
     # If AUTH_ROOMS_ONLY is set to TRUE in .env, only allow bot to
     # be used in specified rooms
     if os.getenv("AUTH_ROOMS_ONLY") == "TRUE":
         authorized_status = False
-        group_names = [
-            os.getenv("GROUP1"),
-            os.getenv("GROUP2"),
-            os.getenv("GROUP3")
+        group_ids = [
+            os.getenv("GROUP1ID"),
+            os.getenv("GROUP2ID"),
+            os.getenv("GROUP3ID")
         ]
 
-        for x in range(len(group_names)):
-            print(room_name)
-            print(group_names[x])
-            if room_name == group_names[x]:
+        for x in range(len(group_ids)):
+            if room_id == group_ids[x]:
                 authorized_status = True
                 break
     # If AUTH_ROOMS_ONLY is set to FALSE in .env, anyone can use
     # the bot
     else:
         authorized_status = True
-    print(str(authorized_status))
     return authorized_status
 
 
+@run_async
 # Respond to /start
 def start(update, context):
-    if check_auth_room(str(update.message.chat.id)) is False:
-        return
-
     if update.message.chat.type == "private":
         context.bot.send_message(
             chat_id=update.message.chat_id,
-            text="Use /karma to see everyone's points.\n" +
-            "Use /addme to let me forward" + " photos that you " +
+            text="Use /addme to let me forward media that you " +
             emojize(":star:", use_aliases=True) + " to you!")
+    # Check to see if bot can be used in this group chat
+    elif check_auth_room(str(update.message.chat.id)) is False:
+        return
     else:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
         # Populate db with room's id
-        if db.populate_db(str(update.message.chat.id)) is True:
+        if db.populate_db(str(update.message.chat.id), loop) is True:
             context.bot.send_message(chat_id=update.message.chat_id,
                                      text="Your group has already been added.")
         else:
@@ -288,7 +287,8 @@ def karma(update, context):
 
         update.message.reply_text("Please choose a room.",
                                   reply_markup=reply_markup)
-
+    elif update.message.chat.type == "private":
+        return
     else:
         # If not a private chat, check the room name to match to a database
         message = loop.run_until_complete(
@@ -377,6 +377,7 @@ def give(update, context):
                                  username + " " + points + "'")
 
 
+@run_async
 # Respond to /addme
 def addme(update, context):
     loop = asyncio.new_event_loop()
@@ -398,7 +399,7 @@ def repost_check(update, context):
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
-    # Find room name and assign correct database
+    # Find group id and assign correct database
     database = str(update.message.chat.id)
 
     # Fetch hash of message_id that /repost_challenge was used on
@@ -409,7 +410,6 @@ def repost_check(update, context):
     hash_list = loop.run_until_complete(
         db.fetch_all_hashes(update.message.reply_to_message.message_id,
                             database, loop))
-    orig_hash_message_id = 0
 
     dupes = 0
     first_dupe_found = False
@@ -597,21 +597,26 @@ def button(update, context):
         if os.getenv("AUTH_ROOMS_ONLY") == "TRUE":
             chat_type = "private"
             if int(query.data) == 20:
-                message = loop.run_until_complete(
-                    db.get_user_karma(os.getenv("GROUP1"), chat_type, loop))
-                query.edit_message_text(text=message,
-                                        parse_mode="Markdown",
-                                        timeout=20)
+                query.edit_message_text(
+                    text=os.getenv("GROUP1") + "\n" + loop.run_until_complete(
+                        db.get_user_karma(os.getenv("GROUP1ID"), chat_type,
+                                          loop)),
+                    parse_mode="Markdown",
+                    timeout=20)
             elif int(query.data) == 21:
-                query.edit_message_text(text=loop.run_until_complete(
-                    db.get_user_karma(os.getenv("GROUP2"), chat_type, loop)),
-                                        parse_mode="Markdown",
-                                        timeout=20)
+                query.edit_message_text(
+                    text=os.getenv("GROUP2") + "\n" + loop.run_until_complete(
+                        db.get_user_karma(os.getenv("GROUP1ID"), chat_type,
+                                          loop)),
+                    parse_mode="Markdown",
+                    timeout=20)
             elif int(query.data) == 22:
-                query.edit_message_text(text=loop.run_until_complete(
-                    db.get_user_karma(os.getenv("GROUP3"), chat_type, loop)),
-                                        parse_mode="Markdown",
-                                        timeout=20)
+                query.edit_message_text(
+                    text=os.getenv("GROUP3") + "\n" + loop.run_until_complete(
+                        db.get_user_karma(os.getenv("GROUP1ID"), chat_type,
+                                          loop)),
+                    parse_mode="Markdown",
+                    timeout=20)
         else:
             return
     else:
@@ -620,6 +625,7 @@ def button(update, context):
 
         if int(query.data) != 10 and int(query.data) != 11:
             self_vote = False
+            """
             # Prevent users from voting on their own posts
             if query.from_user.username == username[-1]:
                 context.bot.answer_callback_query(
@@ -635,6 +641,9 @@ def button(update, context):
                     chat_id=query.message.chat_id,
                     sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
                 self_vote = True
+            """
+            if 1 == 0:
+                return
             # Update database with emoji point data
             else:
                 if self_vote is False:
@@ -780,8 +789,7 @@ def button(update, context):
             except Exception as e:
                 context.bot.answer_callback_query(
                     callback_query_id=query.id,
-                    text="Error: " + str(e) + "\n" + "." +
-                    "Have you PM'd me the '/addme' command?",
+                    text="Have you PM'd me the '/addme' command?",
                     show_alert=True,
                     timeout=None)
 
