@@ -35,6 +35,8 @@ from telegram.ext import MessageHandler, CommandHandler, \
 from telegram.ext import messagequeue as mq
 from telegram.ext.dispatcher import run_async
 from telegram.utils.request import Request
+from telegram.error import (TelegramError, Unauthorized, BadRequest, TimedOut,
+                            ChatMigrated, NetworkError)
 
 if os.getenv("USE_MYSQL") == "TRUE":
     import mariadb_functions as db
@@ -393,7 +395,6 @@ def addme(update, context):
                                                 loop)))
 
 
-@run_async
 # Respond to /check_repost
 def repost_check(update, context):
     loop = asyncio.new_event_loop()
@@ -411,47 +412,64 @@ def repost_check(update, context):
         db.fetch_all_hashes(update.message.reply_to_message.message_id,
                             database, loop))
 
+    message_id_dupe_list = []
     dupes = 0
-    first_dupe_found = False
     # Compare hash or message command was used on with all other hashes
     for i in range(len(hash_list)):
         # If the hash difference is less than 10, assume it is a duplicate
         if (imagehash.hex_to_hash(photo_hash[0]) -
                 imagehash.hex_to_hash(hash_list[i][1])) < 10:
             dupes += 1
-            # If this is the first duplicate found, set it's message_id aside
-            if first_dupe_found is False:
-                orig_hash_message_id = hash_list[i][0]
-                first_dupe_found = True
+            # Store duplicate photo message ids
+            message_id_dupe_list.append(str(hash_list[i][0]))
 
     # If duplicates were found, let the user know
-    try:
-        if dupes > 1:
-            # Make sure user isn't using command on the
-            # first occurrence of the photo
-            if orig_hash_message_id == update.message.reply_to_message.message_id:
-                context.bot.send_message(
-                    chat_id=update.message.chat_id,
-                    text="This is the first time this photo has "
-                    "been posted in the last 30 days, but "
-                    "it has been reposted " + str(dupes) +
-                    " times since then.")
-            else:
-                message_text = "Yep, that's a repost. " \
-                               + "Here's the first time it was posted." \
-                               + "\nIt's been posted " + \
-                               str(dupes) + " times in the last 30 days.\n"
-                context.bot.send_message(
-                    chat_id=update.message.chat_id,
-                    reply_to_message_id=orig_hash_message_id,
-                    text=message_text)
-        else:
+    if dupes > 1:
+        # Make sure user isn't using command on the
+        # first occurrence of the photo
+        if message_id_dupe_list[
+                0] == update.message.reply_to_message.message_id:
             context.bot.send_message(
                 chat_id=update.message.chat_id,
-                text="Hmm... doesn't look like a repost to me.")
-    except Exception as e:
-        print("Error in repost_check(): " + str(e))
-        context.bot.send_message(chat_id=update.message.chat_id, text=str(e))
+                text="This is the first time this photo has "
+                "been posted in the last 30 days, but "
+                "it has been reposted " + str(dupes) + " times since then.")
+            return
+
+        message_text = "Yep, that's a repost. " \
+                       + "Here's the first occurance I could find." \
+                       + "\nIt's been posted " \
+                       + str(dupes) + " times in the last 30 days."
+        message_sent = False
+        for x in range(len(message_id_dupe_list)):
+            # If this is the last dupe message_id, the ones before it
+            # have been deleted either by the user or an admin.
+            # Send a different message.
+            if x + 1 == len(message_id_dupe_list) and message_sent is False:
+                message_text = "Yep, that's a repost.\nIt's been" \
+                               + " posted " + str(dupes) \
+                               + " times in the last 30 days, but" \
+                               + " I couldn't find the others." \
+                               + " Maybe they were deleted?"
+                context.bot.send_message(chat_id=update.message.chat_id,
+                                         text=message_text)
+            elif message_sent is True:
+                break
+            else:
+                try:
+                    context.bot.send_message(
+                        chat_id=update.message.chat_id,
+                        reply_to_message_id=message_id_dupe_list[x],
+                        text=message_text).result()
+                    message_sent = True
+                # TODO: Find a better way to handle "Reply message not found"
+                # Currently prints error to console and it should not
+                except BadRequest:
+                    continue
+    else:
+        context.bot.send_message(
+            chat_id=update.message.chat_id,
+            text="Hmm... doesn't look like a repost to me.")
 
 
 @run_async
