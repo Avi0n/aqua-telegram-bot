@@ -664,32 +664,44 @@ def button(update, context):
             else:
                 if self_vote is False:
                     try:
-                        loop.run_until_complete(
-                            db.update_user_karma(database, username[-1], "+",
-                                                 query.data, loop))
-                        loop.run_until_complete(
+                        # If db returns true, user has already pressed this
+                        # emoji
+                        user_voted = loop.run_until_complete(
                             db.update_message_karma(database,
                                                     query.message.message_id,
                                                     query.from_user.username,
                                                     query.data, loop))
+                        # If user hasn't already pressed this emoji,
+                        # add a point from their overall karma
+                        if user_voted is False:
+                            loop.run_until_complete(
+                                db.update_user_karma(database,
+                                                     username[-1], "+",
+                                                     str(query.data), loop))
+                        # Otherwise subtract a point
+                        else:
+                            loop.run_until_complete(
+                                db.update_user_karma(database,
+                                                     username[-1], "-",
+                                                     str(query.data), loop))
+                        # Check db to make sure we have the correct vote count
                         emoji_points = loop.run_until_complete(
                             db.check_emoji_points(database,
                                                   query.message.message_id,
                                                   loop))
 
-                        # Update emoji points. Divide by 2 & 3 for ok_hand and
-                        # heart to get the correct number of votes
+                        # Update keyboard emoji points
                         keyboard = [[
                             InlineKeyboardButton(
                                 str(emoji_points[0]) + " " +
                                 emojize(":thumbsup:", use_aliases=True),
                                 callback_data=1),
                             InlineKeyboardButton(
-                                str(emoji_points[1] // 2) + " " +
+                                str(emoji_points[1]) + " " +
                                 emojize(":ok_hand:", use_aliases=True),
                                 callback_data=2),
                             InlineKeyboardButton(
-                                str(emoji_points[2] // 3) + " " +
+                                str(emoji_points[2]) + " " +
                                 emojize(":heart:", use_aliases=True),
                                 callback_data=3),
                             InlineKeyboardButton(emojize(":star:",
@@ -701,29 +713,40 @@ def button(update, context):
                         query.edit_message_reply_markup(
                             reply_markup=reply_markup)
 
-                        # Check to see which emoji user pressed
-                        if int(query.data) == 1:
+                        # If the user hasn't pressed this emoji before,
+                        # send toast notification to let them know
+                        # which emoji they pressed
+                        if user_voted is False:
+                            if int(query.data) == 1:
+                                context.bot.answer_callback_query(
+                                    callback_query_id=query.id,
+                                    text="You " +
+                                    emojize(":thumbsup:", use_aliases=True) +
+                                    " this.",
+                                    show_alert=False,
+                                    timeout=None)
+                            elif int(query.data) == 2:
+                                context.bot.answer_callback_query(
+                                    callback_query_id=query.id,
+                                    text="You " +
+                                    emojize(":ok_hand:", use_aliases=True) +
+                                    " this.",
+                                    show_alert=False,
+                                    timeout=None)
+                            elif int(query.data) == 3:
+                                context.bot.answer_callback_query(
+                                    callback_query_id=query.id,
+                                    text="You " +
+                                    emojize(":heart:", use_aliases=True) +
+                                    " this.",
+                                    show_alert=False,
+                                    timeout=None)
+                        # Send toast letting user know they took their
+                        # reaction back
+                        else:
                             context.bot.answer_callback_query(
                                 callback_query_id=query.id,
-                                text="You " +
-                                emojize(":thumbsup:", use_aliases=True) +
-                                " this.",
-                                show_alert=False,
-                                timeout=None)
-                        elif int(query.data) == 2:
-                            context.bot.answer_callback_query(
-                                callback_query_id=query.id,
-                                text="You " +
-                                emojize(":ok_hand:", use_aliases=True) +
-                                " this.",
-                                show_alert=False,
-                                timeout=None)
-                        elif int(query.data) == 3:
-                            context.bot.answer_callback_query(
-                                callback_query_id=query.id,
-                                text="You " +
-                                emojize(":heart:", use_aliases=True) +
-                                " this.",
+                                text="You took your reaction back.",
                                 show_alert=False,
                                 timeout=None)
                         return
