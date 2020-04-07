@@ -124,9 +124,9 @@ def populate_db(database, loop):
                 CREATE TABLE message_karma (
                     message_id int(11) NOT NULL,
                     username varchar(20) DEFAULT NULL,
-                    thumbsup int(3) NOT NULL,
-                    ok_hand int(3) NOT NULL,
-                    heart int(3) NOT NULL
+                    thumbsup int(4) NOT NULL,
+                    ok_hand int(4) NOT NULL,
+                    heart int(4) NOT NULL
                 )'''
         try:
             # Execute the SQL command
@@ -232,7 +232,7 @@ async def update_user_karma(database, username, plus_or_minus, points, loop):
         except Exception as e:
             # Rollback in case there is any error
             await db.rollback()
-            print("update_karma error: " + str(e))
+            print("update_user_karma error: " + str(e))
         finally:
             await cursor.close()
     else:
@@ -246,34 +246,36 @@ async def update_user_karma(database, username, plus_or_minus, points, loop):
         except Exception as e:
             # Rollback in case there is any error
             await db.rollback()
-            print("update_karma error: " + str(e))
+            print("update_user_karma error: " + str(e))
         finally:
             await cursor.close()
     await db.close()
 
 
 # Update a message_id's points
-async def update_message_karma(database, message_id, username, emoji_points,
+async def update_message_karma(database, message_id, username, query_data,
                                loop):
+    user_voted = False
+
     thumb_points = 0
     ok_points = 0
     heart_points = 0
     # Figure out which column to update
-    if int(emoji_points) == 1:
+    if int(query_data) == 1:
         emoji_symbol = "thumbsup"
         thumb_points = 1
-    elif int(emoji_points) == 2:
+    elif int(query_data) == 2:
         emoji_symbol = "ok_hand"
-        ok_points = 2
-    elif int(emoji_points) == 3:
+        ok_points = 1
+    elif int(query_data) == 3:
         emoji_symbol = "heart"
-        heart_points = 3
+        heart_points = 1
 
     db = await aiosqlite.connect("db/" + database + ".db")
     sql = "SELECT * FROM message_karma WHERE message_id = " + \
           str(message_id) + " AND username = '" + username + "';"
     cursor = await db.cursor()
-
+    # Check if this message_id exists in the db already
     try:
         # Execute the SQL command
         await cursor.execute(sql)
@@ -298,11 +300,39 @@ async def update_message_karma(database, message_id, username, emoji_points,
         finally:
             await cursor.close()
     else:
-        # Update emoji points that user has given a specific message_id
-        sql = "UPDATE message_karma SET " + emoji_symbol + " = " \
-              + emoji_symbol + " + " + str(emoji_points) \
-              + " WHERE message_id = " + str(message_id) \
-              + " AND username = '" + username + "';"
+        # If user has already voted, check to see if this specific emoji has
+        # already been pressed
+        if int(query_data) == 1:
+            if int(result[2]) != 0:
+                # Change specified emoji field to 0 since user is
+                # taking back reaction
+                sql = "UPDATE message_karma SET thumbsup = 0" \
+                    + " WHERE message_id = " + str(message_id) \
+                    + " AND username = '" + username + "';"
+                user_voted = True
+        elif int(query_data) == 2:
+            if int(result[3]) != 0:
+                # Change specified emoji field to 0 since user is
+                # taking back reaction
+                sql = "UPDATE message_karma SET ok_hand = 0" \
+                    + " WHERE message_id = " + str(message_id) \
+                    + " AND username = '" + username + "';"
+                user_voted = True
+        elif int(query_data) == 3:
+            if int(result[4]) != 0:
+                # Change specified emoji field to 0 since user is
+                # taking back reaction
+                sql = "UPDATE message_karma SET heart = 0" \
+                    + " WHERE message_id = " + str(message_id) \
+                    + " AND username = '" + username + "';"
+                user_voted = True
+        # If user hasn't already pressed the emoji, add point to db
+        if user_voted is False:
+            # Update emoji points that user has given a specific message_id
+            sql = "UPDATE message_karma SET " + emoji_symbol + " = " \
+                + emoji_symbol + " + 1" \
+                + " WHERE message_id = " + str(message_id) \
+                + " AND username = '" + username + "';"
         try:
             # Execute the SQL command
             await cursor.execute(sql)
@@ -315,6 +345,10 @@ async def update_message_karma(database, message_id, username, emoji_points,
         finally:
             await cursor.close()
     await db.close()
+
+    # Return true if user has pressed this emoji already
+    # Return false if user has not pressed this emoji already
+    return user_voted
 
 
 # Delete message_id row from database
@@ -374,7 +408,8 @@ async def get_message_karma(database, message_id, loop):
     return_message = "Votes\n\n"
 
     db = await aiosqlite.connect("db/" + database + ".db")
-    sql = "SELECT username, SUM(thumbsup + ok_hand + heart) AS karma " \
+    # Multiply ok_hand by 2 and heart by 3 to get correct sum of votes
+    sql = "SELECT username, SUM(thumbsup + ok_hand*2 + heart*3) AS karma " \
           + "FROM message_karma WHERE message_id = " + str(message_id) \
           + " GROUP BY username ORDER BY username;"
     cursor = await db.cursor()
