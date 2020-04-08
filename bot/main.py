@@ -641,7 +641,6 @@ def button(update, context):
 
         if int(query.data) != 10 and int(query.data) != 11:
             self_vote = False
-            """
             # Prevent users from voting on their own posts
             if query.from_user.username == username[-1]:
                 context.bot.answer_callback_query(
@@ -657,9 +656,6 @@ def button(update, context):
                     chat_id=query.message.chat_id,
                     sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
                 self_vote = True
-            """
-            if 1 == 0:
-                return
             # Update database with emoji point data
             else:
                 if self_vote is False:
