@@ -446,7 +446,7 @@ async def get_message_karma(database, message_id, loop):
 
 # Get user's personal chat_id with Aqua
 async def get_chat_id(tele_user, loop):
-    db = await aiosqlite.connect("db/" + os.getenv("DATABASE1") + ".db")
+    db = await aiosqlite.connect("db/user_chat_ids.db")
     sql = "SELECT chat_id FROM user_chat_ids WHERE username = '" + str(
         tele_user) + "';"
     cursor = await db.cursor()
