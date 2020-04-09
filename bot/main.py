@@ -622,14 +622,14 @@ def button(update, context):
             elif int(query.data) == 21:
                 query.edit_message_text(
                     text=os.getenv("GROUP2") + "\n" + loop.run_until_complete(
-                        db.get_user_karma(os.getenv("GROUP1ID"), chat_type,
+                        db.get_user_karma(os.getenv("GROUP2ID"), chat_type,
                                           loop)),
                     parse_mode="Markdown",
                     timeout=20)
             elif int(query.data) == 22:
                 query.edit_message_text(
                     text=os.getenv("GROUP3") + "\n" + loop.run_until_complete(
-                        db.get_user_karma(os.getenv("GROUP1ID"), chat_type,
+                        db.get_user_karma(os.getenv("GROUP3ID"), chat_type,
                                           loop)),
                     parse_mode="Markdown",
                     timeout=20)
