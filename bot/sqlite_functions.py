@@ -167,8 +167,8 @@ def populate_db(database, loop):
 
 
 # Retrieve user's karma from the database
-async def get_user_karma(database, chat_type, loop):
-    db = await aiosqlite.connect("db/" + database + ".db")
+async def get_user_karma(database, loop):
+    db = await aiosqlite.connect(f"db/{database}.db")
     sql = "SELECT * FROM user_karma WHERE karma <> 0 ORDER BY username;"
     cursor = await db.cursor()
     try:
