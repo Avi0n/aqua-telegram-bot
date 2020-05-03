@@ -289,7 +289,7 @@ def karma(update, context):
     else:
         # If not a private chat, check the room name to match to a database
         message = loop.run_until_complete(
-            db.get_user_karma(str(update.message.chat.id), "group", loop))
+            db.get_user_karma(str(update.message.chat.id), loop))
 
         context.bot.send_message(chat_id=update.message.chat_id,
                                  text=message,
