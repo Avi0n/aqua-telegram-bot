@@ -16,5 +16,5 @@ docker push:
   - dev
   script:
   - echo "$REGISTRY_PASSWORD" | docker login -u "$REGISTRY_USER" --password-stdin
-  - docker push avi0n/aqua-telegram-bot:dev && docker image rm avi0n/aqua-telegram-bot:dev
+  - docker push avi0n/aqua-telegram-bot:3.3-beta2 && docker image rm avi0n/aqua-telegram-bot:3.3-beta2
  
