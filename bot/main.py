@@ -324,22 +324,23 @@ def give(update, context):
         from_username = update.message.from_user.username
 
         try:
-            if username == from_username:
-                context.bot.send_message(
-                    chat_id=update.message.chat_id,
-                    text=update.message.from_user.username +
-                    " just tried to give themselves points.")
-                context.bot.send_sticker(
-                    chat_id=update.message.chat_id,
-                    sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
-            elif int(points) == 0:
-                context.bot.send_message(
-                    chat_id=update.message.chat_id,
-                    text="pfft, you just tried to give someone 0 points.")
-                context.bot.send_sticker(
-                    chat_id=update.message.chat_id,
-                    sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
-            elif int(points) < -20:
+            if os.getenv("WEEBIFY") == "TRUE":
+                if username == from_username:
+                    context.bot.send_message(
+                        chat_id=update.message.chat_id,
+                        text=update.message.from_user.username +
+                        " just tried to give themselves points.")
+                    context.bot.send_sticker(
+                        chat_id=update.message.chat_id,
+                        sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
+                elif int(points) == 0:
+                    context.bot.send_message(
+                        chat_id=update.message.chat_id,
+                        text="pfft, you just tried to give someone 0 points.")
+                    context.bot.send_sticker(
+                        chat_id=update.message.chat_id,
+                        sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
+            if int(points) < -20:
                 context.bot.send_message(
                     chat_id=update.message.chat_id,
                     text="That's too many points to be taking away.")
@@ -351,17 +352,17 @@ def give(update, context):
                                          text=from_username + " took away " +
                                          points + " points from " + username +
                                          "!")
-            elif 61 > int(points) > 0:
+            elif 51 > int(points) > 0:
                 loop.run_until_complete(
                     db.update_user_karma(database, username, "+",
                                          points_no_punc, loop))
                 context.bot.send_message(chat_id=update.message.chat_id,
                                          text=from_username + " gave " +
                                          username + " " + points + " points!")
-            elif int(points) > 61:
+            elif int(points) > 51:
                 context.bot.send_message(
                     chat_id=update.message.chat_id,
-                    text="Don't you think that's a tad too many points?")
+                    text="Points must be less than 51")
         except Exception as e:
             context.bot.send_message(chat_id=update.message.chat_id,
                                      text="Error: " + str(e))
@@ -642,15 +643,16 @@ def button(update, context):
                 context.bot.answer_callback_query(
                     callback_query_id=query.id,
                     text="You can't vote on your own posts!",
-                    show_alert=False,
+                    show_alert=True,
                     timeout=None)
-                context.bot.send_message(
-                    chat_id=query.message.chat_id,
-                    text=query.from_user.username +
-                    " just tried to give themselves points.")
-                context.bot.send_sticker(
-                    chat_id=query.message.chat_id,
-                    sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
+                if os.getenv("WEEBIFY") == "TRUE":
+                    context.bot.send_message(
+                        chat_id=query.message.chat_id,
+                        text=query.from_user.username +
+                        " just tried to give themselves points.")
+                    context.bot.send_sticker(
+                        chat_id=query.message.chat_id,
+                        sticker="CAADAQADbAEAA_AaA8xi9ymr2H-ZAg")
                 self_vote = True
             # Update database with emoji point data
             else:
@@ -826,7 +828,7 @@ def button(update, context):
 
 
 def main():
-    print("Starting Aqua 3.3 beta 2")
+    print("Starting Aqua 3.3 beta 3")
     # Check to see if db folder exists
     if Path("db").exists() is True:
         pass
