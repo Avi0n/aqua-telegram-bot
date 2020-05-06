@@ -99,8 +99,8 @@ def convert_media(inputpath, targetFormat):
     fps = reader.get_meta_data()["fps"]
 
     writer = imageio.get_writer(outputpath, fps=fps)
-    for i, im in enumerate(reader):
-        sys.stdout.write("\rframe {0}".format(i))
+    for x, im in enumerate(reader):
+        sys.stdout.write("\rframe {0}".format(x))
         sys.stdout.flush()
         writer.append_data(im)
     print("\r\nFinalizing conversion...")
@@ -360,9 +360,8 @@ def give(update, context):
                                          text=from_username + " gave " +
                                          username + " " + points + " points!")
             elif int(points) > 51:
-                context.bot.send_message(
-                    chat_id=update.message.chat_id,
-                    text="Points must be less than 51")
+                context.bot.send_message(chat_id=update.message.chat_id,
+                                         text="Points must be less than 51")
         except Exception as e:
             context.bot.send_message(chat_id=update.message.chat_id,
                                      text="Error: " + str(e))
@@ -411,13 +410,13 @@ def repost_check(update, context):
     message_id_dupe_list = []
     dupes = 0
     # Compare hash or message command was used on with all other hashes
-    for i in range(len(hash_list)):
+    for x in range(len(hash_list)):
         # If the hash difference is less than 10, assume it is a duplicate
         if (imagehash.hex_to_hash(photo_hash[0]) -
-                imagehash.hex_to_hash(hash_list[i][1])) < 10:
+                imagehash.hex_to_hash(hash_list[x][1])) < 10:
             dupes += 1
             # Store duplicate photo message ids
-            message_id_dupe_list.append(str(hash_list[i][0]))
+            message_id_dupe_list.append(str(hash_list[x][0]))
 
     # If duplicates were found, let the user know
     if dupes > 1:
@@ -511,11 +510,54 @@ def repost(update, context):
     ]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
+    # See if there is a URL in the caption
+    try:
+        caption_url_check = update.message.caption_entities[0].url
+    except Exception as e:
+        print(str(e))
+        caption_url_check = ""
     # Give credit to who originally posted the photo/video
     if update.message.caption is not None:
-        repost_caption = update.message.caption \
-                         + "\n\nPosted by " \
-                         + update.message.from_user.username
+        # Create Markdown links
+        if caption_url_check != "":
+            # Create markdown links
+            url_num = len(update.message.caption_entities)
+            caption_entities = update.message.caption_entities
+            caption = update.message.caption
+            caption_linked = ""
+            last_pos = 0
+            for x in range(url_num):
+                url = caption_entities[x].url
+                offset = caption_entities[x].offset
+                length = caption_entities[x].length
+                cur_pos = offset + length
+                # If offset is 0, the first character is part of a link
+                if offset is 0:
+                    caption_linked += f"[{caption[:length]}]({url})"
+                    last_pos = cur_pos
+                else:
+                    caption_linked += caption[last_pos:offset - 1] \
+                                      + " [" + caption[offset:cur_pos] \
+                                      + "](" + url + ")"
+                    last_pos = cur_pos
+                if x == url_num - 1:
+                    # Attach rest of message
+                    # If we're at the last character, attach Posted by
+                    if cur_pos == len(caption):
+                        repost_caption = caption_linked \
+                                        + "\n\nPosted by " \
+                                        + update.message.from_user.username
+                    # If we're not at the last character, attach the rest of
+                    # the caption before attaching Posted by
+                    else:
+                        repost_caption = caption_linked + caption[cur_pos:] \
+                                        + "\n\nPosted by " \
+                                        + update.message.from_user.username
+        # No links, assign caption
+        else:
+            repost_caption = update.message.caption \
+                            + "\n\nPosted by " \
+                            + update.message.from_user.username
     else:
         repost_caption = "\n\nPosted by " + update.message.from_user.username
 
@@ -532,7 +574,7 @@ def repost(update, context):
                 reply_markup=reply_markup,
                 disable_notification=True,
                 timeout=20,
-                parse_mode="HTML")['message_id']
+                parse_mode="Markdown")['message_id']
             # Download file to hash
             file = context.bot.get_file(
                 file_id=update.message.photo[-1].file_id)
