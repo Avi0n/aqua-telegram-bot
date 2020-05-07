@@ -519,7 +519,7 @@ def repost(update, context):
     # Give credit to who originally posted the photo/video
     if update.message.caption is not None:
         # Create Markdown links
-        if caption_url_check != "":
+        if caption_url_check is not None:
             # Create markdown links
             url_num = len(update.message.caption_entities)
             caption_entities = update.message.caption_entities
@@ -533,12 +533,13 @@ def repost(update, context):
                 cur_pos = offset + length
                 # If offset is 0, the first character is part of a link
                 if offset is 0:
-                    caption_linked += f"[{caption[:length]}]({url})"
+                    caption_linked += f"<a href='{url}'>{caption[:length]}</a>"
                     last_pos = cur_pos
                 else:
-                    caption_linked += caption[last_pos:offset - 1] \
-                                      + " [" + caption[offset:cur_pos] \
-                                      + "](" + url + ")"
+                    caption_linked += caption[last_pos:offset] \
+                                      + "<a href='" + url + "'>" \
+                                      + caption[offset:cur_pos] \
+                                      + "</a>"
                     last_pos = cur_pos
                 if x == url_num - 1:
                     # Attach rest of message
@@ -574,7 +575,7 @@ def repost(update, context):
                 reply_markup=reply_markup,
                 disable_notification=True,
                 timeout=20,
-                parse_mode="Markdown")['message_id']
+                parse_mode="HTML")['message_id']
             # Download file to hash
             file = context.bot.get_file(
                 file_id=update.message.photo[-1].file_id)
