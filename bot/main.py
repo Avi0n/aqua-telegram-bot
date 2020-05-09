@@ -518,40 +518,45 @@ def repost(update, context):
         caption_url_check = ""
     # Give credit to who originally posted the photo/video
     if update.message.caption is not None:
-        # Create Markdown links
+        # Create Markdown formatting/links
         if caption_url_check is not None:
-            # Create markdown links
-            url_num = len(update.message.caption_entities)
-            caption_entities = update.message.caption_entities
+            ent_num = len(update.message.caption_entities)
+            cap_ent = update.message.caption_entities
             caption = update.message.caption
-            caption_linked = ""
+            cap_formatted = ""
             last_pos = 0
-            for x in range(url_num):
-                url = caption_entities[x].url
-                offset = caption_entities[x].offset
-                length = caption_entities[x].length
+            for x in range(ent_num):
+                try:
+                    url = cap_ent[x].url
+                except:
+                    is_url = False
+                offset = cap_ent[x].offset
+                length = cap_ent[x].length
                 cur_pos = offset + length
                 # If offset is 0, the first character is part of a link
                 if offset is 0:
-                    caption_linked += f"<a href='{url}'>{caption[:length]}</a>"
-                    last_pos = cur_pos
+                    if is_url is True:
+                        cap_formatted += f"<a href='{url}'>{caption[:length]}</a>"
+                        last_pos = cur_pos
+                    else:
+                        cap_formatted += ""
                 else:
-                    caption_linked += caption[last_pos:offset] \
+                    cap_formatted += caption[last_pos:offset] \
                                       + "<a href='" + url + "'>" \
                                       + caption[offset:cur_pos] \
                                       + "</a>"
                     last_pos = cur_pos
-                if x == url_num - 1:
+                if x == ent_num - 1:
                     # Attach rest of message
                     # If we're at the last character, attach Posted by
                     if cur_pos == len(caption):
-                        repost_caption = caption_linked \
+                        repost_caption = cap_formatted \
                                         + "\n\nPosted by " \
                                         + update.message.from_user.username
                     # If we're not at the last character, attach the rest of
                     # the caption before attaching Posted by
                     else:
-                        repost_caption = caption_linked + caption[cur_pos:] \
+                        repost_caption = cap_formatted + caption[cur_pos:] \
                                         + "\n\nPosted by " \
                                         + update.message.from_user.username
         # No links, assign caption
@@ -871,7 +876,7 @@ def button(update, context):
 
 
 def main():
-    print("Starting Aqua 3.3 beta 3")
+    print("Starting Aqua 3.3 beta 4")
     # Check to see if db folder exists
     if Path("db").exists() is True:
         pass
