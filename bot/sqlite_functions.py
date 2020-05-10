@@ -411,7 +411,7 @@ async def get_message_karma(database, message_id, loop):
     # Multiply ok_hand by 2 and heart by 3 to get correct sum of votes
     sql = "SELECT username, SUM(thumbsup + ok_hand*2 + heart*3) AS karma " \
           + "FROM message_karma WHERE message_id = " + str(message_id) \
-          + "GROUP BY username HAVING karma <> 0 ORDER BY username;"
+          + " GROUP BY username HAVING karma <> 0 ORDER BY username;"
     cursor = await db.cursor()
 
     try:
