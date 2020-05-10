@@ -409,10 +409,9 @@ async def get_message_karma(database, message_id, loop):
 
     db = await aiosqlite.connect("db/" + database + ".db")
     # Multiply ok_hand by 2 and heart by 3 to get correct sum of votes
-    sql = "SELECT username, karma FROM (SELECT message_id, username," \
-          + " SUM(thumbsup + ok_hand*2 + heart*3) AS karma " \
-          + "FROM message_karma) WHERE message_id = " + str(message_id) \
-          + " AND karma <> 0 GROUP BY username ORDER BY username;"
+    sql = "SELECT username, SUM(thumbsup + ok_hand*2 + heart*3) AS karma " \
+          + "FROM message_karma WHERE message_id = " + str(message_id) \
+          + "GROUP BY username HAVING karma <> 0 ORDER BY username;"
     cursor = await db.cursor()
 
     try:
