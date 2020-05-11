@@ -510,41 +510,54 @@ def repost(update, context):
     ]]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    # See if there is a URL in the caption
+    # See if the caption is formatted i.e. bold, italic, etc.
     try:
-        caption_url_check = update.message.caption_entities[0].url
+        caption_ent_check = update.message.caption_entities[-1]
     except Exception as e:
-        print(str(e))
-        caption_url_check = ""
+        if str(e) == "list index out of range":
+            caption_ent_check = None
+            pass
     # Give credit to who originally posted the photo/video
     if update.message.caption is not None:
         # Create Markdown formatting/links
-        if caption_url_check is not None:
+        if caption_ent_check is not None:
             ent_num = len(update.message.caption_entities)
             cap_ent = update.message.caption_entities
             caption = update.message.caption
             cap_formatted = ""
             last_pos = 0
             for x in range(ent_num):
-                try:
+                if "url" in str(cap_ent[x]):
                     url = cap_ent[x].url
-                except:
+                    is_url = True
+                else:
                     is_url = False
                 offset = cap_ent[x].offset
                 length = cap_ent[x].length
                 cur_pos = offset + length
-                # If offset is 0, the first character is part of a link
-                if offset is 0:
+                # First letter of format type i.e. 'b' when 'bold'
+                fl_ft = cap_ent[x].type[0]
+                if fl_ft == "c":
+                    fl_ft = "code"
+
+                # If offset is 0, the first character is formatted
+                if offset == 0:
                     if is_url is True:
                         cap_formatted += f"<a href='{url}'>{caption[:length]}</a>"
-                        last_pos = cur_pos
                     else:
-                        cap_formatted += ""
+                        cap_formatted += f"<{fl_ft}>{caption[:length]}</{fl_ft}>"
+                    last_pos = cur_pos
                 else:
-                    cap_formatted += caption[last_pos:offset] \
-                                      + "<a href='" + url + "'>" \
+                    if is_url is True:
+                        cap_formatted += caption[last_pos:offset] \
+                                        + "<a href='" + url + "'>" \
+                                        + caption[offset:cur_pos] \
+                                        + "</a>"
+                    else:
+                        cap_formatted += caption[last_pos:offset] \
+                                      + "<" + fl_ft + ">" \
                                       + caption[offset:cur_pos] \
-                                      + "</a>"
+                                      + "</" + fl_ft + ">"
                     last_pos = cur_pos
                 if x == ent_num - 1:
                     # Attach rest of message
@@ -876,7 +889,7 @@ def button(update, context):
 
 
 def main():
-    print("Starting Aqua 3.2 beta 4.2")
+    print("Starting Aqua 3.2 beta 5")
     # Check to see if db folder exists
     if Path("db").exists() is True:
         pass
