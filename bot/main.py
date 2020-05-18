@@ -526,6 +526,7 @@ def repost(update, context):
             caption = update.message.caption
             cap_formatted = ""
             last_pos = 0
+            is_mention = False
             for x in range(ent_num):
                 if "url" in str(cap_ent[x]):
                     url = cap_ent[x].url
@@ -539,11 +540,16 @@ def repost(update, context):
                 fl_ft = cap_ent[x].type[0]
                 if fl_ft == "c":
                     fl_ft = "code"
+                # Check if it's a mention
+                elif fl_ft == "m":
+                    is_mention = True
 
                 # If offset is 0, the first character is formatted
                 if offset == 0:
                     if is_url is True:
                         cap_formatted += f"<a href='{url}'>{caption[:length]}</a>"
+                    elif is_mention is True:
+                        cap_formatted += f"{caption[:length]}"
                     else:
                         cap_formatted += f"<{fl_ft}>{caption[:length]}</{fl_ft}>"
                     last_pos = cur_pos
@@ -553,6 +559,9 @@ def repost(update, context):
                                         + "<a href='" + url + "'>" \
                                         + caption[offset:cur_pos] \
                                         + "</a>"
+                    elif is_mention is True:
+                        cap_formatted += caption[last_pos:offset] \
+                                        + caption[offset:cur_pos]
                     else:
                         cap_formatted += caption[last_pos:offset] \
                                       + "<" + fl_ft + ">" \
