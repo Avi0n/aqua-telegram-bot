@@ -29,7 +29,7 @@ def check_first_db_run():
 
     try:
         db = sqlite3.connect("db/user_chat_ids.db")
-        sql = "SELECT * FROM user_karma;"
+        sql = "SELECT * FROM user_chat_ids;"
         cursor = db.cursor()
 
         # Execute the SQL command
