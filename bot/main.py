@@ -896,8 +896,8 @@ def main():
     else:
         print("db folder does not exist, creating it.")
         Path("db").mkdir(parents=True, exist_ok=True)
-        # Check to see if SQLite files exist
-        db.check_first_db_run()
+    # Check to see if SQLite files exist
+    db.check_first_db_run()
 
     token = os.getenv("TEL_BOT_TOKEN")
     q = mq.MessageQueue(group_burst_limit=19, group_time_limit_ms=60050)
