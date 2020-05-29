@@ -9,4 +9,4 @@ ImageHash
 ujson
 aiosqlite
 aiomysql
-pixivapi
+pixiv-api
