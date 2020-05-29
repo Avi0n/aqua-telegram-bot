@@ -28,16 +28,10 @@ def get_tags(pixiv, illustration_id):
 
             try:
                 if tag is not None:
-                    tag = tag.replace(" ", "")
-                    tag_list += f"#{tag} "
+                    if tag not in tag_list:
+                        tag = tag.replace(" ", "")
+                        tag_list += f"#{tag} "
             except TypeError:
                 continue
 
     return tag_list
-
-
-#pixiv_c = Client()
-#pixiv_c.login("user", "pass")
-
-
-#print(get_tags(pixiv_c, 81928241))
