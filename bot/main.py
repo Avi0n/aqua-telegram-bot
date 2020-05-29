@@ -24,24 +24,27 @@ from pathlib import Path
 
 import imagehash
 import imageio
+import sqlite_functions as db
 import telegram.bot
 from PIL import Image
 from dotenv import load_dotenv
 from emoji import emojize
-from get_source import get_source
+from pixivapi import Client
+from saucenao import get_source
+from saucenao import get_pixiv_source
+from pixiv import get_tags
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.error import (BadRequest)
 from telegram.ext import MessageHandler, CommandHandler, \
     CallbackQueryHandler, Filters
 from telegram.ext import messagequeue as mq
 from telegram.ext.dispatcher import run_async
 from telegram.utils.request import Request
-from telegram.error import (TelegramError, Unauthorized, BadRequest, TimedOut,
-                            ChatMigrated, NetworkError)
 
-if os.getenv("USE_MYSQL") == "TRUE":
-    import mariadb_functions as db
-else:
-    import sqlite_functions as db
+#if os.getenv("USE_MYSQL") == "TRUE":
+#    import mariadb_functions as db
+#else:
+#    import sqlite_functions as db
 
 # Initialize dotenv
 load_dotenv()
@@ -52,6 +55,12 @@ logging.basicConfig(
     level=logging.os.getenv("BOT_LOG_LEVEL"))
 
 logger = logging.getLogger(__name__)
+
+
+# Login to Pixiv
+if os.getenv("AUTH_ROOMS_ONLY") == "TRUE":
+    pixiv_c = Client()
+    pixiv_c.login(os.getenv("PIXIV_USER"), os.getenv("PIXIV_PASS"))
 
 
 def error(update, context):
@@ -108,14 +117,26 @@ def convert_media(inputpath, targetFormat):
     print("Done converting.")
 
 
-def compute_hash(file_name):
-    img = Image.open(file_name)
-    media_hash = imagehash.phash(img)
+def delete_media():
     # Cleanup downloaded media
     try:
-        os.remove("./" + file_name)
+        # Cleanup downloaded media
+        for fname in os.listdir("."):
+            if fname.endswith(".gif"):
+                os.remove("source.gif")
+            elif fname.endswith(".jpg"):
+                os.remove(fname)
+    except Exception as e:
+        print("Error in delete_media(): " + str(e))
+
+
+def compute_hash(file_name):
+    try:
+        img = Image.open(file_name)
+        media_hash = imagehash.phash(img)
     except Exception as e:
         print("Error in compute_hash: " + str(e))
+
     return media_hash
 
 
@@ -220,11 +241,7 @@ def source(update, context):
                                      disable_web_page_preview=True)
 
             # Cleanup downloaded media
-            for fname in os.listdir("."):
-                if fname.endswith(".gif"):
-                    os.remove("source.gif")
-                elif fname.endswith(".jpg"):
-                    os.remove(fname)
+            delete_media()
 
 
 @run_async
@@ -467,11 +484,13 @@ def repost_check(update, context):
             text="Hmm... doesn't look like a repost to me.")
 
 
-@run_async
+#@run_async
 # Repost media to the channel with an inline emoji keyboard
 def repost(update, context):
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
+
+    global pixiv_c
 
     # If user posts a photo/video in a private chat with the bot, ignore it
     if update.message.chat.type == "private":
@@ -487,12 +506,32 @@ def repost(update, context):
 
     # Check to see if user doesn't want their photo to be deleted
     if update.message.caption is not None:
-        if "aquano" in update.message.caption.replace(" ", "").lower():
+        if "noaqua" in update.message.caption.replace(" ", "").lower():
             print("User doesn't want this photo to be reposted. Skipping.")
             return
-        elif "noaqua" in update.message.caption.replace(" ", "").lower():
+        elif "aquano" in update.message.caption.replace(" ", "").lower():
             print("User doesn't want this photo to be reposted. Skipping.")
             return
+
+    # Download file to hash
+    file = context.bot.get_file(
+        file_id=update.message.photo[-1].file_id)
+    # Download the media (jpg, png)
+    file_name = file.download(timeout=10)
+
+    # Delete original message
+    context.bot.delete_message(chat_id=update.message.chat.id,
+                                message_id=update.message.message_id)
+
+    if os.getenv("AUTH_ROOMS_ONLY") == "TRUE":
+        pixiv_post_id = get_pixiv_source()
+        print(pixiv_post_id)
+        tags = get_tags(pixiv_c, pixiv_post_id)
+        print(tags)
+
+    media_hash = compute_hash(file_name)
+    # Cleanup downloaded media
+    delete_media()
 
     keyboard = [[
         InlineKeyboardButton(str(0) + " " +
@@ -573,21 +612,22 @@ def repost(update, context):
                     # If we're at the last character, attach Posted by
                     if cur_pos == len(caption):
                         repost_caption = cap_formatted \
+                                        + "\n" + tags \
                                         + "\n\nPosted by " \
                                         + update.message.from_user.username
                     # If we're not at the last character, attach the rest of
                     # the caption before attaching Posted by
                     else:
                         repost_caption = cap_formatted + caption[cur_pos:] \
-                                        + "\n\nPosted by " \
+                                        + "\n" + tags + "\nPosted by " \
                                         + update.message.from_user.username
-        # No links, assign caption
+        # No formatting in caption, attach caption to message
         else:
             repost_caption = update.message.caption \
-                            + "\n\nPosted by " \
+                            + "\n" + tags + "\nPosted by " \
                             + update.message.from_user.username
     else:
-        repost_caption = "\n\nPosted by " + update.message.from_user.username
+        repost_caption = tags + "\nPosted by " + update.message.from_user.username
 
     while True:
         # Try sending photo
@@ -603,12 +643,6 @@ def repost(update, context):
                 disable_notification=True,
                 timeout=20,
                 parse_mode="HTML")['message_id']
-            # Download file to hash
-            file = context.bot.get_file(
-                file_id=update.message.photo[-1].file_id)
-            # Download the media (jpg, png)
-            file_name = file.download(timeout=10)
-            media_hash = compute_hash(file_name)
             # Find room name and assign correct database
             database = str(update.message.chat.id)
 
@@ -616,11 +650,6 @@ def repost(update, context):
                 db.store_hash(database, repost_id, str(media_hash), loop))
         except IndexError:
             pass
-        else:
-            # Delete original message
-            context.bot.delete_message(chat_id=update.message.chat.id,
-                                       message_id=update.message.message_id)
-            return
         # Try sending document animation
         try:
             # If user posts a document animation in reply to another message,
@@ -639,11 +668,6 @@ def repost(update, context):
                 parse_mode="HTML")
         except AttributeError:
             pass
-        else:
-            # Delete original message
-            context.bot.delete_message(chat_id=update.message.chat.id,
-                                       message_id=update.message.message_id)
-            return
         # Try sending video animation
         try:
             # If user posts a video animation in reply to another message,
@@ -661,11 +685,6 @@ def repost(update, context):
                                    parse_mode="HTML")
         except AttributeError:
             pass
-        else:
-            # Delete original message
-            context.bot.delete_message(chat_id=update.message.chat.id,
-                                       message_id=update.message.message_id)
-            return
         finally:
             return
 
@@ -898,7 +917,7 @@ def button(update, context):
 
 
 def main():
-    print("Starting Aqua 3.2 beta 6")
+    print("Starting Aqua 3.2 beta 7")
     # Check to see if db folder exists
     if Path("db").exists() is True:
         pass
