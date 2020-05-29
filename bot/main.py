@@ -565,10 +565,10 @@ def repost(update, context):
                         db.populate_db(str(update.message.chat.id), loop)
                     else:
                         break
-            elif fetch_tags is False:
-                tags = ""
         except Exception as e:
             print(f"Exception while fetching Pixiv tags: {e}")
+    else:
+        tags = ""
 
     media_hash = compute_hash(file_name)
     # Cleanup downloaded media
