@@ -23,132 +23,108 @@ import aiosqlite
 from emoji import emojize
 
 
-# Check for first run
-def check_first_db_run():
-    first_run = False
-
-    try:
-        db = sqlite3.connect("db/user_chat_ids.db")
-        sql = "SELECT * FROM user_chat_ids;"
-        cursor = db.cursor()
-
-        # Execute the SQL command
-        cursor.execute(sql)
-        # Fetch all the rows in a list of lists.
-        result = cursor.fetchall()
-
-        cursor.close()
-        db.close()
-    except Exception as e:
-        if "no such table" in str(e):
-            print("This is the first run. Populating initial database.")
-            # Populate db with initial tables
-            db = sqlite3.connect("db/user_chat_ids.db")
+# Check if all tables exist
+def check_tables_exist():
+    table_list = ["user_chat_ids", "group_members"]
+    for x in range(len(table_list)):
+        try:
+            db = sqlite3.connect(f"db/{table_list[x]}.db")
+            sql = f"SELECT * FROM {table_list[x]};"
             cursor = db.cursor()
 
-            # Create table
-            sql = '''
-                    CREATE TABLE user_chat_ids (
-                    chat_id int(50) DEFAULT NULL,
-                    username varchar(255) DEFAULT NULL
-                    )'''
-            try:
-                # Execute the SQL command
-                cursor.execute(sql)
-            except Exception as ex:
-                print("Error in check_first_db_run while creating the table" +
-                      " user_chat_ids: " + str(ex))
+            # Execute the SQL command
+            cursor.execute(sql)
+            # Fetch all the rows in a list of lists.
+            result = cursor.fetchall()
+
             cursor.close()
             db.close()
+        except Exception as e:
+            if "no such table" in str(e):
+                print(f"{table_list[x]} is missing. Creating.")
+                # Populate db with missing table
+                db = sqlite3.connect(f"db/{table_list[x]}.db")
+                cursor = db.cursor()
 
-            # Create 2nd initial table
-            db = sqlite3.connect("db/group_members.db")
-            cursor = db.cursor()
-            sql = '''
-                    CREATE TABLE group_members (
-                    user_id int(11) DEFAULT NULL
-                    )'''
-            try:
-                # Execute the SQL command
-                cursor.execute(sql)
-            except Exception as ex:
-                print("Error in check_first_db_run while creating the table" +
-                      " group_members: " + str(ex))
-            cursor.close()
-            db.close()
+                # Create table
+                sql = f'''
+                        CREATE TABLE {table_list[x]} (
+                        chat_id int(50) DEFAULT NULL,
+                        username varchar(255) DEFAULT NULL
+                        )'''
+                try:
+                    # Execute the SQL command
+                    cursor.execute(sql)
+                except Exception as e:
+                    print("Error in check_first_db_run while creating the table" +
+                        f" {table_list[x]}: {e}")
+                cursor.close()
+                db.close()
 
-            print("Done populating the database, starting the bot.")
-        else:
-            print("Error: " + str(e) + "\n"
-                  "There was an error populating the database.")
+    print("Done checking database tables, starting the bot.")
     return
 
 
 def populate_db(database, loop):
     print("Entered populate_db")
     populated_status = False
+    table_list = ["message_karma", "user_karma", "media_hash", "media_tags"]
 
-    try:
-        db = sqlite3.connect("db/" + database + ".db")
-        sql = "SELECT * FROM user_karma;"
-        cursor = db.cursor()
-
-        # Execute the SQL command
-        cursor.execute(sql)
-        # Fetch all the rows in a list of lists.
-        result = cursor.fetchall()
-
-        cursor.close()
-        db.close()
-
-        populated_status = True
-    except:
-        db = sqlite3.connect("db/" + database + ".db")
-        cursor = db.cursor()
-
-        # Create tables
-        sql = '''
-                CREATE TABLE media_hash(
-                    message_id int(11) NOT NULL,
-                    hash varchar(255) NOT NULL,
-                    date date NOT NULL
-                )'''
+    for x in range(len(table_list)):
         try:
+            db = sqlite3.connect("db/" + database + ".db")
+            sql = f"SELECT * FROM {table_list[x]};"
+            cursor = db.cursor()
+
             # Execute the SQL command
             cursor.execute(sql)
-        except Exception as e:
-            print("Error in check_first_db_run: " + str(e))
-            first_run = True
+            # Fetch all the rows in a list of lists.
+            result = cursor.fetchall()
 
-        sql = '''
-                CREATE TABLE message_karma (
-                    message_id int(11) NOT NULL,
-                    username varchar(20) DEFAULT NULL,
-                    thumbsup int(4) NOT NULL,
-                    ok_hand int(4) NOT NULL,
-                    heart int(4) NOT NULL
-                )'''
-        try:
-            # Execute the SQL command
-            cursor.execute(sql)
-        except Exception as e:
-            print("Error in populate_db while creating the table" +
-                  "message_karma: " + str(e))
+            populated_status = True
+        except:
+            if table_list[x] == "message_karma":
+                sql = '''
+                        CREATE TABLE message_karma (
+                            message_id int(11) NOT NULL,
+                            username varchar(20) DEFAULT NULL,
+                            thumbsup int(4) NOT NULL,
+                            ok_hand int(4) NOT NULL,
+                            heart int(4) NOT NULL
+                        )'''
+            elif table_list[x] == "user_karma":
+                sql = '''
+                    CREATE TABLE user_karma (
+                        username varchar(255) NOT NULL,
+                        karma int(11) DEFAULT NULL
+                    )'''
+            elif table_list[x] == "media_hash":
+                # Create tables
+                sql = '''
+                        CREATE TABLE media_hash (
+                            message_id int(11) NOT NULL,
+                            hash varchar(255) NOT NULL,
+                            date date NOT NULL
+                        )'''
+            elif table_list[x] == "media_tags":
+                # Create tables
+                sql = '''
+                        CREATE TABLE media_tags (
+                            message_id int(11) NOT NULL,
+                            tag_member varchar(255) NOT NULL
+                        )'''
 
-        sql = '''
-                CREATE TABLE user_karma (
-                    username varchar(255) NOT NULL,
-                    karma int(11) DEFAULT NULL
-                )'''
-        try:
-            # Execute the SQL command
-            cursor.execute(sql)
-        except Exception as e:
-            print("Error in populate_db while creating the table" +
-                  " user_karma: " + str(e))
-        cursor.close()
-        db.close()
+            try:
+                # Execute the SQL command
+                cursor.execute(sql)
+            except Exception as e:
+                print("Error in check_first_db_run: " + str(e))
+                populated_status = False
 
+    cursor.close()
+    db.close()
+
+    if populated_status is False:
         # Add group's chat_id to the group_members table
         db = sqlite3.connect("db/group_members.db")
         cursor = db.cursor()
@@ -158,11 +134,13 @@ def populate_db(database, loop):
             cursor.execute(sql)
         except Exception as e:
             print("Error in populate_db while altering the table" +
-                  " group_members: " + str(e))
+                    " group_members: " + str(e))
         cursor.close()
         db.close()
 
     # Return True if db already existed
+    if populated_status:
+        print("Success, exiting populate_db()")
     return populated_status
 
 
@@ -583,4 +561,58 @@ async def fetch_all_hashes(message_id, database, loop):
     finally:
         await cursor.close()
     await db.close()
+    return result
+
+
+# Store tags
+async def store_tags(message_id, tags, database):
+    db = await aiosqlite.connect("db/" + database + ".db")
+
+    # tags is a list with potentially multiple items
+    for x in range(len(tags)):
+        print(f"{tags[x]}")
+        # Add message_id, photo's hash
+        sql = "INSERT INTO media_tags (message_id, tag_member)" \
+            + f' VALUES ({message_id}, "{tags[x]}");'
+
+        cursor = await db.cursor()
+
+        try:
+            # Execute the SQL command
+            await cursor.execute(sql)
+            # Commit your changes in the database
+            await db.commit()
+        except Exception as e:
+            # Rollback in case there is any error
+            await db.rollback()
+            print(f"Error in store_tags: {e}")
+            return False
+        finally:
+            await cursor.close()
+    await db.close()
+
+
+# Retrieve tags
+# TODO: Make sure there aren't duplicates. If there are, return a status code to
+# tell main.py to run a table cleaning function
+async def retrieve_tags(message_id, tags, database):
+    db = await aiosqlite.connect("db/" + database + ".db")
+
+    # tags is a list with potentially multiple items
+    for x in range(len(tags)):
+        # Add message_id, photo's hash
+        sql = f"SELECT tag_member FROM media_tags WHERE message_id={message_id}"
+        cursor = await db.cursor()
+
+        try:
+            # Execute the SQL command
+            await cursor.execute(sql)
+            # Fetch all the rows in a list of lists.
+            result = await cursor.fetchall()
+        except Exception as e:
+            print("Error in compare_hash: " + str(e))
+            result = str(e)
+        finally:
+            await cursor.close()
+        await db.close()
     return result

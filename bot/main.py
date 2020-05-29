@@ -20,6 +20,7 @@ import logging
 import os
 import string
 import sys
+import time
 from pathlib import Path
 
 import imagehash
@@ -55,7 +56,6 @@ logging.basicConfig(
     level=logging.os.getenv("BOT_LOG_LEVEL"))
 
 logger = logging.getLogger(__name__)
-
 
 # Login to Pixiv
 if os.getenv("AUTH_ROOMS_ONLY") == "TRUE":
@@ -117,17 +117,23 @@ def convert_media(inputpath, targetFormat):
     print("Done converting.")
 
 
-def delete_media():
-    # Cleanup downloaded media
-    try:
+def delete_media(**kwargs):
+    file_name = kwargs.get('media_name', None)
+
+    if file_name is not None:
+        path = os.path.join("./", file_name)
+        os.remove(path)
+    else:
         # Cleanup downloaded media
-        for fname in os.listdir("."):
-            if fname.endswith(".gif"):
-                os.remove("source.gif")
-            elif fname.endswith(".jpg"):
-                os.remove(fname)
-    except Exception as e:
-        print("Error in delete_media(): " + str(e))
+        try:
+            # Cleanup downloaded media
+            for fname in os.listdir("."):
+                if fname.endswith(".gif"):
+                    os.remove("source.gif")
+                elif fname.endswith(".jpg"):
+                    os.remove(fname)
+        except Exception as e:
+            print("Error in delete_media(): " + str(e))
 
 
 def compute_hash(file_name):
@@ -484,13 +490,11 @@ def repost_check(update, context):
             text="Hmm... doesn't look like a repost to me.")
 
 
-#@run_async
+@run_async
 # Repost media to the channel with an inline emoji keyboard
 def repost(update, context):
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-
-    global pixiv_c
 
     # If user posts a photo/video in a private chat with the bot, ignore it
     if update.message.chat.type == "private":
@@ -514,24 +518,65 @@ def repost(update, context):
             return
 
     # Download file to hash
-    file = context.bot.get_file(
-        file_id=update.message.photo[-1].file_id)
+    file = context.bot.get_file(file_id=update.message.photo[-1].file_id)
     # Download the media (jpg, png)
     file_name = file.download(timeout=10)
+    print(file_name)
+    # Only allow SauceNao fetching in specified rooms
+    if os.getenv("AUTH_ROOMS_ONLY"
+                 ) == "TRUE" and update.message.chat.title in os.getenv(
+                     "PIXIV_LOOKUP_ROOMS"):
+        print("Starting new image")
+        #while True:
+        tags_list = []
+        fetch_tags = True
+        pixiv_post_id = get_pixiv_source(file_name)
+        print(f"{pixiv_post_id}")
+        if pixiv_post_id == 3:
+            print("Miss or no results")
+            fetch_tags = False
+        elif pixiv_post_id == 0:
+            print("Bad image or other SauceNao API error.")
+            fetch_tags = False
+        elif pixiv_post_id == 1:
+            print("SauceNao API error.")
+            fetch_tags = False
+        elif pixiv_post_id == 2:
+            # Out of searches
+            print("Out of searches for today...")
+            fetch_tags = False
 
-    # Delete original message
-    context.bot.delete_message(chat_id=update.message.chat.id,
-                                message_id=update.message.message_id)
+        try:
+            if fetch_tags is True:
+                tags = get_tags(pixiv_c, pixiv_post_id)
 
-    if os.getenv("AUTH_ROOMS_ONLY") == "TRUE":
-        pixiv_post_id = get_pixiv_source()
-        print(pixiv_post_id)
-        tags = get_tags(pixiv_c, pixiv_post_id)
-        print(tags)
+                # Remove pound signs and store tags in a dictionary
+                tags_no_h = tags.replace("#", "")
+                tags_split = tags_no_h.split()
+                for x in range(len(tags_split)):
+                    tags_list.append(tags_split[x])
+
+                for x in range(0, 2):
+                    db_status = loop.run_until_complete(
+                        db.store_tags(update.message.message_id, tags_list,
+                                    str(update.message.chat.id)))
+                    # If store_tags() returned False, the db doesn't exist
+                    if db_status is False:
+                        db.populate_db(str(update.message.chat.id), loop)
+                    else:
+                        break
+            else:
+                tags = ""
+        except Exception as e:
+            print(f"Exception while fetching Pixiv tags: {e}")
 
     media_hash = compute_hash(file_name)
     # Cleanup downloaded media
-    delete_media()
+    delete_media(media_name=file_name)
+
+    # Delete original message
+    context.bot.delete_message(chat_id=update.message.chat.id,
+                               message_id=update.message.message_id)
 
     keyboard = [[
         InlineKeyboardButton(str(0) + " " +
@@ -924,8 +969,8 @@ def main():
     else:
         print("db folder does not exist, creating it.")
         Path("db").mkdir(parents=True, exist_ok=True)
-    # Check to see if SQLite files exist
-    db.check_first_db_run()
+    # Check to see if all db tables exist
+    db.check_tables_exist()
 
     token = os.getenv("TEL_BOT_TOKEN")
     q = mq.MessageQueue(group_burst_limit=19, group_time_limit_ms=60050)

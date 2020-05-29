@@ -130,8 +130,8 @@ def get_source():
                                         #One or more indexes are having an issue.
                                         #This search is considered partially successful, even if all indexes failed, so is still counted against your limit.
                                         #The error may be transient, but because we don't want to waste searches, allow time for recovery.
-                                        print('API Error. Returning...')
-                                        return
+                                        print('API Error. Retrying in 30 seconds...')
+                                        return 1
                                     else:
                                         #Problem with search as submitted, bad image, or impossible request.
                                         #Issue is unclear, so don't flood requests.
@@ -139,14 +139,14 @@ def get_source():
                                             'Bad image or other request error. Returning...'
                                         )
                                         processResults = False
-                                        return
+                                        return 0
                             else:
                                 #General issue, api did not respond. Normal site took over for this error state.
                                 #Issue is unclear, so don't flood requests.
                                 print(
                                     'Bad image, or API failure. Returning...')
                                 processResults = False
-                                return
+                                return 0
 
                     if processResults:
                     #print(results)
@@ -246,7 +246,7 @@ def get_source():
 
 
 # Search for source from SauceNao and return Pixiv URL
-def get_pixiv_source():
+def get_pixiv_source(file_name):
     api_key = os.getenv("SAUCE_NAO_TOKEN")
     #EnableRename = False
     minsim = '70!'
@@ -305,136 +305,141 @@ def get_pixiv_source():
         index_danbooru + index_seigaillust + index_anime +
         index_pixivhistorical + index_pixiv + index_ddbsamples +
         index_ddbobjects + index_hcg + index_hanime + index_hmags, 2)
-    print("dbmask=" + str(db_bitmask))
+    #print("dbmask=" + str(db_bitmask))
 
     #encoded print - handle random crap
     def printe(line):
         print(str(line).encode(sys.getdefaultencoding(),
                                'replace'))  #ignore or replace
 
-    for root, _, files in os.walk(u'.', topdown=True):
-        for f in files:
-            fname = os.path.join(root, f)
-            for ext in extensions:
-                if fname.lower().endswith(ext):
-                    print(fname)
-                    image = Image.open(fname)
-                    image = image.convert('RGB')
-                    image.thumbnail(thumbSize, resample=Image.ANTIALIAS)
-                    imageData = io.BytesIO()
-                    image.save(imageData, format='PNG')
+    fname = file_name
+    for ext in extensions:
+        if fname.lower().endswith(ext):
+            #print(fname)
+            image = Image.open(fname)
+            image = image.convert('RGB')
+            image.thumbnail(thumbSize, resample=Image.ANTIALIAS)
+            imageData = io.BytesIO()
+            image.save(imageData, format='PNG')
 
-                    url = 'http://saucenao.com/search.php?output_type=2&numres=1&minsim=' + minsim + '&dbmask=' + str(
-                        db_bitmask) + '&api_key=' + api_key
-                    files = {'file': ("image.png", imageData.getvalue())}
-                    imageData.close()
+            url = 'http://saucenao.com/search.php?output_type=2&numres=1&minsim=' + minsim + '&dbmask=' + str(
+                db_bitmask) + '&api_key=' + api_key
+            files = {'file': ("image.png", imageData.getvalue())}
+            imageData.close()
 
-                    processResults = True
-                    while True:
-                        r = requests.post(url, files=files)
-                        if r.status_code != 200:
-                            if r.status_code == 403:
-                                print(
-                                    'Incorrect or Invalid API Key! Please Edit Script to Configure...'
-                                )
-                                return
-                            else:
-                                #generally non 200 statuses are due to either overloaded servers or the user is out of searches
-                                print("status code: " + str(r.status_code))
+            processResults = True
+            while True:
+                r = requests.post(url, files=files)
+                if r.status_code != 200:
+                    if r.status_code == 403:
+                        print(
+                            'Incorrect or Invalid API Key! Please Edit Script to Configure...'
+                        )
+                        return 0
+                    else:
+                        #generally non 200 statuses are due to either overloaded servers or the user is out of searches
+                        print("status code: " + str(r.status_code))
+                        if r.status_code == 429:
+                            for x in range(1, 3):
                                 time.sleep(10)
+                            return 2
                         else:
-                            results = json.JSONDecoder(
-                                object_pairs_hook=OrderedDict).decode(r.text)
-                            if int(results['header']['user_id']) > 0:
-                                #api responded
-                                print(
-                                    'Remaining Searches 30s|24h: ' +
-                                    str(results['header']['short_remaining']) +
-                                    '|' +
-                                    str(results['header']['long_remaining']))
-                                if int(results['header']['status']) == 0:
-                                    #search succeeded for all indexes, results usable
-                                    break
-                                else:
-                                    if int(results['header']['status']) > 0:
-                                        #One or more indexes are having an issue.
-                                        #This search is considered partially successful, even if all indexes failed, so is still counted against your limit.
-                                        #The error may be transient, but because we don't want to waste searches, allow time for recovery.
-                                        print('API Error. Returning...')
-                                        return
-                                    else:
-                                        #Problem with search as submitted, bad image, or impossible request.
-                                        #Issue is unclear, so don't flood requests.
-                                        print(
-                                            'Bad image or other request error. Returning...'
-                                        )
-                                        processResults = False
-                                        return
+                            time.sleep(30)
+                else:
+                    results = json.JSONDecoder(
+                        object_pairs_hook=OrderedDict).decode(r.text)
+                    if int(results['header']['user_id']) > 0:
+                        #api responded
+                        print(
+                            'Remaining Searches 30s|24h: ' +
+                            str(results['header']['short_remaining']) +
+                            '|' +
+                            str(results['header']['long_remaining']))
+                        if int(results['header']['status']) == 0:
+                            #search succeeded for all indexes, results usable
+                            break
+                        else:
+                            if int(results['header']['status']) > 0:
+                                #One or more indexes are having an issue.
+                                #This search is considered partially successful, even if all indexes failed, so is still counted against your limit.
+                                #The error may be transient, but because we don't want to waste searches, allow time for recovery.
+                                print('API Error. Returning...')
+                                return 1
                             else:
-                                #General issue, api did not respond. Normal site took over for this error state.
+                                #Problem with search as submitted, bad image, or impossible request.
                                 #Issue is unclear, so don't flood requests.
                                 print(
-                                    'Bad image, or API failure. Returning...')
+                                    'Bad image or other request error. Returning...'
+                                )
                                 processResults = False
-                                return
+                                time.sleep(10)
+                                break
+                                #return 0
+                    else:
+                        #General issue, api did not respond. Normal site took over for this error state.
+                        #Issue is unclear, so don't flood requests.
+                        print(
+                            'Bad image, or API failure. Returning...')
+                        processResults = False
+                        time.sleep(10)
+                        break
+                        #return 0
 
-                    if processResults:
-                    #print(results)
+            if processResults:
+            #print(results)
+                if int(results['header']['results_returned']) > 0:
+                    #one or more results were returned
+                    if float(results['results'][0]['header']
+                            ['similarity']) > float(
+                                results['header']['minimum_similarity']):
+                        print('hit! ' + str(results['results'][0]['header']
+                                            ['similarity']))
 
-                        if int(results['header']['results_returned']) > 0:
-                            #one or more results were returned
-                            if float(results['results'][0]['header']
-                                    ['similarity']) > float(
-                                        results['header']['minimum_similarity']):
-                                print('hit! ' + str(results['results'][0]['header']
-                                                    ['similarity']))
+                        #get vars to use
+                        service_name = ''
+                        illust_id = 0
+                        member_id = -1
+                        index_id = results['results'][0]['header'][
+                            'index_id']
+                        page_string = ''
+                        page_match = re.search(
+                            '(_p[\d]+)\.',
+                            results['results'][0]['header']['thumbnail'])
+                        if page_match:
+                            page_string = page_match.group(1)
 
-                                #get vars to use
-                                service_name = ''
-                                illust_id = 0
-                                member_id = -1
-                                index_id = results['results'][0]['header'][
-                                    'index_id']
-                                page_string = ''
-                                page_match = re.search(
-                                    '(_p[\d]+)\.',
-                                    results['results'][0]['header']['thumbnail'])
-                                if page_match:
-                                    page_string = page_match.group(1)
-
-                                if index_id == 5 or index_id == 6:
-                                    #5->pixiv 6->pixiv historical
-                                    service_name = 'pixiv'
-                                    member_id = results['results'][0]['data'][
-                                        'member_id']
-                                    illust_id = results['results'][0]['data'][
-                                        'pixiv_id']
-                                else:
-                                    #unknown
-                                    print('Unhandled Index! Exiting...')
-                                    return
-
-                                # Send result URL
-                                if float(results['results'][0]['header']
-                                         ['similarity']) < 70:
-                                    return
-                                else:
-                                    return illust_id
-                            else:
-                                print('miss...')
-                                # Return blank string if nothing is found
-                                return ""
+                        if index_id == 5 or index_id == 6:
+                            #5->pixiv 6->pixiv historical
+                            service_name = 'pixiv'
+                            member_id = results['results'][0]['data'][
+                                'member_id']
+                            illust_id = results['results'][0]['data'][
+                                'pixiv_id']
                         else:
-                            print('no results... ;_;')
-                            # Return blank string if nothing is found
-                            return ""
+                            #unknown
+                            print('Unhandled Index! Exiting...')
+                            return 0
 
-                        # could potentially be negative
-                        if int(results['header']['long_remaining']) < 1:
-                            print('Out of searches for today :(')
-                            return 1
-                        if int(results['header']['short_remaining']) < 1:
-                            print('Out of searches for this 30 second period.')
-                            return 2
+                        # Send result URL
+                        if float(results['results'][0]['header']
+                                    ['similarity']) < 70:
+                            return 3
+                        else:
+                            return illust_id
+                    else:
+                        print('Miss...')
+                        return 3
+                else:
+                    print('No results... ;_;')
+                    return 3
+
+                # could potentially be negative
+                if int(results['header']['long_remaining']) < 1:
+                    print('Out of searches for today :(')
+                    return 1
+                if int(results['header']['short_remaining']) < 1:
+                    print('Out of searches for this 30 second period.')
+                    #time.sleep(25)
+                    return 2
 
     print('Done with SauceNao Pixiv search.')
