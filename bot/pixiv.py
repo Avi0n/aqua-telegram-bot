@@ -20,7 +20,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 def get_tags(pixiv, illustration_id):
     illustration_info = pixiv.fetch_illustration(illustration_id)
     tag_list = ""
-
+    # TODO: Figure out how to ignore certain tags
+    ignore_tags = ["1000+bookmarks", "beautifulgirl"]
     if illustration_info.tags is not None:
         for x in range(len(illustration_info.tags)):
             # Remove spaces in tag
@@ -29,7 +30,7 @@ def get_tags(pixiv, illustration_id):
             try:
                 if tag is not None:
                     if tag not in tag_list:
-                        tag = tag.replace(" ", "")
+                        tag = tag.replace(" ", "").replace("'", "")
                         tag_list += f"#{tag} "
             except TypeError:
                 continue

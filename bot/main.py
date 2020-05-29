@@ -565,8 +565,11 @@ def repost(update, context):
                         db.populate_db(str(update.message.chat.id), loop)
                     else:
                         break
+            else:
+                tags = ""
         except Exception as e:
             print(f"Exception while fetching Pixiv tags: {e}")
+            tags = ""
     else:
         tags = ""
 
@@ -962,7 +965,7 @@ def button(update, context):
 
 
 def main():
-    print("Starting Aqua 3.2 beta 7")
+    print("Starting Aqua 3.2 beta 8")
     # Check to see if db folder exists
     if Path("db").exists() is True:
         pass
