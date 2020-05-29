@@ -565,7 +565,7 @@ def repost(update, context):
                         db.populate_db(str(update.message.chat.id), loop)
                     else:
                         break
-            else:
+            elif fetch_tags is False:
                 tags = ""
         except Exception as e:
             print(f"Exception while fetching Pixiv tags: {e}")
