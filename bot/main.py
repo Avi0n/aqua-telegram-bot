@@ -521,7 +521,7 @@ def repost(update, context):
     file = context.bot.get_file(file_id=update.message.photo[-1].file_id)
     # Download the media (jpg, png)
     file_name = file.download(timeout=10)
-    print(file_name)
+
     # Only allow SauceNao fetching in specified rooms
     if os.getenv("AUTH_ROOMS_ONLY"
                  ) == "TRUE" and update.message.chat.title in os.getenv(
@@ -531,7 +531,7 @@ def repost(update, context):
         tags_list = []
         fetch_tags = True
         pixiv_post_id = get_pixiv_source(file_name)
-        print(f"{pixiv_post_id}")
+
         if pixiv_post_id == 3:
             print("Miss or no results")
             fetch_tags = False
