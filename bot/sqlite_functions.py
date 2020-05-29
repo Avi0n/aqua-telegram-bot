@@ -570,7 +570,6 @@ async def store_tags(message_id, tags, database):
 
     # tags is a list with potentially multiple items
     for x in range(len(tags)):
-        print(f"{tags[x]}")
         # Add message_id, photo's hash
         sql = "INSERT INTO media_tags (message_id, tag_member)" \
             + f' VALUES ({message_id}, "{tags[x]}");'
