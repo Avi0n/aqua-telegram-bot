@@ -517,10 +517,14 @@ def repost(update, context):
             print("User doesn't want this photo to be reposted. Skipping.")
             return
 
-    # Download file to hash
-    file = context.bot.get_file(file_id=update.message.photo[-1].file_id)
-    # Download the media (jpg, png)
-    file_name = file.download(timeout=10)
+    try:
+        # Download file to hash
+        file = context.bot.get_file(file_id=update.message.photo[-1].file_id)
+        # Download the media (jpg, png)
+        file_name = file.download(timeout=10)
+    except IndexError:
+        # Not a photo, don't download
+        pass
 
     # Only allow SauceNao fetching in specified rooms
     if os.getenv("AUTH_ROOMS_ONLY"
@@ -965,7 +969,7 @@ def button(update, context):
 
 
 def main():
-    print("Starting Aqua 3.2 beta 8")
+    print("Starting Aqua 3.2 beta 9")
     # Check to see if db folder exists
     if Path("db").exists() is True:
         pass
