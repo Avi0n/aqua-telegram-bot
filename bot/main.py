@@ -585,10 +585,6 @@ def repost(update, context):
         # Cleanup downloaded media
         delete_media(media_name=file_name)
 
-    # Delete original message
-    context.bot.delete_message(chat_id=update.message.chat.id,
-                               message_id=update.message.message_id)
-
     keyboard = [[
         InlineKeyboardButton(str(0) + " " +
                              emojize(":thumbsup:", use_aliases=True),
@@ -742,6 +738,9 @@ def repost(update, context):
         except AttributeError:
             pass
         finally:
+            # Delete original message
+            context.bot.delete_message(chat_id=update.message.chat.id,
+                                    message_id=update.message.message_id)
             return
 
 
