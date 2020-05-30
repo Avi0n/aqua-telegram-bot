@@ -522,8 +522,10 @@ def repost(update, context):
         file = context.bot.get_file(file_id=update.message.photo[-1].file_id)
         # Download the media (jpg, png)
         file_name = file.download(timeout=10)
+        is_photo = True
     except IndexError:
         # Not a photo, don't download
+        is_photo = False
         pass
 
     # Only allow SauceNao fetching in specified rooms
@@ -577,9 +579,11 @@ def repost(update, context):
     else:
         tags = ""
 
-    media_hash = compute_hash(file_name)
-    # Cleanup downloaded media
-    delete_media(media_name=file_name)
+    # Get hash and delete downloaded photo if the media sent was a photo
+    if is_photo:
+        media_hash = compute_hash(file_name)
+        # Cleanup downloaded media
+        delete_media(media_name=file_name)
 
     # Delete original message
     context.bot.delete_message(chat_id=update.message.chat.id,
