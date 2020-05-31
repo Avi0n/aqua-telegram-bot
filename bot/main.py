@@ -127,7 +127,7 @@ def delete_media(**kwargs):
         # Cleanup downloaded media
         try:
             # Cleanup downloaded media
-            for fname in os.listdir("."):
+            for fname in os.listdir("./media"):
                 if fname.endswith(".gif"):
                     os.remove("source.gif")
                 elif fname.endswith(".jpg"):
@@ -232,10 +232,13 @@ def source(update, context):
         if media_id is not None:
             # Get the download link from Telegram
             file = context.bot.get_file(file_id=media_id)
+            # Find the file name
+            file_split = file.file_path.split("/")
             # Download the media (jpg, png, mp4)
-            file.download(timeout=10)
+            file.download(custom_path=f"./media/{file_split[6]}", timeout=10)
+            file_name = f"./media/{file_split[6]}"
             # If it's an mp4, convert it to gif
-            for fname in os.listdir("."):
+            for fname in os.listdir("./media"):
                 if fname.endswith(".mp4"):
                     convert_media(fname, TargetFormat.GIF)
                     os.remove(fname)
@@ -247,7 +250,7 @@ def source(update, context):
                                      disable_web_page_preview=True)
 
             # Cleanup downloaded media
-            delete_media()
+            delete_media(media_name=file_name)
 
 
 @run_async
@@ -272,9 +275,10 @@ def delete(update, context):
         try:
             points_to_delete = loop.run_until_complete(
                 db.delete_row(database, delete_message_id, loop))
-            loop.run_until_complete(
-                db.update_user_karma(database, username[-1], "-",
-                                     str(points_to_delete[0]), loop))
+            if points_to_delete[0] is not None:
+                loop.run_until_complete(
+                    db.update_user_karma(database, username[-1], "-",
+                                         str(points_to_delete[0]), loop))
             # Remove message that user replied to
             context.bot.delete_message(chat_id=update.message.chat_id,
                                        message_id=delete_message_id)
@@ -520,8 +524,11 @@ def repost(update, context):
     try:
         # Download file to hash
         file = context.bot.get_file(file_id=update.message.photo[-1].file_id)
+        # Find the file name
+        file_split = file.file_path.split("/")
         # Download the media (jpg, png)
-        file_name = file.download(timeout=10)
+        file.download(custom_path=f"./media/{file_split[6]}", timeout=10)
+        file_name = f"./media/{file_split[6]}"
         is_photo = True
     except IndexError:
         # Not a photo, don't download
@@ -533,7 +540,7 @@ def repost(update, context):
                  ) == "TRUE" and update.message.chat.title in os.getenv(
                      "PIXIV_LOOKUP_ROOMS"):
         print("Starting new image")
-        #while True:
+
         tags_list = []
         fetch_tags = True
         pixiv_post_id = get_pixiv_source(file_name)
@@ -565,7 +572,7 @@ def repost(update, context):
                 for x in range(0, 2):
                     db_status = loop.run_until_complete(
                         db.store_tags(update.message.message_id, tags_list,
-                                    str(update.message.chat.id)))
+                                      str(update.message.chat.id)))
                     # If store_tags() returned False, the db doesn't exist
                     if db_status is False:
                         db.populate_db(str(update.message.chat.id), loop)
@@ -740,7 +747,7 @@ def repost(update, context):
         finally:
             # Delete original message
             context.bot.delete_message(chat_id=update.message.chat.id,
-                                    message_id=update.message.message_id)
+                                       message_id=update.message.message_id)
             return
 
 
