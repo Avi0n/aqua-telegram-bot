@@ -34,16 +34,15 @@ def get_tags(pixiv, illustration_id):
                             ignore_tag = True
                             break
                     if ignore_tag:
-                        pass
+                        continue
                     # Ignore parenthesis and everything inside
                     elif "(" in tag:
                         tag_split = tag.split("(", 1)
                         tag = tag_split[0]
-                    else:
-                        # Remove spaces in tag
-                        tag = tag.replace(" ", "").replace("'", "")
-                        if tag not in tag_list:
-                            tag_list += f"#{tag} "
+                    # Remove spaces in tag
+                    tag = tag.replace(" ", "").replace("'", "")
+                    if tag not in tag_list:
+                        tag_list += f"#{tag} "
             except TypeError:
                 continue
 
