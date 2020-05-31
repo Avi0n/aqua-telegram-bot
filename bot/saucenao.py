@@ -82,7 +82,7 @@ def get_source():
         print(str(line).encode(sys.getdefaultencoding(),
                                'replace'))  #ignore or replace
 
-    for root, _, files in os.walk(u'.', topdown=True):
+    for root, _, files in os.walk(u'./media', topdown=True):
         for f in files:
             fname = os.path.join(root, f)
             for ext in extensions:
