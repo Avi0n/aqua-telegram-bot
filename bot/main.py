@@ -101,7 +101,7 @@ class TargetFormat(object):
 def convert_media(inputpath, targetFormat):
     # Reference:
     # http://imageio.readthedocs.io/en/latest/examples.html#convert-a-movie
-    outputpath = "source" + targetFormat
+    outputpath = "./media/source" + targetFormat
     print("converting\r\n\t{0}\r\nto\r\n\t{1}".format(inputpath, outputpath))
 
     reader = imageio.get_reader(inputpath)
@@ -238,14 +238,13 @@ def source(update, context):
             file.download(custom_path=f"./media/{file_split[6]}", timeout=10)
             file_name = f"./media/{file_split[6]}"
             # If it's an mp4, convert it to gif
-            for fname in os.listdir("./media"):
-                if fname.endswith(".mp4"):
-                    convert_media(fname, TargetFormat.GIF)
-                    os.remove(fname)
-                    break
+            if file_name.endswith(".mp4"):
+                convert_media(file_name, TargetFormat.GIF)
+                os.remove(file_name)
+                file_name = "./media/source.gif"
 
             context.bot.send_message(chat_id=update.message.chat_id,
-                                     text=get_source(),
+                                     text=get_source(file_name),
                                      parse_mode='Markdown',
                                      disable_web_page_preview=True)
 
@@ -538,7 +537,7 @@ def repost(update, context):
     # Only allow SauceNao fetching in specified rooms
     if os.getenv("AUTH_ROOMS_ONLY"
                  ) == "TRUE" and update.message.chat.title in os.getenv(
-                     "PIXIV_LOOKUP_ROOMS"):
+                     "PIXIV_LOOKUP_ROOMS") and is_photo:
         print("Starting new image")
 
         tags_list = []
