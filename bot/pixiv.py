@@ -20,18 +20,30 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 def get_tags(pixiv, illustration_id):
     illustration_info = pixiv.fetch_illustration(illustration_id)
     tag_list = ""
-    # TODO: Figure out how to ignore certain tags
-    ignore_tags = ["1000+bookmarks", "beautifulgirl"]
+    blacklist_tags = ["1000", "beautiful girl"]
     if illustration_info.tags is not None:
+        ignore_tag = False
         for x in range(len(illustration_info.tags)):
-            # Remove spaces in tag
             tag = illustration_info.tags[x]['translated_name']
 
             try:
                 if tag is not None:
-                    if tag not in tag_list:
+                    # Check to see if the current tag is in the blacklist
+                    for x in range(len(blacklist_tags)):
+                        if blacklist_tags[x] in tag:
+                            ignore_tag = True
+                            break
+                    if ignore_tag:
+                        pass
+                    # Ignore parenthesis and everything inside
+                    elif "(" in tag:
+                        tag_split = tag.split("(", 1)
+                        tag = tag_split[0]
+                    else:
+                        # Remove spaces in tag
                         tag = tag.replace(" ", "").replace("'", "")
-                        tag_list += f"#{tag} "
+                        if tag not in tag_list:
+                            tag_list += f"#{tag} "
             except TypeError:
                 continue
 
