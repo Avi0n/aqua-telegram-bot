@@ -21,6 +21,7 @@ import os
 import string
 import sys
 import time
+from random import randint
 from pathlib import Path
 
 import imagehash
@@ -541,6 +542,12 @@ def repost(update, context):
                      "TAG_LOOKUP_ROOMS") and is_photo:
         print("Starting new image")
 
+        # This is bad, I know. I need to figure out a better way of 
+        # spacing out these calls
+        temp_rand = randint(1,100)
+        print(f"Starting sleep: {temp_rand}")
+        time.sleep(randint(3,10))
+        print(f"Ending sleep: {temp_rand}")
         tags_list = []
         tags = ""
         fetch_tags = True
