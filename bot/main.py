@@ -577,12 +577,14 @@ def repost(update, context):
 
                 tags = convert_string_tags(temp_list)
             except Exception as e:
-                print(str(e))
-                post_id = source_result[0]
-                try:
-                    tags = get_tags(pixiv_c, post_id)
-                except Exception as e:
-                    print(str(e))
+                if str(e) == "list index out of range":
+                    post_id = source_result[0]
+                    try:
+                        tags = get_tags(pixiv_c, post_id)
+                    except Exception as e:
+                        print(f"Error in repost() line 585: {e}")
+                else:
+                    print(f"Error in repost() line 587: {e}")
             try:
                 # Remove pound signs and store tags in a dictionary
                 tags_no_h = tags.replace("#", "")
