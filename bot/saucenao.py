@@ -284,7 +284,7 @@ def get_image_source(file_name):
     index_hcg = '0'
     index_ddbobjects = '0'
     index_ddbsamples = '0'
-    index_pixiv = '1'
+    index_pixiv = '0'
     index_pixivhistorical = '1'
     index_reserved = '0'
     index_seigaillust = '0'

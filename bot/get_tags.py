@@ -15,8 +15,11 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
+#import os
+#from dotenv import load_dotenv
 
-blacklist_tags = ["1000", "beautiful girl", "girl", "breasts"]
+
+
 
 def get_tags(pixiv, illustration_id):
     global blacklist_tags
@@ -24,11 +27,13 @@ def get_tags(pixiv, illustration_id):
     tag_list = ""
     if illustration_info.tags is not None:
         ignore_tag = False
+
         for x in range(len(illustration_info.tags)):
             tag = illustration_info.tags[x]['translated_name']
 
             try:
                 if tag is not None:
+                    print(tag)
                     # Check to see if the current tag is in the blacklist
                     for x in range(len(blacklist_tags)):
                         if blacklist_tags[x] in tag:
@@ -50,8 +55,7 @@ def get_tags(pixiv, illustration_id):
     return tag_list
 
 
-def convert_string_tags(temp_list):
-    global blacklist_tags
+def convert_string_tags(temp_list, blacklist_tags):
     tag_list = ""
     if temp_list is not None:
         ignore_tag = False
@@ -59,6 +63,7 @@ def convert_string_tags(temp_list):
             tag = str(temp_list[x])
             try:
                 if tag is not None:
+                    print(tag)
                     # Check to see if the current tag is in the blacklist
                     for x in range(len(blacklist_tags)):
                         if blacklist_tags[x] in tag:

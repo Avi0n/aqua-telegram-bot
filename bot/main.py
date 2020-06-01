@@ -538,7 +538,7 @@ def repost(update, context):
     # Only allow SauceNao fetching in specified rooms
     if os.getenv("AUTH_ROOMS_ONLY"
                  ) == "TRUE" and update.message.chat.title in os.getenv(
-                     "PIXIV_LOOKUP_ROOMS") and is_photo:
+                     "TAG_LOOKUP_ROOMS") and is_photo:
         print("Starting new image")
 
         tags_list = []
@@ -562,7 +562,7 @@ def repost(update, context):
 
         if fetch_tags:
             try:
-                post_id = source_result[0]
+                #post_id = source_result[0]
                 material = source_result[1]
                 characters = source_result[2]
                 temp_list = []
@@ -574,17 +574,18 @@ def repost(update, context):
                 characters = characters.split(",")
                 for x in range(len(characters)):
                     temp_list.append(characters[x])
-
-                tags = convert_string_tags(temp_list)
+                
+                blacklist_tags = os.getenv("BLACKLIST_TAGS").split(",")
+                tags = convert_string_tags(temp_list, blacklist_tags)
             except Exception as e:
-                if str(e) == "list index out of range":
-                    post_id = source_result[0]
-                    try:
-                        tags = get_tags(pixiv_c, post_id)
-                    except Exception as e:
-                        print(f"Error in repost() line 585: {e}")
-                else:
-                    print(f"Error in repost() line 587: {e}")
+                # if str(e) == "list index out of range":
+                #     post_id = source_result[0]
+                #     try:
+                #         tags = get_tags(pixiv_c, post_id)
+                #     except Exception as e:
+                #         print(f"Error in repost() line 585: {e}")
+                # else:
+                    print(f"Error in repost() line 588: {e}")
             try:
                 # Remove pound signs and store tags in a dictionary
                 tags_no_h = tags.replace("#", "")
