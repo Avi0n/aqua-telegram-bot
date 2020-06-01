@@ -271,6 +271,8 @@ def get_source(file_name):
 
 # Search for source from SauceNao and return Pixiv URL
 def get_image_source(file_name):
+    # This is bad, I know. I need to figure out a better way of spacing out these calls
+    time.sleep(5)
     api_key = os.getenv("SAUCE_NAO_TOKEN")
     #EnableRename = False
     minsim = '68!'
@@ -364,8 +366,10 @@ def get_image_source(file_name):
                         #generally non 200 statuses are due to either overloaded servers or the user is out of searches
                         print("status code: " + str(r.status_code))
                         if r.status_code == 429:
+                            print("Sleeping for 25 seconds...")
                             time.sleep(25)
                         else:
+                            print("Sleeping for 30 seconds...")
                             time.sleep(30)
                 else:
                     results = json.JSONDecoder(

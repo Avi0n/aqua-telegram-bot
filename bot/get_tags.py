@@ -63,7 +63,7 @@ def convert_string_tags(temp_list, blacklist_tags):
             tag = str(temp_list[x])
             try:
                 if tag is not None:
-                    print(tag)
+                    print(f"tag: {tag}")
                     # Check to see if the current tag is in the blacklist
                     for x in range(len(blacklist_tags)):
                         if blacklist_tags[x] in tag:
