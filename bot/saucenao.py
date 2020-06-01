@@ -19,7 +19,7 @@ from dotenv import load_dotenv
 def get_source(file_name):
     api_key = os.getenv("SAUCE_NAO_TOKEN")
     #EnableRename = False
-    minsim = '70!'
+    minsim = '68!'
 
     extensions = {".jpg", ".jpeg", ".png", ".gif", ".bmp"}
     thumbSize = (250, 250)
@@ -34,10 +34,10 @@ def get_source(file_name):
     index_pixivhistorical = '1'
     index_reserved = '0'
     index_seigaillust = '1'
-    index_danbooru = '0'
+    index_danbooru = '1'
     index_drawr = '1'
     index_nijie = '1'
-    index_yandere = '0'
+    index_yandere = '1'
     index_animeop = '0'
     index_reserved = '0'
     index_shutterstock = '0'
@@ -50,7 +50,7 @@ def get_source(file_name):
     index_movies = '0'
     index_shows = '0'
     index_gelbooru = '0'
-    index_konachan = '0'
+    index_konachan = '1'
     index_sankaku = '0'
     index_animepictures = '0'
     index_e621 = '0'
@@ -176,6 +176,33 @@ def get_source(file_name):
                                 'member_id']
                             illust_id = results['results'][0]['data'][
                                 'pixiv_id']
+                        if index_id == 9:
+                            #9->danbooru
+                            service_name = 'danbooru'
+                            material = results['results'][0]['data'][
+                                'material']
+                            characters = results['results'][0]['data'][
+                                'characters']
+                            illust_id = results['results'][0]['data'][
+                                'danbooru_id']
+                        elif index_id == 12:
+                            #9->yandere
+                            service_name = 'yandere'
+                            material = results['results'][0]['data'][
+                                'material']
+                            characters = results['results'][0]['data'][
+                                'characters']
+                            illust_id = results['results'][0]['data'][
+                                'yandere_id']
+                        elif index_id == 26:
+                            #26->konachan
+                            service_name = 'konachan'
+                            material = results['results'][0]['data'][
+                                'material']
+                            characters = results['results'][0]['data'][
+                                'characters']
+                            illust_id = results['results'][0]['data'][
+                                'konachan_id']
                         elif index_id == 8:
                             #8->nico nico seiga
                             service_name = 'seiga'
@@ -243,10 +270,10 @@ def get_source(file_name):
 
 
 # Search for source from SauceNao and return Pixiv URL
-def get_pixiv_source(file_name):
+def get_image_source(file_name):
     api_key = os.getenv("SAUCE_NAO_TOKEN")
     #EnableRename = False
-    minsim = '70!'
+    minsim = '68!'
 
     extensions = {".jpg", ".jpeg", ".png", ".gif", ".bmp"}
     thumbSize = (250, 250)
@@ -261,10 +288,10 @@ def get_pixiv_source(file_name):
     index_pixivhistorical = '1'
     index_reserved = '0'
     index_seigaillust = '0'
-    index_danbooru = '0'
+    index_danbooru = '1'
     index_drawr = '0'
     index_nijie = '0'
-    index_yandere = '0'
+    index_yandere = '1'
     index_animeop = '0'
     index_reserved = '0'
     index_shutterstock = '0'
@@ -276,8 +303,8 @@ def get_pixiv_source(file_name):
     index_hanime = '0'
     index_movies = '0'
     index_shows = '0'
-    index_gelbooru = '0'
-    index_konachan = '0'
+    index_gelbooru = '1'
+    index_konachan = '1'
     index_sankaku = '0'
     index_animepictures = '0'
     index_e621 = '0'
@@ -337,9 +364,7 @@ def get_pixiv_source(file_name):
                         #generally non 200 statuses are due to either overloaded servers or the user is out of searches
                         print("status code: " + str(r.status_code))
                         if r.status_code == 429:
-                            for x in range(1, 3):
-                                time.sleep(10)
-                            return 2
+                            time.sleep(25)
                         else:
                             time.sleep(30)
                 else:
@@ -382,8 +407,8 @@ def get_pixiv_source(file_name):
                         break
                         #return 0
 
-            if processResults:
-            #print(results)
+            while processResults:
+                #print(json.dumps(results, indent=4))
                 if int(results['header']['results_returned']) > 0:
                     #one or more results were returned
                     if float(results['results'][0]['header']
@@ -405,13 +430,41 @@ def get_pixiv_source(file_name):
                         if page_match:
                             page_string = page_match.group(1)
 
-                        if index_id == 5 or index_id == 6:
+                        if index_id == 9:
+                            #9->danbooru
+                            service_name = 'danbooru'
+                            material = results['results'][0]['data'][
+                                'material']
+                            characters = results['results'][0]['data'][
+                                'characters']
+                            illust_id = results['results'][0]['data'][
+                                'danbooru_id']
+                        elif index_id == 12:
+                            #9->yandere
+                            service_name = 'yandere'
+                            material = results['results'][0]['data'][
+                                'material']
+                            characters = results['results'][0]['data'][
+                                'characters']
+                            illust_id = results['results'][0]['data'][
+                                'yandere_id']
+                        elif index_id == 26:
+                            #26->konachan
+                            service_name = 'konachan'
+                            material = results['results'][0]['data'][
+                                'material']
+                            characters = results['results'][0]['data'][
+                                'characters']
+                            illust_id = results['results'][0]['data'][
+                                'konachan_id']
+                        elif index_id == 5 or index_id == 6:
                             #5->pixiv 6->pixiv historical
                             service_name = 'pixiv'
                             member_id = results['results'][0]['data'][
                                 'member_id']
                             illust_id = results['results'][0]['data'][
                                 'pixiv_id']
+
                         else:
                             #unknown
                             print('Unhandled Index! Exiting...')
@@ -422,7 +475,10 @@ def get_pixiv_source(file_name):
                                     ['similarity']) < 70:
                             return 3
                         else:
-                            return illust_id
+                            if index_id == 5 or index_id == 6:
+                                return [illust_id]
+                            else:
+                                return [illust_id, material, characters]
                     else:
                         print('Miss...')
                         return 3
@@ -436,7 +492,6 @@ def get_pixiv_source(file_name):
                     return 1
                 if int(results['header']['short_remaining']) < 1:
                     print('Out of searches for this 30 second period.')
-                    #time.sleep(25)
-                    return 2
+                    time.sleep(25)
 
     print('Done with SauceNao Pixiv search.')

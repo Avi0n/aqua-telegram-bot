@@ -31,9 +31,10 @@ from PIL import Image
 from dotenv import load_dotenv
 from emoji import emojize
 from pixivapi import Client
+from get_tags import get_tags
+from get_tags import convert_string_tags
 from saucenao import get_source
-from saucenao import get_pixiv_source
-from pixiv import get_tags
+from saucenao import get_image_source
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.error import (BadRequest)
 from telegram.ext import MessageHandler, CommandHandler, \
@@ -541,27 +542,48 @@ def repost(update, context):
         print("Starting new image")
 
         tags_list = []
+        tags = ""
         fetch_tags = True
-        pixiv_post_id = get_pixiv_source(file_name)
+        source_result = get_image_source(file_name)
 
-        if pixiv_post_id == 3:
+        if source_result == 3:
             print("Miss or no results")
             fetch_tags = False
-        elif pixiv_post_id == 0:
+        elif source_result == 0:
             print("Bad image or other SauceNao API error.")
             fetch_tags = False
-        elif pixiv_post_id == 1:
+        elif source_result == 1:
             print("SauceNao API error.")
             fetch_tags = False
-        elif pixiv_post_id == 2:
+        elif source_result == 2:
             # Out of searches
             print("Out of searches for today...")
             fetch_tags = False
 
-        try:
-            if fetch_tags is True:
-                tags = get_tags(pixiv_c, pixiv_post_id)
+        if fetch_tags:
+            try:
+                post_id = source_result[0]
+                material = source_result[1]
+                characters = source_result[2]
+                temp_list = []
 
+                material = material.split(",")
+                for x in range(len(material)):
+                    temp_list.append(material[x])
+
+                characters = characters.split(",")
+                for x in range(len(characters)):
+                    temp_list.append(characters[x])
+
+                tags = convert_string_tags(temp_list)
+            except Exception as e:
+                print(str(e))
+                post_id = source_result[0]
+                try:
+                    tags = get_tags(pixiv_c, post_id)
+                except Exception as e:
+                    print(str(e))
+            try:
                 # Remove pound signs and store tags in a dictionary
                 tags_no_h = tags.replace("#", "")
                 tags_split = tags_no_h.split()
@@ -571,17 +593,17 @@ def repost(update, context):
                 for x in range(0, 2):
                     db_status = loop.run_until_complete(
                         db.store_tags(update.message.message_id, tags_list,
-                                      str(update.message.chat.id)))
+                                        str(update.message.chat.id)))
                     # If store_tags() returned False, the db doesn't exist
                     if db_status is False:
                         db.populate_db(str(update.message.chat.id), loop)
                     else:
                         break
-            else:
+                else:
+                    tags = ""
+            except Exception as e:
+                print(f"Exception while fetching Pixiv tags: {e}")
                 tags = ""
-        except Exception as e:
-            print(f"Exception while fetching Pixiv tags: {e}")
-            tags = ""
     else:
         tags = ""
 

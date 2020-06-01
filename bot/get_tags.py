@@ -15,17 +15,48 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
-#from pixivapi import Client
+
+blacklist_tags = ["1000", "beautiful girl", "girl", "breasts"]
 
 def get_tags(pixiv, illustration_id):
+    global blacklist_tags
     illustration_info = pixiv.fetch_illustration(illustration_id)
     tag_list = ""
-    blacklist_tags = ["1000", "beautiful girl"]
     if illustration_info.tags is not None:
         ignore_tag = False
         for x in range(len(illustration_info.tags)):
             tag = illustration_info.tags[x]['translated_name']
 
+            try:
+                if tag is not None:
+                    # Check to see if the current tag is in the blacklist
+                    for x in range(len(blacklist_tags)):
+                        if blacklist_tags[x] in tag:
+                            ignore_tag = True
+                            break
+                    if ignore_tag:
+                        continue
+                    # Ignore parenthesis and everything inside
+                    elif "(" in tag:
+                        tag_split = tag.split("(", 1)
+                        tag = tag_split[0]
+                    # Remove spaces in tag
+                    tag = tag.replace(" ", "").replace("'", "")
+                    if tag not in tag_list:
+                        tag_list += f"#{tag} "
+            except TypeError:
+                continue
+
+    return tag_list
+
+
+def convert_string_tags(temp_list):
+    global blacklist_tags
+    tag_list = ""
+    if temp_list is not None:
+        ignore_tag = False
+        for x in range(len(temp_list)):
+            tag = str(temp_list[x])
             try:
                 if tag is not None:
                     # Check to see if the current tag is in the blacklist
