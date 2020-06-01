@@ -1010,7 +1010,7 @@ def button(update, context):
 
 
 def main():
-    print("Starting Aqua 3.2 beta 10.3")
+    print("Starting Aqua 3.2 beta 10.4")
     # Check to see if db folder exists
     if Path("db").exists() is True:
         pass
