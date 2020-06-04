@@ -127,8 +127,8 @@ def get_source(file_name):
                                 #One or more indexes are having an issue.
                                 #This search is considered partially successful, even if all indexes failed, so is still counted against your limit.
                                 #The error may be transient, but because we don't want to waste searches, allow time for recovery.
-                                print('API Error. Retrying in 30 seconds...')
-                                return 1
+                                print('API Error...')
+                                return "API Error. Maybe the SauceNao API server is down?"
                             else:
                                 #Problem with search as submitted, bad image, or impossible request.
                                 #Issue is unclear, so don't flood requests.
@@ -136,14 +136,16 @@ def get_source(file_name):
                                     'Bad image or other request error. Returning...'
                                 )
                                 processResults = False
-                                return 0
+                                time.sleep(10)
+                                break
                     else:
                         #General issue, api did not respond. Normal site took over for this error state.
                         #Issue is unclear, so don't flood requests.
                         print(
                             'Bad image, or API failure. Returning...')
                         processResults = False
-                        return 0
+                        time.sleep(10)
+                        break
 
             if processResults:
             #print(results)
@@ -260,12 +262,12 @@ def get_source(file_name):
                     print(
                         'Out of searches for today. Returning...'
                     )
-                    return 1
+                    return "Ran out of searches for today :("
                 if int(results['header']['short_remaining']) < 1:
                     print(
-                        'Out of searches for this 30 second period. Returning...'
+                        'Out of searches for this 30 second period. Sleeping for 25 seconds...'
                     )
-                    return 2
+                    time.sleep(25)
     print('Done with SauceNao search.')
 
 
@@ -482,7 +484,7 @@ def get_image_source(file_name):
                             else:
                                 return [illust_id, material, characters]
                     else:
-                        print('Miss...')
+                        # Miss
                         return 3
                 else:
                     print('No results... ;_;')
