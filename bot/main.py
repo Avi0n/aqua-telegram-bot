@@ -198,11 +198,13 @@ def start(update, context):
                                      " Have fun :)")
 
 
+@run_async
 # Respond to /sauce
 def sauce(update, context):
     source(update, context)
 
 
+@run_async
 # Respond to /source
 def source(update, context):
     # Check if only authorized rooms can use this command
@@ -592,7 +594,7 @@ def repost(update, context):
                 #     except Exception as e:
                 #         print(f"Error in repost() line 585: {e}")
                 # else:
-                    print(f"Error in repost() line 588: {e}")
+                print(f"Error in repost() line 588: {e}")
             try:
                 # Remove pound signs and store tags in a dictionary
                 tags_no_h = tags.replace("#", "")
