@@ -363,7 +363,7 @@ def get_image_source(file_name):
             imageData.close()
 
             processResults = True
-            while True:
+            for x in range(0,2):
                 r = requests.post(url, files=files)
                 if r.status_code != 200:
                     if r.status_code == 403:
@@ -377,6 +377,9 @@ def get_image_source(file_name):
                         if r.status_code == 429:
                             print("Sleeping for 25 seconds...")
                             time.sleep(25)
+                            if x == 1:
+                                print("Returning...")
+                                return 1
                         else:
                             print("Sleeping for 30 seconds...")
                             time.sleep(30)
