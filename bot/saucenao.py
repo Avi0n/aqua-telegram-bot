@@ -9,6 +9,7 @@ import json
 import codecs
 import re
 import time
+from random import randint
 from collections import OrderedDict
 sys.stdout = codecs.getwriter('utf8')(sys.stdout.detach())
 sys.stderr = codecs.getwriter('utf8')(sys.stderr.detach())
@@ -128,6 +129,7 @@ def get_source(file_name):
                                 #This search is considered partially successful, even if all indexes failed, so is still counted against your limit.
                                 #The error may be transient, but because we don't want to waste searches, allow time for recovery.
                                 print('API Error...')
+                                print(results['header']['status'])
                                 return "API Error. Maybe the SauceNao API server is down?"
                             else:
                                 #Problem with search as submitted, bad image, or impossible request.
@@ -273,6 +275,13 @@ def get_source(file_name):
 
 # Search for source from SauceNao and return Pixiv URL
 def get_image_source(file_name):
+    # This is bad, I know. I need to figure out a better way of 
+    # spacing out these calls
+    temp_rand = randint(1,100)
+    print(f"Starting sleep: {temp_rand}")
+    time.sleep(randint(3,10))
+    print(f"Ending sleep: {temp_rand}")
+
     api_key = os.getenv("SAUCE_NAO_TOKEN")
     #EnableRename = False
     minsim = '68!'

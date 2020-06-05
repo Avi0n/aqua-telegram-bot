@@ -21,7 +21,6 @@ import os
 import string
 import sys
 import time
-from random import randint
 from pathlib import Path
 
 import imagehash
@@ -544,12 +543,6 @@ def repost(update, context):
                      "TAG_LOOKUP_ROOMS") and is_photo:
         print("Starting new image")
 
-        # This is bad, I know. I need to figure out a better way of 
-        # spacing out these calls
-        temp_rand = randint(1,100)
-        print(f"Starting sleep: {temp_rand}")
-        time.sleep(randint(3,10))
-        print(f"Ending sleep: {temp_rand}")
         tags_list = []
         tags = ""
         fetch_tags = True
@@ -1012,7 +1005,7 @@ def button(update, context):
 
 
 def main():
-    print("Starting Aqua 3.2 beta 10.6")
+    print("Starting Aqua 3.2 beta 10.7")
     # Check to see if db folder exists
     if Path("db").exists() is True:
         pass
