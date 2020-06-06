@@ -88,7 +88,7 @@ class MQBot(telegram.bot.Bot):
     def send_message(self, *args, **kwargs):
         # Wrapped method would accept new 'queued' and 'isgroup'
         # OPTIONAL arguments
-        return super(MQBot, self).send_message(*args, **kwargs)
+        return super(MQBot, self).send_message(*args, **kwargs, isgroup=True)
 
 
 # Convert mp4 to gif. Copy paste from:
@@ -1016,7 +1016,7 @@ def main():
     db.check_tables_exist()
 
     token = os.getenv("TEL_BOT_TOKEN")
-    q = mq.MessageQueue(group_burst_limit=19, group_time_limit_ms=60050)
+    q = mq.MessageQueue() #group_burst_limit=19, group_time_limit_ms=60050)
     # set connection pool size for bot
     request = Request(con_pool_size=54)
     qbot = MQBot(token, request=request, mqueue=q)
