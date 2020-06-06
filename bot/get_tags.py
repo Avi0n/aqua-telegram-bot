@@ -17,7 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 #import os
 #from dotenv import load_dotenv
-
+import re
 
 
 
@@ -75,8 +75,12 @@ def convert_string_tags(temp_list, blacklist_tags):
                     elif "(" in tag:
                         tag_split = tag.split("(", 1)
                         tag = tag_split[0]
-                    # Remove spaces in tag
-                    tag = tag.replace(" ", "").replace("'", "")
+                    # Remove special characters
+                    tag = re.sub("\W+", " ", tag)
+                    # Capatalize every first letter of words
+                    tag = tag.title()
+                    # Remove spaces
+                    tag = tag.replace(" ", "")
                     if tag not in tag_list:
                         tag_list += f"#{tag} "
             except TypeError:
