@@ -127,12 +127,11 @@ def delete_media(**kwargs):
     else:
         # Cleanup downloaded media
         try:
-            # Cleanup downloaded media
             for fname in os.listdir("./media"):
                 if fname.endswith(".gif"):
-                    os.remove("source.gif")
+                    os.remove(f"./media/{source.gif}")
                 elif fname.endswith(".jpg"):
-                    os.remove(fname)
+                    os.remove(f"./media/{fname}")
         except Exception as e:
             print("Error in delete_media(): " + str(e))
 
@@ -1014,6 +1013,9 @@ def main():
         Path("db").mkdir(parents=True, exist_ok=True)
     # Check to see if all db tables exist
     db.check_tables_exist()
+
+    # Cleanup media download folder
+    delete_media()
 
     token = os.getenv("TEL_BOT_TOKEN")
     q = mq.MessageQueue() #group_burst_limit=19, group_time_limit_ms=60050)
