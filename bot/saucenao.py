@@ -277,10 +277,10 @@ def get_source(file_name):
 def get_image_source(file_name):
     # This is bad, I know. I need to figure out a better way of 
     # spacing out these calls
-    temp_rand = randint(1,100)
-    print(f"Starting sleep: {temp_rand}")
-    time.sleep(randint(3,10))
-    print(f"Ending sleep: {temp_rand}")
+    temp_rand = randint(3,25)
+    print(f"Starting sleep for {temp_rand} sec")
+    time.sleep(temp_rand)
+    print(f"Ending sleep for {temp_rand} sec")
 
     api_key = os.getenv("SAUCE_NAO_TOKEN")
     #EnableRename = False
