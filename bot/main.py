@@ -492,7 +492,7 @@ def repost_check(update, context):
 
 
 @on_exception(expo, RateLimitException, max_tries=8)
-@limits(calls=14, period=30)
+@limits(calls=int(os.getenv("SAUCENAO_30_LIMIT")), period=30)
 def saucenao_fetch(file_name, message_id, room_id):
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
