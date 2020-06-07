@@ -288,7 +288,7 @@ def get_image_source(file_name):
     index_hcg = '0'
     index_ddbobjects = '0'
     index_ddbsamples = '0'
-    index_pixiv = '0'
+    index_pixiv = '1'
     index_pixivhistorical = '1'
     index_reserved = '0'
     index_seigaillust = '0'
@@ -479,9 +479,9 @@ def get_image_source(file_name):
                             return 3
                         else:
                             if index_id == 5 or index_id == 6:
-                                return [illust_id]
+                                return [service_name, illust_id]
                             else:
-                                return [illust_id, material, characters]
+                                return [service_name, illust_id, material, characters]
                     else:
                         # Miss
                         return 3

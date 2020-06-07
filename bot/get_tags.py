@@ -21,14 +21,17 @@ import re
 
 
 
-def get_tags(pixiv, illustration_id):
-    global blacklist_tags
+def get_tags(pixiv, illustration_id, blacklist_tags):
     illustration_info = pixiv.fetch_illustration(illustration_id)
     tag_list = ""
     if illustration_info.tags is not None:
         ignore_tag = False
+        list_len = len(illustration_info.tags)
+        # Max of 5 tags
+        if list_len > 5:
+            list_len = 5
 
-        for x in range(len(illustration_info.tags)):
+        for x in range(list_len):
             tag = illustration_info.tags[x]['translated_name']
 
             try:
@@ -45,12 +48,17 @@ def get_tags(pixiv, illustration_id):
                     elif "(" in tag:
                         tag_split = tag.split("(", 1)
                         tag = tag_split[0]
-                    # Remove spaces in tag
-                    tag = tag.replace(" ", "").replace("'", "")
+                    # Remove special characters
+                    tag = re.sub("\W+", " ", tag)
+                    # Capatalize every first letter of words
+                    tag = tag.title()
+                    # Remove spaces
+                    tag = tag.replace(" ", "")
                     if tag not in tag_list:
                         tag_list += f"#{tag} "
             except TypeError:
                 continue
+        tag_list += "\n"
 
     return tag_list
 
@@ -59,7 +67,12 @@ def convert_string_tags(temp_list, blacklist_tags):
     tag_list = ""
     if temp_list is not None:
         ignore_tag = False
-        for x in range(len(temp_list)):
+        list_len = len(temp_list)
+        # Max of 5 tags
+        if list_len > 5:
+            list_len = 5
+
+        for x in range(list_len):
             tag = str(temp_list[x])
             try:
                 if tag is not None:
@@ -85,5 +98,6 @@ def convert_string_tags(temp_list, blacklist_tags):
                         tag_list += f"#{tag} "
             except TypeError:
                 continue
+        tag_list += "\n"
 
     return tag_list
