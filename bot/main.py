@@ -31,7 +31,6 @@ from PIL import Image
 from dotenv import load_dotenv
 from emoji import emojize
 from pixivapi import Client
-from get_tags import get_tags
 from get_tags import convert_string_tags
 from saucenao import get_source
 from saucenao import get_image_source
@@ -42,11 +41,9 @@ from telegram.ext import MessageHandler, CommandHandler, \
 from telegram.ext import messagequeue as mq
 from telegram.ext.dispatcher import run_async
 from telegram.utils.request import Request
+from ratelimit import limits, RateLimitException
+from backoff import on_exception, expo
 
-#if os.getenv("USE_MYSQL") == "TRUE":
-#    import mariadb_functions as db
-#else:
-#    import sqlite_functions as db
 
 # Initialize dotenv
 load_dotenv()
@@ -495,6 +492,77 @@ def repost_check(update, context):
             text="Hmm... doesn't look like a repost to me.")
 
 
+@on_exception(expo, RateLimitException, max_tries=8)
+@limits(calls=14, period=30)
+def saucenao_fetch(file_name, message_id, room_id):
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)        
+
+    print("Starting new image")
+
+    tags_list = []
+    tags = ""
+    fetch_tags = True
+    source_result = get_image_source(file_name)
+
+    if source_result == 3:
+        print("Miss or no results")
+        fetch_tags = False
+    elif source_result == 429:
+        print("API limit hit, backing off...")
+        raise Exception('API response: {}'.format(source_result))
+    # Bad image or other SauceNao API error
+    elif source_result == 0:
+        fetch_tags = False
+    # SauceNAO API error
+    elif source_result == 1:
+        fetch_tags = False
+    # Out of searches
+    elif source_result == 2:
+        fetch_tags = False
+
+    if fetch_tags:
+        try:
+            #post_id = source_result[0]
+            material = source_result[1]
+            characters = source_result[2]
+            temp_list = []
+
+            material = material.split(",")
+            for x in range(len(material)):
+                temp_list.append(material[x])
+
+            characters = characters.split(",")
+            for x in range(len(characters)):
+                temp_list.append(characters[x])
+
+            blacklist_tags = os.getenv("BLACKLIST_TAGS").split(",")
+            tags = convert_string_tags(temp_list, blacklist_tags)
+        except Exception as e:
+            print(f"Error in repost() line 541: {e}")
+        try:
+            # Remove pound signs and store tags in a dictionary
+            tags_no_h = tags.replace("#", "")
+            tags_split = tags_no_h.split()
+            for x in range(len(tags_split)):
+                tags_list.append(tags_split[x])
+
+            for x in range(0, 2):
+                db_status = loop.run_until_complete(
+                    db.store_tags(message_id, tags_list, str(room_id)))
+                # If store_tags() returned False, the db doesn't exist
+                if db_status is False:
+                    db.populate_db(str(room_id), loop)
+                else:
+                    break
+            else:
+                tags = ""
+        except Exception as e:
+            print(f"Exception while fetching Pixiv tags: {e}")
+            tags = ""
+    return tags
+
+
 @run_async
 # Repost media to the channel with an inline emoji keyboard
 def repost(update, context):
@@ -540,74 +608,8 @@ def repost(update, context):
     if os.getenv("AUTH_ROOMS_ONLY"
                  ) == "TRUE" and update.message.chat.title in os.getenv(
                      "TAG_LOOKUP_ROOMS") and is_photo:
-        print("Starting new image")
-
-        tags_list = []
-        tags = ""
-        fetch_tags = True
-        source_result = get_image_source(file_name)
-
-        if source_result == 3:
-            print("Miss or no results")
-            fetch_tags = False
-        elif source_result == 0:
-            print("Bad image or other SauceNao API error.")
-            fetch_tags = False
-        elif source_result == 1:
-            print("SauceNao API error.")
-            fetch_tags = False
-        elif source_result == 2:
-            # Out of searches
-            print("Out of searches for today...")
-            fetch_tags = False
-
-        if fetch_tags:
-            try:
-                #post_id = source_result[0]
-                material = source_result[1]
-                characters = source_result[2]
-                temp_list = []
-
-                material = material.split(",")
-                for x in range(len(material)):
-                    temp_list.append(material[x])
-
-                characters = characters.split(",")
-                for x in range(len(characters)):
-                    temp_list.append(characters[x])
-                
-                blacklist_tags = os.getenv("BLACKLIST_TAGS").split(",")
-                tags = convert_string_tags(temp_list, blacklist_tags)
-            except Exception as e:
-                # if str(e) == "list index out of range":
-                #     post_id = source_result[0]
-                #     try:
-                #         tags = get_tags(pixiv_c, post_id)
-                #     except Exception as e:
-                #         print(f"Error in repost() line 585: {e}")
-                # else:
-                print(f"Error in repost() line 588: {e}")
-            try:
-                # Remove pound signs and store tags in a dictionary
-                tags_no_h = tags.replace("#", "")
-                tags_split = tags_no_h.split()
-                for x in range(len(tags_split)):
-                    tags_list.append(tags_split[x])
-
-                for x in range(0, 2):
-                    db_status = loop.run_until_complete(
-                        db.store_tags(update.message.message_id, tags_list,
-                                        str(update.message.chat.id)))
-                    # If store_tags() returned False, the db doesn't exist
-                    if db_status is False:
-                        db.populate_db(str(update.message.chat.id), loop)
-                    else:
-                        break
-                else:
-                    tags = ""
-            except Exception as e:
-                print(f"Exception while fetching Pixiv tags: {e}")
-                tags = ""
+        tags = saucenao_fetch(file_name, update.message.message_id,
+                              update.message.chat.id)
     else:
         tags = ""
 
@@ -1018,7 +1020,7 @@ def main():
     delete_media()
 
     token = os.getenv("TEL_BOT_TOKEN")
-    q = mq.MessageQueue() #group_burst_limit=19, group_time_limit_ms=60050)
+    q = mq.MessageQueue()  #group_burst_limit=19, group_time_limit_ms=60050)
     # set connection pool size for bot
     request = Request(con_pool_size=54)
     qbot = MQBot(token, request=request, mqueue=q)

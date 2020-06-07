@@ -275,13 +275,6 @@ def get_source(file_name):
 
 # Search for source from SauceNao and return Pixiv URL
 def get_image_source(file_name):
-    # This is bad, I know. I need to figure out a better way of 
-    # spacing out these calls
-    temp_rand = randint(3,25)
-    print(f"Starting sleep for {temp_rand} sec")
-    time.sleep(temp_rand)
-    print(f"Ending sleep for {temp_rand} sec")
-
     api_key = os.getenv("SAUCE_NAO_TOKEN")
     #EnableRename = False
     minsim = '68!'
@@ -363,7 +356,7 @@ def get_image_source(file_name):
             imageData.close()
 
             processResults = True
-            for x in range(0,2):
+            while True:
                 r = requests.post(url, files=files)
                 if r.status_code != 200:
                     if r.status_code == 403:
@@ -375,11 +368,7 @@ def get_image_source(file_name):
                         #generally non 200 statuses are due to either overloaded servers or the user is out of searches
                         print("status code: " + str(r.status_code))
                         if r.status_code == 429:
-                            print("Sleeping for 25 seconds...")
-                            time.sleep(25)
-                            if x == 1:
-                                print("Returning...")
-                                return 1
+                            return r.status_code
                         else:
                             print("Sleeping for 30 seconds...")
                             time.sleep(30)
@@ -411,8 +400,7 @@ def get_image_source(file_name):
                                 )
                                 processResults = False
                                 time.sleep(10)
-                                break
-                                #return 0
+                                return 0
                     else:
                         #General issue, api did not respond. Normal site took over for this error state.
                         #Issue is unclear, so don't flood requests.
@@ -420,8 +408,7 @@ def get_image_source(file_name):
                             'Bad image, or API failure. Returning...')
                         processResults = False
                         time.sleep(10)
-                        break
-                        #return 0
+                        return 0
 
             while processResults:
                 #print(json.dumps(results, indent=4))
