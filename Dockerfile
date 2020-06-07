@@ -11,8 +11,8 @@ COPY requirements.txt .
 RUN pip3 install -r requirements.txt
 
 
-FROM pypy:3-7-buster AS run-image
-RUN apt-get update && apt-get install -y ffmpeg
+FROM pypy:3-7-slim-buster AS run-image
+RUN apt-get update && apt-get install -y ffmpeg python3-venv
 COPY --from=build-image /opt/venv /opt/venv
 
 WORKDIR /bot
