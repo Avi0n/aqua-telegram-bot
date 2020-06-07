@@ -31,7 +31,7 @@ from PIL import Image
 from dotenv import load_dotenv
 from emoji import emojize
 from pixivapi import Client
-from get_tags import convert_string_tags
+from get_tags import get_tags, convert_string_tags
 from saucenao import get_source
 from saucenao import get_image_source
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
@@ -43,7 +43,6 @@ from telegram.ext.dispatcher import run_async
 from telegram.utils.request import Request
 from ratelimit import limits, RateLimitException
 from backoff import on_exception, expo
-
 
 # Initialize dotenv
 load_dotenv()
@@ -496,7 +495,7 @@ def repost_check(update, context):
 @limits(calls=14, period=30)
 def saucenao_fetch(file_name, message_id, room_id):
     loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)        
+    asyncio.set_event_loop(loop)
 
     print("Starting new image")
 
@@ -522,24 +521,32 @@ def saucenao_fetch(file_name, message_id, room_id):
         fetch_tags = False
 
     if fetch_tags:
-        try:
-            #post_id = source_result[0]
-            material = source_result[1]
-            characters = source_result[2]
-            temp_list = []
+        blacklist_tags = os.getenv("BLACKLIST_TAGS").split(",")
+        # Check if it's a Pixiv source
+        if source_result[0] == "pixiv":
+            try:
+                illustration_id = source_result[1]
+                tags = get_tags(pixiv_c, illustration_id, blacklist_tags)
+            except Exception as e:
+                print(f"Error in repost() line 530: {e}")
+        # Not a Pixiv source, get tags directly from SauceNAO API
+        else:
+            try:
+                material = source_result[2]
+                characters = source_result[3]
+                temp_list = []
 
-            material = material.split(",")
-            for x in range(len(material)):
-                temp_list.append(material[x])
+                material = material.split(",")
+                for x in range(len(material)):
+                    temp_list.append(material[x])
 
-            characters = characters.split(",")
-            for x in range(len(characters)):
-                temp_list.append(characters[x])
+                characters = characters.split(",")
+                for x in range(len(characters)):
+                    temp_list.append(characters[x])
 
-            blacklist_tags = os.getenv("BLACKLIST_TAGS").split(",")
-            tags = convert_string_tags(temp_list, blacklist_tags)
-        except Exception as e:
-            print(f"Error in repost() line 541: {e}")
+                tags = convert_string_tags(temp_list, blacklist_tags)
+            except Exception as e:
+                print(f"Error in repost() line 547: {e}")
         try:
             # Remove pound signs and store tags in a dictionary
             tags_no_h = tags.replace("#", "")
@@ -611,7 +618,7 @@ def repost(update, context):
         tags = saucenao_fetch(file_name, update.message.message_id,
                               update.message.chat.id)
     else:
-        tags = ""
+        tags = "\n"
 
     # Get hash and delete downloaded photo if the media sent was a photo
     if is_photo:
@@ -698,22 +705,22 @@ def repost(update, context):
                     # If we're at the last character, attach Posted by
                     if cur_pos == len(caption):
                         repost_caption = cap_formatted \
-                                        + "\n" + tags \
-                                        + "\n\nPosted by " \
+                                        + "\n\n" + tags \
+                                        + "Posted by " \
                                         + update.message.from_user.username
                     # If we're not at the last character, attach the rest of
                     # the caption before attaching Posted by
                     else:
                         repost_caption = cap_formatted + caption[cur_pos:] \
-                                        + "\n" + tags + "\nPosted by " \
+                                        + "\n\n" + tags + "Posted by " \
                                         + update.message.from_user.username
         # No formatting in caption, attach caption to message
         else:
             repost_caption = update.message.caption \
-                            + "\n" + tags + "\nPosted by " \
+                            + "\n\n" + tags + "Posted by " \
                             + update.message.from_user.username
     else:
-        repost_caption = tags + "\nPosted by " + update.message.from_user.username
+        repost_caption = tags + "Posted by " + update.message.from_user.username
 
     while True:
         # Try sending photo
@@ -844,7 +851,7 @@ def button(update, context):
                                                     query.from_user.username,
                                                     query.data, loop))
                         # If user hasn't already pressed this emoji,
-                        # add a point from their overall karma
+                        # add a point to their overall karma
                         if user_voted is False:
                             loop.run_until_complete(
                                 db.update_user_karma(database,
