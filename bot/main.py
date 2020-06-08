@@ -58,6 +58,7 @@ logger = logging.getLogger(__name__)
 if os.getenv("AUTH_ROOMS_ONLY") == "TRUE":
     pixiv_c = Client()
     pixiv_c.login(os.getenv("PIXIV_USER"), os.getenv("PIXIV_PASS"))
+    refresh_token = pixiv_c.refresh_token
 
 
 def error(update, context):
@@ -528,7 +529,10 @@ def saucenao_fetch(file_name, message_id, room_id):
                 illustration_id = source_result[1]
                 tags = get_tags(pixiv_c, illustration_id, blacklist_tags)
             except Exception as e:
-                print(f"Error in repost() line 530: {e}")
+                #print(f"Error in repost() line 532: {e}")
+                logging.exception(e)
+                if "Error occurred at the OAuth process" in str(e):
+                    pixiv_c.authenticate('refresh_token')
         # Not a Pixiv source, get tags directly from SauceNAO API
         else:
             try:
@@ -546,7 +550,8 @@ def saucenao_fetch(file_name, message_id, room_id):
 
                 tags = convert_string_tags(temp_list, blacklist_tags)
             except Exception as e:
-                print(f"Error in repost() line 547: {e}")
+                #print(f"Error in repost() line 552: {e}")
+                logging.exception(e)
         try:
             # Remove pound signs and store tags in a dictionary
             tags_no_h = tags.replace("#", "")
@@ -1013,7 +1018,7 @@ def button(update, context):
 
 
 def main():
-    print("Starting Aqua 3.2 beta 12")
+    print("Starting Aqua 3.2 beta 12.1")
     # Check to see if db folder exists
     if Path("db").exists() is True:
         pass
