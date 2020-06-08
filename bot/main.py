@@ -618,7 +618,7 @@ def repost(update, context):
         tags = saucenao_fetch(file_name, update.message.message_id,
                               update.message.chat.id)
     else:
-        tags = "\n"
+        tags = ""
 
     # Get hash and delete downloaded photo if the media sent was a photo
     if is_photo:
@@ -1027,7 +1027,7 @@ def main():
     delete_media()
 
     token = os.getenv("TEL_BOT_TOKEN")
-    q = mq.MessageQueue()  #group_burst_limit=19, group_time_limit_ms=60050)
+    q = mq.MessageQueue()
     # set connection pool size for bot
     request = Request(con_pool_size=54)
     qbot = MQBot(token, request=request, mqueue=q)
