@@ -411,7 +411,7 @@ def get_image_source(file_name):
                         return 0
 
             while processResults:
-                print(json.dumps(results, indent=4))
+                #print(json.dumps(results, indent=4))
                 if int(results['header']['results_returned']) > 0:
                     #one or more results were returned
                     if float(results['results'][0]['header']

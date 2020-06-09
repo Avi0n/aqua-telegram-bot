@@ -25,7 +25,6 @@ def get_tags(pixiv, illustration_id, blacklist_tags):
     illustration_info = pixiv.fetch_illustration(illustration_id)
     tag_list = ""
     if illustration_info.tags is not None:
-        ignore_tag = False
         list_len = len(illustration_info.tags)
         # Max of 5 tags
         if list_len > 5:
@@ -36,10 +35,12 @@ def get_tags(pixiv, illustration_id, blacklist_tags):
 
             try:
                 if tag is not None:
-                    print(tag)
+                    ignore_tag = False
+                    print(f"tag: {tag}")
                     # Check to see if the current tag is in the blacklist
                     for x in range(len(blacklist_tags)):
-                        if blacklist_tags[x] in tag:
+                        if blacklist_tags[x] == tag:
+                            print(f"blacklist_tag: {blacklist_tags[x]}")
                             ignore_tag = True
                             break
                     if ignore_tag:
@@ -66,7 +67,6 @@ def get_tags(pixiv, illustration_id, blacklist_tags):
 def convert_string_tags(temp_list, blacklist_tags):
     tag_list = ""
     if temp_list is not None:
-        ignore_tag = False
         list_len = len(temp_list)
         # Max of 5 tags
         if list_len > 5:
@@ -76,10 +76,12 @@ def convert_string_tags(temp_list, blacklist_tags):
             tag = str(temp_list[x])
             try:
                 if tag is not None:
+                    ignore_tag = False
                     print(f"tag: {tag}")
                     # Check to see if the current tag is in the blacklist
                     for x in range(len(blacklist_tags)):
-                        if blacklist_tags[x] in tag:
+                        if blacklist_tags[x] == tag:
+                            print(f"blacklist_tag: {blacklist_tags[x]}")
                             ignore_tag = True
                             break
                     if ignore_tag:
