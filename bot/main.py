@@ -542,8 +542,8 @@ def saucenao_fetch(file_name, message_id, room_id):
                             logging.exception(e)
                         # If it was some other error, forget about Pixiv
                         else:
-                            run_try = False
-                            break
+                            tags = ""
+                            return tags
         # Not a Pixiv source, get tags directly from SauceNAO API
         else:
             try:
@@ -1029,7 +1029,7 @@ def button(update, context):
 
 
 def main():
-    print("Starting Aqua 3.2 beta 13")
+    print("Starting Aqua 3.2 beta 13.1")
     # Check to see if db folder exists
     if Path("db").exists() is True:
         pass
