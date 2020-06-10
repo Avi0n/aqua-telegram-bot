@@ -532,7 +532,7 @@ def saucenao_fetch(file_name, message_id, room_id):
                 #print(f"Error in repost() line 532: {e}")
                 logging.exception(e)
                 if "Error occurred at the OAuth process" in str(e):
-                    pixiv_c.authenticate('refresh_token')
+                    pixiv_c.authenticate(refresh_token)
         # Not a Pixiv source, get tags directly from SauceNAO API
         else:
             try:
@@ -1018,7 +1018,7 @@ def button(update, context):
 
 
 def main():
-    print("Starting Aqua 3.2 beta 12.2")
+    print("Starting Aqua 3.2 beta 13")
     # Check to see if db folder exists
     if Path("db").exists() is True:
         pass
