@@ -525,14 +525,25 @@ def saucenao_fetch(file_name, message_id, room_id):
         blacklist_tags = os.getenv("BLACKLIST_TAGS").split(",")
         # Check if it's a Pixiv source
         if source_result[0] == "pixiv":
-            try:
-                illustration_id = source_result[1]
-                tags = get_tags(pixiv_c, illustration_id, blacklist_tags)
-            except Exception as e:
-                #print(f"Error in repost() line 532: {e}")
-                logging.exception(e)
-                if "Error occurred at the OAuth process" in str(e):
-                    pixiv_c.authenticate(refresh_token)
+            run_try = True
+            while run_try:
+                for x in range(0, 3):
+                    try:
+                        illustration_id = source_result[1]
+                        tags = get_tags(pixiv_c, illustration_id,
+                                        blacklist_tags)
+                        run_try = False
+                        break
+                    except Exception as e:
+                        # Try authenticating with Pixiv again
+                        if "Error occurred at the OAuth process" in str(e):
+                            pixiv_c.authenticate(refresh_token)
+                        elif x == 2:
+                            logging.exception(e)
+                        # If it was some other error, forget about Pixiv
+                        else:
+                            run_try = False
+                            break
         # Not a Pixiv source, get tags directly from SauceNAO API
         else:
             try:
