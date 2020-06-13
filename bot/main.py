@@ -522,7 +522,8 @@ def saucenao_fetch(file_name, message_id, room_id):
         fetch_tags = False
 
     if fetch_tags:
-        blacklist_tags = os.getenv("BLACKLIST_TAGS").split(",")
+        blacklist_e = os.getenv("BLACKLIST_TAGS_EXACT").split(",")
+        blacklist_p = os.getenv("BLACKLIST_TAGS_PARTIAL").split(",")
         # Check if it's a Pixiv source
         if source_result[0] == "pixiv":
             run_try = True
@@ -531,7 +532,7 @@ def saucenao_fetch(file_name, message_id, room_id):
                     try:
                         illustration_id = source_result[1]
                         tags = get_tags(pixiv_c, illustration_id,
-                                        blacklist_tags)
+                                        blacklist_e, blacklist_p)
                         run_try = False
                         break
                     except Exception as e:
@@ -559,7 +560,7 @@ def saucenao_fetch(file_name, message_id, room_id):
                 for x in range(len(characters)):
                     temp_list.append(characters[x])
 
-                tags = convert_string_tags(temp_list, blacklist_tags)
+                tags = convert_string_tags(temp_list, blacklist_e, blacklist_p)
             except Exception as e:
                 #print(f"Error in repost() line 552: {e}")
                 logging.exception(e)
