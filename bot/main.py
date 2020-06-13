@@ -492,8 +492,8 @@ def repost_check(update, context):
             text="Hmm... doesn't look like a repost to me.")
 
 
-@on_exception(expo, RateLimitException, max_tries=8)
-@limits(calls=int(os.getenv("SAUCENAO_30_LIMIT")), period=30)
+@on_exception(expo, RateLimitException, max_tries=10)
+@limits(calls=int(os.getenv("SAUCENAO_30_LIMIT")), period=35)
 def saucenao_fetch(file_name, message_id, room_id):
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
@@ -1030,7 +1030,7 @@ def button(update, context):
 
 
 def main():
-    print("Starting Aqua 3.2 beta 14")
+    print("Starting Aqua 3.2 beta 14.1")
     # Check to see if db folder exists
     if Path("db").exists() is True:
         pass
