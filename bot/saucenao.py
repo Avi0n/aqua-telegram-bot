@@ -150,7 +150,7 @@ def get_source(file_name):
                         break
 
             if processResults:
-                print(json.dumps(results, indent=4))
+                #print(json.dumps(results, indent=4))
 
                 if int(results['header']['results_returned']) > 0:
                     #one or more results were returned
