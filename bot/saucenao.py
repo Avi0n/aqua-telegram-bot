@@ -150,7 +150,7 @@ def get_source(file_name):
                         break
 
             if processResults:
-            #print(results)
+                print(json.dumps(results, indent=4))
 
                 if int(results['header']['results_returned']) > 0:
                     #one or more results were returned
@@ -173,13 +173,6 @@ def get_source(file_name):
                         if page_match:
                             page_string = page_match.group(1)
 
-                        if index_id == 5 or index_id == 6:
-                            #5->pixiv 6->pixiv historical
-                            service_name = 'pixiv'
-                            member_id = results['results'][0]['data'][
-                                'member_id']
-                            illust_id = results['results'][0]['data'][
-                                'pixiv_id']
                         if index_id == 9:
                             #9->danbooru
                             service_name = 'danbooru'
@@ -233,6 +226,13 @@ def get_source(file_name):
                             service_name = 'da'
                             illust_id = results['results'][0]['data'][
                                 'da_id']
+                        elif index_id == 5 or index_id == 6:
+                            #5->pixiv 6->pixiv historical
+                            service_name = 'pixiv'
+                            member_id = results['results'][0]['data'][
+                                'member_id']
+                            illust_id = results['results'][0]['data'][
+                                'pixiv_id']
                         else:
                             #unknown
                             print('Unhandled Index! Exiting...')
