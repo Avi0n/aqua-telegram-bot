@@ -25,24 +25,23 @@ from pathlib import Path
 
 import imagehash
 import imageio
-import sqlite_functions as db
 import telegram.bot
-from PIL import Image
 from dotenv import load_dotenv
 from emoji import emojize
+from PIL import Image
 from pixivapi import Client
-from get_tags import get_tags, convert_string_tags
-from saucenao import get_source
-from saucenao import get_image_source
+from ratelimit import limits, sleep_and_retry
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.error import (BadRequest)
-from telegram.ext import MessageHandler, CommandHandler, \
-    CallbackQueryHandler, Filters
+from telegram.error import BadRequest
+from telegram.ext import (CallbackQueryHandler, CommandHandler, Filters,
+                          MessageHandler)
 from telegram.ext import messagequeue as mq
 from telegram.ext.dispatcher import run_async
 from telegram.utils.request import Request
-from ratelimit import limits, RateLimitException
-from backoff import on_exception, expo
+
+import sqlite_functions as db
+from get_tags import convert_string_tags, get_tags
+from saucenao import get_image_source, get_source
 
 # Initialize dotenv
 load_dotenv()
@@ -492,7 +491,7 @@ def repost_check(update, context):
             text="Hmm... doesn't look like a repost to me.")
 
 
-@on_exception(expo, RateLimitException, max_tries=20)
+@sleep_and_retry
 @limits(calls=int(os.getenv("SAUCENAO_30_LIMIT")), period=35)
 def saucenao_fetch(file_name, message_id, room_id):
     loop = asyncio.new_event_loop()
@@ -1030,7 +1029,7 @@ def button(update, context):
 
 
 def main():
-    print("Starting Aqua 3.2 beta 14.2")
+    print("Starting Aqua 3.2 beta 14.3")
     # Check to see if db folder exists
     if Path("db").exists() is True:
         pass
