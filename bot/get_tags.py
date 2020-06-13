@@ -21,7 +21,7 @@ import re
 
 
 
-def get_tags(pixiv, illustration_id, blacklist_tags):
+def get_tags(pixiv, illustration_id, blacklist_e, blacklist_p):
     illustration_info = pixiv.fetch_illustration(illustration_id)
     tag_list = ""
     if illustration_info.tags is not None:
@@ -38,9 +38,15 @@ def get_tags(pixiv, illustration_id, blacklist_tags):
                     ignore_tag = False
                     print(f"tag: {tag}")
                     # Check to see if the current tag is in the blacklist
-                    for x in range(len(blacklist_tags)):
-                        if blacklist_tags[x] == tag:
-                            print(f"blacklist_tag: {blacklist_tags[x]}")
+                    for x in range(len(blacklist_p)):
+                        if blacklist_p[x] in tag:
+                            print(f"blacklist_tag_partial: {blacklist_p[x]}")
+                            ignore_tag = True
+                            break
+                    # Check to see if the current tag is in the blacklist
+                    for x in range(len(blacklist_e)):
+                        if blacklist_e[x] == tag:
+                            print(f"blacklist_tag: {blacklist_e[x]}")
                             ignore_tag = True
                             break
                     if ignore_tag:
@@ -64,7 +70,7 @@ def get_tags(pixiv, illustration_id, blacklist_tags):
     return tag_list
 
 
-def convert_string_tags(temp_list, blacklist_tags):
+def convert_string_tags(temp_list, blacklist_e, blacklist_p):
     tag_list = ""
     if temp_list is not None:
         list_len = len(temp_list)
@@ -79,9 +85,15 @@ def convert_string_tags(temp_list, blacklist_tags):
                     ignore_tag = False
                     print(f"tag: {tag}")
                     # Check to see if the current tag is in the blacklist
-                    for x in range(len(blacklist_tags)):
-                        if blacklist_tags[x] == tag:
-                            print(f"blacklist_tag: {blacklist_tags[x]}")
+                    for x in range(len(blacklist_p)):
+                        if blacklist_p[x] in tag:
+                            print(f"blacklist_tag_partial: {blacklist_p[x]}")
+                            ignore_tag = True
+                            break
+                    # Check to see if the current tag is in the blacklist
+                    for x in range(len(blacklist_e)):
+                        if blacklist_e[x] == tag:
+                            print(f"blacklist_tag_exact: {blacklist_e[x]}")
                             ignore_tag = True
                             break
                     if ignore_tag:
