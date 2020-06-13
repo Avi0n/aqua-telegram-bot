@@ -640,8 +640,6 @@ def repost(update, context):
     # Get hash and delete downloaded photo if the media sent was a photo
     if is_photo:
         media_hash = compute_hash(file_name)
-        # Cleanup downloaded media
-        delete_media(media_name=file_name)
 
     keyboard = [[
         InlineKeyboardButton(str(0) + " " +
@@ -799,6 +797,8 @@ def repost(update, context):
             # Delete original message
             context.bot.delete_message(chat_id=update.message.chat.id,
                                        message_id=update.message.message_id)
+            # Cleanup downloaded media
+            delete_media(media_name=file_name)
             return
 
 
