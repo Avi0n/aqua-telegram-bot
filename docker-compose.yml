@@ -2,8 +2,8 @@ version: '3.1'
 
 services:
   aqua-telegram-bot:
-    restart: always
-    #image: avi0n/aqua-telegram-bot:latest
+    #restart: always
+    #image: avi0n/aqua-telegram-bot:3.2-beta10
     # Uncomment the following line if you are developer
     build: .
     env_file: .env
