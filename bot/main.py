@@ -26,11 +26,12 @@ from pathlib import Path
 import imagehash
 import imageio
 import telegram.bot
+from backoff import expo, on_exception
 from dotenv import load_dotenv
 from emoji import emojize
 from PIL import Image
 from pixivapi import Client
-from ratelimit import limits, sleep_and_retry
+from ratelimit import RateLimitException, limits
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.error import BadRequest
 from telegram.ext import (CallbackQueryHandler, CommandHandler, Filters,
@@ -263,31 +264,45 @@ def delete(update, context):
     asyncio.set_event_loop(loop)
 
     database = str(update.message.chat.id)
+    reply_to = update.message.reply_to_message
+    delete_message_id = reply_to.message_id
 
-    username = update.message.reply_to_message.caption.split()
-    delete_message_id = update.message.reply_to_message.message_id
-
-    # Only allow original poster to delete their own message
-    if username[-1] == update.message.from_user.username:
-        try:
-            points_to_delete = loop.run_until_complete(
-                db.delete_row(database, delete_message_id, loop))
-            if points_to_delete[0] is not None:
-                loop.run_until_complete(
-                    db.update_user_karma(database, username[-1], "-",
-                                         str(points_to_delete[0]), loop))
-            # Remove message that user replied to
+    try:
+        if "Yep, that's a repost." in reply_to.text or reply_to.text == "Hmm... doesn't look like a repost to me.":
+            # Delete the message the user replied to
             context.bot.delete_message(chat_id=update.message.chat_id,
-                                       message_id=delete_message_id)
+                                    message_id=reply_to.message_id)
             # Remove the "/delete" message the user sent to keep the chat clean
-            context.bot.delete_message(chat_id=update.message.chat_id,
-                                       message_id=update.message.message_id)
-        except Exception as e:
-            context.bot.send_message(chat_id=update.message.chat_id,
-                                     text="Error: " + str(e))
-    else:
-        context.bot.send_message(chat_id=update.message.chat_id,
-                                 text="You can only delete your own posts.")
+            context.bot.delete_message(
+                chat_id=update.message.chat_id,
+                message_id=update.message.message_id)
+    except TypeError:
+        username = reply_to.caption.split()
+
+        # Only allow original poster to delete their own message
+        # or the messages related to /repost_check
+        if username[-1] == update.message.from_user.username:
+            try:
+                points_to_delete = loop.run_until_complete(
+                    db.delete_row(database, delete_message_id, loop))
+                if points_to_delete[0] is not None:
+                    loop.run_until_complete(
+                        db.update_user_karma(database, username[-1], "-",
+                                             str(points_to_delete[0]), loop))
+                # Remove message that user replied to
+                context.bot.delete_message(chat_id=update.message.chat_id,
+                                           message_id=delete_message_id)
+                # Remove the "/delete" message the user sent to keep the chat clean
+                context.bot.delete_message(
+                    chat_id=update.message.chat_id,
+                    message_id=update.message.message_id)
+            except Exception as e:
+                context.bot.send_message(chat_id=update.message.chat_id,
+                                         text="Error: " + str(e))
+        else:
+            context.bot.send_message(
+                chat_id=update.message.chat_id,
+                text="You can only delete your own posts.")
 
 
 # Respond to /karma
@@ -491,7 +506,7 @@ def repost_check(update, context):
             text="Hmm... doesn't look like a repost to me.")
 
 
-@sleep_and_retry
+@on_exception(expo, RateLimitException, max_tries=20)
 @limits(calls=int(os.getenv("SAUCENAO_30_LIMIT")), period=35)
 def saucenao_fetch(file_name, message_id, room_id):
     loop = asyncio.new_event_loop()
@@ -530,8 +545,8 @@ def saucenao_fetch(file_name, message_id, room_id):
                 for x in range(0, 3):
                     try:
                         illustration_id = source_result[1]
-                        tags = get_tags(pixiv_c, illustration_id,
-                                        blacklist_e, blacklist_p)
+                        tags = get_tags(pixiv_c, illustration_id, blacklist_e,
+                                        blacklist_p)
                         run_try = False
                         break
                     except Exception as e:
@@ -1029,7 +1044,7 @@ def button(update, context):
 
 
 def main():
-    print("Starting Aqua 3.2 beta 14.3")
+    print("Starting Aqua 3.2 beta 14.2")
     # Check to see if db folder exists
     if Path("db").exists() is True:
         pass
