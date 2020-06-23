@@ -23,115 +23,130 @@ import aiosqlite
 from emoji import emojize
 
 
-# Check for first run
-def check_first_db_run():
-    print("Checking if this is the first run. If so, we need to populate the databases.")
-    first_run = False
+# Check if all tables exist
+def check_tables_exist():
+    table_list = ["user_chat_ids", "group_members"]
+    for x in range(len(table_list)):
+        try:
+            db = sqlite3.connect(f"db/{table_list[x]}.db")
+            sql = f"SELECT * FROM {table_list[x]};"
+            cursor = db.cursor()
 
-    try:
-        db = sqlite3.connect("db/" + os.getenv("DATABASE1") + ".db")
-        sql = "SELECT * FROM user_karma;"
+            # Execute the SQL command
+            cursor.execute(sql)
+            # Fetch all the rows in a list of lists.
+            result = cursor.fetchall()
+
+            cursor.close()
+            db.close()
+        except Exception as e:
+            if "no such table" in str(e):
+                print(f"{table_list[x]} is missing. Creating.")
+                # Populate db with missing table
+                db = sqlite3.connect(f"db/{table_list[x]}.db")
+                cursor = db.cursor()
+
+                # Create table
+                sql = f'''
+                        CREATE TABLE {table_list[x]} (
+                        chat_id int(50) DEFAULT NULL,
+                        username varchar(255) DEFAULT NULL
+                        )'''
+                try:
+                    # Execute the SQL command
+                    cursor.execute(sql)
+                except Exception as e:
+                    print("Error in check_first_db_run while creating the table" +
+                        f" {table_list[x]}: {e}")
+                cursor.close()
+                db.close()
+
+    print("Done checking database tables, starting the bot.")
+    return
+
+
+def populate_db(database, loop):
+    print("Entered populate_db")
+    populated_status = False
+    table_list = ["message_karma", "user_karma", "media_hash", "media_tags"]
+
+    for x in range(len(table_list)):
+        try:
+            db = sqlite3.connect("db/" + database + ".db")
+            sql = f"SELECT * FROM {table_list[x]};"
+            cursor = db.cursor()
+
+            # Execute the SQL command
+            cursor.execute(sql)
+            # Fetch all the rows in a list of lists.
+            result = cursor.fetchall()
+
+            populated_status = True
+        except:
+            if table_list[x] == "message_karma":
+                sql = '''
+                        CREATE TABLE message_karma (
+                            message_id int(11) NOT NULL,
+                            username varchar(20) DEFAULT NULL,
+                            thumbsup int(4) NOT NULL,
+                            ok_hand int(4) NOT NULL,
+                            heart int(4) NOT NULL
+                        )'''
+            elif table_list[x] == "user_karma":
+                sql = '''
+                    CREATE TABLE user_karma (
+                        username varchar(255) NOT NULL,
+                        karma int(11) DEFAULT NULL
+                    )'''
+            elif table_list[x] == "media_hash":
+                # Create tables
+                sql = '''
+                        CREATE TABLE media_hash (
+                            message_id int(11) NOT NULL,
+                            hash varchar(255) NOT NULL,
+                            date date NOT NULL
+                        )'''
+            elif table_list[x] == "media_tags":
+                # Create tables
+                sql = '''
+                        CREATE TABLE media_tags (
+                            message_id int(11) NOT NULL,
+                            tag_member varchar(255) NOT NULL
+                        )'''
+
+            try:
+                # Execute the SQL command
+                cursor.execute(sql)
+            except Exception as e:
+                print("Error in check_first_db_run: " + str(e))
+                populated_status = False
+
+    cursor.close()
+    db.close()
+
+    if populated_status is False:
+        # Add group's chat_id to the group_members table
+        db = sqlite3.connect("db/group_members.db")
         cursor = db.cursor()
-
-        # Execute the SQL command
-        cursor.execute(sql)
-        # Fetch all the rows in a list of lists.
-        result = cursor.fetchall()
-
+        sql = f"ALTER TABLE group_members ADD COLUMN '{database}' VARCHAR(50)"
+        try:
+            # Execute the SQL command
+            cursor.execute(sql)
+        except Exception as e:
+            print("Error in populate_db while altering the table" +
+                    " group_members: " + str(e))
         cursor.close()
         db.close()
 
-        print("Not the first run, continuing to start the bot")
-    except:
-        print("This is the first run. Populating databases.")
-        # Polulate the database
-        populate_db()
-
-    return
-
-
-def populate_db():
-    print("Entered populate_db")
-
-    # Create user_chat_id table
-    db = sqlite3.connect("db/" + os.getenv("DATABASE1") + ".db")
-    cursor = db.cursor()
-    sql = '''
-            CREATE TABLE user_chat_id (
-              chat_id int(11) DEFAULT NULL,
-              username varchar(255) DEFAULT NULL
-            )'''
-    try:
-        # Execute the SQL command
-        cursor.execute(sql)
-    except Exception as e:
-        print("Error in check_first_db_run while creating the table user_chat_id: " + str(e))
-    cursor.close()
-    db.close()
-
-    # Create rest of the tables. Run 3 times, once for each database
-    for x in range(1, 4):
-        db = sqlite3.connect("db/" + os.getenv("DATABASE" + str(x)) + ".db")
-        cursor = db.cursor()
-
-        sql = '''
-                CREATE TABLE media_hash(
-                  message_id int(11) NOT NULL, hash varchar(255) NOT NULL, date date NOT NULL
-                )'''
-
-        try:
-            # Execute the SQL command
-            cursor.execute(sql)
-        except Exception as e:
-            print("First run? Error in check_first_db_run: " + str(e))
-            first_run = True
-
-        sql = '''
-                CREATE TABLE message_karma (
-                  message_id int(11) NOT NULL,
-                  username varchar(20) DEFAULT NULL,
-                  thumbsup tinyint(4) NOT NULL,
-                  ok_hand tinyint(4) NOT NULL,
-                  heart tinyint(4) NOT NULL
-                )'''
-        try:
-            # Execute the SQL command
-            cursor.execute(sql)
-        except Exception as e:
-            print("Error in check_first_db_run while creating the table message_karma: " + str(e))
-
-        sql = '''
-                CREATE TABLE user_karma (
-                  username varchar(255) NOT NULL,
-                  karma int(11) DEFAULT NULL
-                )'''
-        try:
-            # Execute the SQL command
-            cursor.execute(sql)
-        except Exception as e:
-            print("Error in check_first_db_run while creating the table user_karma: " + str(e))
-
-    cursor.close()
-    db.close()
-    return
+    # Return True if db already existed
+    if populated_status:
+        print("Success, exiting populate_db()")
+    return populated_status
 
 
 # Retrieve user's karma from the database
-async def get_user_karma(database, chat_type, loop):
-    if database == os.getenv("DATABASE1"):
-        groupname = os.getenv("GROUP1")
-    if database == os.getenv("DATABASE2"):
-        groupname = os.getenv("GROUP2")
-    if database == os.getenv("DATABASE3"):
-        groupname = os.getenv("GROUP3")
-
-    # Add chat group name to the results of /karma
-    if chat_type == "private":
-        return_message = groupname + "\n"
-    else:
-        return_message = ""
-
-    db = await aiosqlite.connect("db/" + database + ".db")
+async def get_user_karma(database, loop):
+    db = await aiosqlite.connect(f"db/{database}.db")
     sql = "SELECT * FROM user_karma WHERE karma <> 0 ORDER BY username;"
     cursor = await db.cursor()
     try:
@@ -140,7 +155,7 @@ async def get_user_karma(database, chat_type, loop):
         # Fetch all the rows in a list of lists.
         results = await cursor.fetchall()
 
-        return_message += "```\n"
+        return_message = "```\n"
 
         # Find length of longest username and karma
         longest_username_length = 0
@@ -153,18 +168,16 @@ async def get_user_karma(database, chat_type, loop):
         for row in results:
             username = row[0]
             karma_points = row[1]
-            return_message += username + (" " * (longest_username_length - len(username))) + \
-                              "   " + (" " * (longest_karma_length - len(str(karma_points)))) + str(
-                karma_points) + "\n"
+            return_message += username + (
+                " " * (longest_username_length - len(username))) + "   " + (
+                    " " * (longest_karma_length -
+                           len(str(karma_points)))) + str(karma_points) + "\n"
 
         return_message += "\n```" + emojize(":v:", use_aliases=True)
 
     except Exception as e:
-        if "1046" in str(e):
-            return_message = "The database options are:  \n- DTP  \n- DJB  \n- DCR"
-        else:
-            return_message += "Error: " + str(e)
-            print("get_user_karma() error: " + str(e))
+        return_message += "Error: " + str(e)
+        print("get_user_karma() error: " + str(e))
     finally:
         await cursor.close()
     await db.close()
@@ -185,8 +198,10 @@ async def update_user_karma(database, username, plus_or_minus, points, loop):
     except Exception as e:
         print("Error: " + str(e))
     if result is None:
-        # Add username to the database along with the points that were just added
-        sql = "INSERT INTO user_karma VALUES ('" + username + "', " + points + ");"
+        # Add username to the database along with
+        # the points that were just added
+        sql = "INSERT INTO user_karma VALUES ('" + username + "', " \
+              + points + ");"
         try:
             # Execute the SQL command
             await cursor.execute(sql)
@@ -195,12 +210,12 @@ async def update_user_karma(database, username, plus_or_minus, points, loop):
         except Exception as e:
             # Rollback in case there is any error
             await db.rollback()
-            print("update_karma error: " + str(e))
+            print("update_user_karma error: " + str(e))
         finally:
             await cursor.close()
     else:
-        sql = "UPDATE user_karma SET karma = karma" + plus_or_minus + points + " WHERE username = '" + \
-              username + "';"
+        sql = "UPDATE user_karma SET karma = karma" + plus_or_minus + points \
+              + " WHERE username = '" + username + "';"
         try:
             # Execute the SQL command
             await cursor.execute(sql)
@@ -209,33 +224,36 @@ async def update_user_karma(database, username, plus_or_minus, points, loop):
         except Exception as e:
             # Rollback in case there is any error
             await db.rollback()
-            print("update_karma error: " + str(e))
+            print("update_user_karma error: " + str(e))
         finally:
             await cursor.close()
     await db.close()
 
 
 # Update a message_id's points
-async def update_message_karma(database, message_id, username, emoji_points, loop):
+async def update_message_karma(database, message_id, username, query_data,
+                               loop):
+    user_voted = False
+
     thumb_points = 0
     ok_points = 0
     heart_points = 0
     # Figure out which column to update
-    if int(emoji_points) == 1:
+    if int(query_data) == 1:
         emoji_symbol = "thumbsup"
         thumb_points = 1
-    elif int(emoji_points) == 2:
+    elif int(query_data) == 2:
         emoji_symbol = "ok_hand"
-        ok_points = 2
-    elif int(emoji_points) == 3:
+        ok_points = 1
+    elif int(query_data) == 3:
         emoji_symbol = "heart"
-        heart_points = 3
+        heart_points = 1
 
     db = await aiosqlite.connect("db/" + database + ".db")
     sql = "SELECT * FROM message_karma WHERE message_id = " + \
           str(message_id) + " AND username = '" + username + "';"
     cursor = await db.cursor()
-
+    # Check if this message_id exists in the db already
     try:
         # Execute the SQL command
         await cursor.execute(sql)
@@ -245,9 +263,9 @@ async def update_message_karma(database, message_id, username, emoji_points, loo
         print("Error: " + str(e))
     if result is None:
         # Insert new row with message_id, username, and emoji point values
-        sql = "INSERT INTO message_karma VALUES (" + str(message_id) + ", '" + username + \
-              "', " + str(thumb_points) + ", " + str(ok_points) + \
-              ", " + str(heart_points) + ");"
+        sql = "INSERT INTO message_karma VALUES (" + str(message_id) + ", '" \
+              + username + "', " + str(thumb_points) + ", " + str(ok_points) \
+              + ", " + str(heart_points) + ");"
         try:
             # Execute the SQL command
             await cursor.execute(sql)
@@ -260,10 +278,39 @@ async def update_message_karma(database, message_id, username, emoji_points, loo
         finally:
             await cursor.close()
     else:
-        # Update emoji points that user has given a specific message_id
-        sql = "UPDATE message_karma SET " + emoji_symbol + " = " + emoji_symbol + " + " + str(emoji_points) + \
-              " WHERE message_id = " + \
-              str(message_id) + " AND username = '" + username + "';"
+        # If user has already voted, check to see if this specific emoji has
+        # already been pressed
+        if int(query_data) == 1:
+            if int(result[2]) != 0:
+                # Change specified emoji field to 0 since user is
+                # taking back reaction
+                sql = "UPDATE message_karma SET thumbsup = 0" \
+                    + " WHERE message_id = " + str(message_id) \
+                    + " AND username = '" + username + "';"
+                user_voted = True
+        elif int(query_data) == 2:
+            if int(result[3]) != 0:
+                # Change specified emoji field to 0 since user is
+                # taking back reaction
+                sql = "UPDATE message_karma SET ok_hand = 0" \
+                    + " WHERE message_id = " + str(message_id) \
+                    + " AND username = '" + username + "';"
+                user_voted = True
+        elif int(query_data) == 3:
+            if int(result[4]) != 0:
+                # Change specified emoji field to 0 since user is
+                # taking back reaction
+                sql = "UPDATE message_karma SET heart = 0" \
+                    + " WHERE message_id = " + str(message_id) \
+                    + " AND username = '" + username + "';"
+                user_voted = True
+        # If user hasn't already pressed the emoji, add point to db
+        if user_voted is False:
+            # Update emoji points that user has given a specific message_id
+            sql = "UPDATE message_karma SET " + emoji_symbol + " = " \
+                + emoji_symbol + " + 1" \
+                + " WHERE message_id = " + str(message_id) \
+                + " AND username = '" + username + "';"
         try:
             # Execute the SQL command
             await cursor.execute(sql)
@@ -277,13 +324,17 @@ async def update_message_karma(database, message_id, username, emoji_points, loo
             await cursor.close()
     await db.close()
 
+    # Return true if user has pressed this emoji already
+    # Return false if user has not pressed this emoji already
+    return user_voted
+
 
 # Delete message_id row from database
 async def delete_row(database, message_id, loop):
     db = await aiosqlite.connect("db/" + database + ".db")
-    # Add message_id, photo's hash, and current date to database
-    sql = "SELECT SUM(thumbsup + ok_hand + heart) FROM message_karma WHERE message_id = " + \
-          str(message_id) + ";"
+    # Fetch number of points that need to be deleted
+    sql = "SELECT SUM(thumbsup + ok_hand + heart) FROM message_karma " \
+          + "WHERE message_id = " + str(message_id) + ";"
     cursor = await db.cursor()
 
     try:
@@ -293,8 +344,8 @@ async def delete_row(database, message_id, loop):
         points_to_delete = await cursor.fetchone()
     except Exception as e:
         print("Error in delete_row: " + str(e))
-    # Delete hashes older than 30 days
-    sql = "DELETE from message_karma WHERE message_id = " + str(message_id) + ";"
+    # Delete row that matches message_id
+    sql = f"DELETE from message_karma WHERE message_id = {str(message_id)};"
     try:
         # Execute the SQL command
         await cursor.execute(sql)
@@ -313,8 +364,8 @@ async def delete_row(database, message_id, loop):
 # Check total karma for specific emoji for a specific message
 async def check_emoji_points(database, message_id, loop):
     db = await aiosqlite.connect("db/" + database + ".db")
-    sql = "SELECT SUM(thumbsup), SUM(ok_hand), SUM(heart) FROM message_karma WHERE message_id = " + \
-          str(message_id) + ";"
+    sql = "SELECT SUM(thumbsup), SUM(ok_hand), SUM(heart) FROM message_karma" \
+          + " WHERE message_id = " + str(message_id) + ";"
     cursor = await db.cursor()
 
     try:
@@ -335,8 +386,10 @@ async def get_message_karma(database, message_id, loop):
     return_message = "Votes\n\n"
 
     db = await aiosqlite.connect("db/" + database + ".db")
-    sql = "SELECT username, SUM(thumbsup + ok_hand + heart) AS karma FROM message_karma WHERE message_id = " + \
-          str(message_id) + " GROUP BY username ORDER BY username;"
+    # Multiply ok_hand by 2 and heart by 3 to get correct sum of votes
+    sql = "SELECT username, SUM(thumbsup + ok_hand*2 + heart*3) AS karma " \
+          + "FROM message_karma WHERE message_id = " + str(message_id) \
+          + " GROUP BY username HAVING karma <> 0 ORDER BY username;"
     cursor = await db.cursor()
 
     try:
@@ -356,8 +409,10 @@ async def get_message_karma(database, message_id, loop):
         for row in results:
             username = row[0]
             karma_points = row[1]
-            return_message += username + (" " * (longest_username_length - len(username))) + "   " + (
-                    " " * (longest_karma_length - len(str(karma_points)))) + str(karma_points) + "\n"
+            return_message += username + (
+                " " * (longest_username_length - len(username))) + "   " + (
+                    " " * (longest_karma_length -
+                           len(str(karma_points)))) + str(karma_points) + "\n"
     except Exception as e:
         return_message += "Error"
         print("Error in get_message_karma: " + str(e))
@@ -369,8 +424,9 @@ async def get_message_karma(database, message_id, loop):
 
 # Get user's personal chat_id with Aqua
 async def get_chat_id(tele_user, loop):
-    db = await aiosqlite.connect("db/" + os.getenv("DATABASE1") + ".db")
-    sql = "SELECT chat_id FROM user_chat_id WHERE username = '" + str(tele_user) + "';"
+    db = await aiosqlite.connect("db/user_chat_ids.db")
+    sql = "SELECT chat_id FROM user_chat_ids WHERE username = '" + str(
+        tele_user) + "';"
     cursor = await db.cursor()
 
     try:
@@ -389,8 +445,9 @@ async def get_chat_id(tele_user, loop):
 async def addme_async(chat_type, username, chat_id, loop):
     # Make sure the /addme command is being sent in a PM
     if chat_type == "private":
-        db = await aiosqlite.connect("db/" + os.getenv("DATABASE1") + ".db")
-        sql = "SELECT * FROM user_chat_id WHERE username = '" + str(username) + "';"
+        db = await aiosqlite.connect("db/user_chat_ids.db")
+        sql = "SELECT * FROM user_chat_ids WHERE username = '" + str(
+            username) + "';"
         cursor = await db.cursor()
 
         try:
@@ -402,16 +459,17 @@ async def addme_async(chat_type, username, chat_id, loop):
             print("Error: " + str(e))
         if result is None:
             # Add user's chat_id with Aqua to database
-            sql = "INSERT INTO user_chat_id VALUES (" + str(
+            sql = "INSERT INTO user_chat_ids VALUES (" + str(
                 chat_id) + ", '" + str(username) + "');"
             try:
                 # Execute the SQL command
                 await cursor.execute(sql)
                 # Commit your changes in the database
                 await db.commit()
-                message = "Added! Now whenever you " + emojize(":star:", use_aliases=True) + \
-                          " a photo, I'll forward it to you here! " + \
-                          emojize(":smiley:", use_aliases=True)
+                message = "Added! Now whenever you " \
+                          + emojize(":star:", use_aliases=True) \
+                          + " a photo, I'll forward it to you here! " \
+                          + emojize(":smiley:", use_aliases=True)
             except Exception as e:
                 # Rollback in case there is any error
                 await db.rollback()
@@ -433,7 +491,8 @@ async def addme_async(chat_type, username, chat_id, loop):
 async def store_hash(database, message_id, media_hash, loop):
     db = await aiosqlite.connect("db/" + database + ".db")
     # Add message_id, photo's hash, and current date to database
-    sql = "INSERT INTO media_hash VALUES (" + str(message_id) + ",'" + media_hash + "', + date('now'));"
+    sql = "INSERT INTO media_hash VALUES (" + str(
+        message_id) + ",'" + media_hash + "', + date('now'));"
     cursor = await db.cursor()
 
     try:
@@ -446,7 +505,9 @@ async def store_hash(database, message_id, media_hash, loop):
         await db.rollback()
         print("Error in store_hash: " + str(e))
     # Delete hashes older than 30 days
-    sql = "DELETE FROM media_hash WHERE Date NOT BETWEEN date('now','-30 days') AND date('now');"
+    sql = "DELETE FROM media_hash " \
+          + "WHERE Date NOT BETWEEN date('now','-30 days') " \
+          + "AND date('now');"
     try:
         # Execute the SQL command
         await cursor.execute(sql)
@@ -461,11 +522,32 @@ async def store_hash(database, message_id, media_hash, loop):
     await db.close()
 
 
-# Check hash of message_id's media against all previously stored hashes
-async def compare_hash(message_id, database, loop):
+# Fetch hash of message_id
+async def fetch_one_hash(message_id, database, loop):
     db = await aiosqlite.connect("db/" + database + ".db")
-    sql = "SELECT message_id, hash, COUNT(hash) FROM media_hash WHERE SUBSTR(hash, 1, 4) = SUBSTR(" + \
-          "(SELECT hash FROM media_hash WHERE message_id = " + str(message_id) + "), 1, 4);"
+    # Fetch a specific message_id's associated hash
+    sql = "SELECT hash FROM media_hash WHERE message_id = " + str(
+        message_id) + ";"
+    cursor = await db.cursor()
+
+    try:
+        # Execute the SQL command
+        await cursor.execute(sql)
+        # Fetch one row
+        result = await cursor.fetchone()
+    except Exception as e:
+        print("Error in compare_hash: " + str(e))
+        result = str(e)
+    finally:
+        await cursor.close()
+    await db.close()
+    return result
+
+
+# Fetch all stored hashes
+async def fetch_all_hashes(message_id, database, loop):
+    db = await aiosqlite.connect("db/" + database + ".db")
+    sql = "SELECT message_id, hash FROM media_hash"
     cursor = await db.cursor()
 
     try:
@@ -473,11 +555,63 @@ async def compare_hash(message_id, database, loop):
         await cursor.execute(sql)
         # Fetch all the rows in a list of lists.
         result = await cursor.fetchall()
-        print(str(result))
     except Exception as e:
         print("Error in compare_hash: " + str(e))
         result = str(e)
     finally:
         await cursor.close()
     await db.close()
+    return result
+
+
+# Store tags
+async def store_tags(message_id, tags, database):
+    db = await aiosqlite.connect("db/" + database + ".db")
+
+    # tags is a list with potentially multiple items
+    for x in range(len(tags)):
+        # Add message_id, photo's hash
+        sql = "INSERT INTO media_tags (message_id, tag_member)" \
+            + f' VALUES ({message_id}, "{tags[x]}");'
+
+        cursor = await db.cursor()
+
+        try:
+            # Execute the SQL command
+            await cursor.execute(sql)
+            # Commit your changes in the database
+            await db.commit()
+        except Exception as e:
+            # Rollback in case there is any error
+            await db.rollback()
+            print(f"Error in store_tags: {e}")
+            return False
+        finally:
+            await cursor.close()
+    await db.close()
+
+
+# Retrieve tags
+# TODO: Make sure there aren't duplicates. If there are, return a status code to
+# tell main.py to run a table cleaning function
+async def retrieve_tags(message_id, tags, database):
+    db = await aiosqlite.connect("db/" + database + ".db")
+
+    # tags is a list with potentially multiple items
+    for x in range(len(tags)):
+        # Add message_id, photo's hash
+        sql = f"SELECT tag_member FROM media_tags WHERE message_id={message_id}"
+        cursor = await db.cursor()
+
+        try:
+            # Execute the SQL command
+            await cursor.execute(sql)
+            # Fetch all the rows in a list of lists.
+            result = await cursor.fetchall()
+        except Exception as e:
+            print("Error in compare_hash: " + str(e))
+            result = str(e)
+        finally:
+            await cursor.close()
+        await db.close()
     return result
