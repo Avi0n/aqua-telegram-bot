@@ -1,3 +1,4 @@
+black
 python-telegram-bot
 emoji
 python-dotenv
@@ -7,4 +8,6 @@ imageio-ffmpeg
 ImageHash
 ujson
 aiosqlite
-aiomysql
+pixiv-api
+ratelimit
+backoff
