@@ -1,5 +1,8 @@
 image: docker:stable
 
+variables:
+  DOCKER_TLS_CERTDIR: "/certs"
+
 stages:
   - Build image
   - Push to Docker Hub
