@@ -11,7 +11,7 @@ docker build:
   stage: Build image
   script:
   - docker info
-  - docker build -t avi0n/aqua-telegram-bot:3.3-beta1 .
+  - docker build -t avi0n/aqua-telegram-bot:3.3-beta2 .
 
 docker push:
   stage: Push to Docker Hub
@@ -19,5 +19,5 @@ docker push:
   - dev
   script:
   - echo "$REGISTRY_PASSWORD" | docker login -u "$REGISTRY_USER" --password-stdin
-  - docker push avi0n/aqua-telegram-bot:3.3-beta1 && docker image rm avi0n/aqua-telegram-bot:3.3-beta1
+  - docker push avi0n/aqua-telegram-bot:3.3-beta2 && docker image rm avi0n/aqua-telegram-bot:3.3-beta2
  
