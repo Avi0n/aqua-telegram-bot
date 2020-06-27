@@ -411,7 +411,7 @@ def get_image_source(file_name):
                         return 0
 
             while processResults:
-                #print(json.dumps(results, indent=4))
+                print(json.dumps(results, indent=4))
                 if int(results['header']['results_returned']) > 0:
                     #one or more results were returned
                     if float(results['results'][0]['header']
@@ -424,8 +424,34 @@ def get_image_source(file_name):
                         service_name = ''
                         illust_id = 0
                         member_id = -1
-                        index_id = results['results'][0]['header'][
-                            'index_id']
+                        index_id = 0
+                        result_num = 0
+                        print(len(results['results']))
+                        for x in range(len(results['results'])):
+                            if results['results'][x]['header']['index_id'] == 9:
+                                index_id = 9
+                                result_num = x
+                                if results['results'][x]['header']['similarity'] < minsim:
+                                    pass
+                                else:
+                                    break
+                            elif results['results'][x]['header']['index_id'] == 12:
+                                index_id = 12
+                                result_num = x
+                                if results['results'][x]['header']['similarity'] < minsim:
+                                    pass
+                                else:
+                                    break
+                            elif results['results'][x]['header']['index_id'] == 26:
+                                index_id = 26
+                                result_num = x
+                                if results['results'][x]['header']['similarity'] < minsim:
+                                    pass
+                                else:
+                                    break
+                            if x + 1 == len(results['results']):
+                                index_id = results['results'][0]['header'][
+                                    'index_id']
                         page_string = ''
                         page_match = re.search(
                             '(_p[\d]+)\.',
@@ -436,36 +462,36 @@ def get_image_source(file_name):
                         if index_id == 9:
                             #9->danbooru
                             service_name = 'danbooru'
-                            material = results['results'][0]['data'][
+                            material = results['results'][result_num]['data'][
                                 'material']
-                            characters = results['results'][0]['data'][
+                            characters = results['results'][result_num]['data'][
                                 'characters']
-                            illust_id = results['results'][0]['data'][
+                            illust_id = results['results'][result_num]['data'][
                                 'danbooru_id']
                         elif index_id == 12:
                             #9->yandere
                             service_name = 'yandere'
-                            material = results['results'][0]['data'][
+                            material = results['results'][result_num]['data'][
                                 'material']
-                            characters = results['results'][0]['data'][
+                            characters = results['results'][result_num]['data'][
                                 'characters']
-                            illust_id = results['results'][0]['data'][
+                            illust_id = results['results'][result_num]['data'][
                                 'yandere_id']
                         elif index_id == 26:
                             #26->konachan
                             service_name = 'konachan'
-                            material = results['results'][0]['data'][
+                            material = results['results'][result_num]['data'][
                                 'material']
-                            characters = results['results'][0]['data'][
+                            characters = results['results'][result_num]['data'][
                                 'characters']
-                            illust_id = results['results'][0]['data'][
+                            illust_id = results['results'][result_num]['data'][
                                 'konachan_id']
                         elif index_id == 5 or index_id == 6:
                             #5->pixiv 6->pixiv historical
                             service_name = 'pixiv'
-                            member_id = results['results'][0]['data'][
+                            member_id = results['results'][result_num]['data'][
                                 'member_id']
-                            illust_id = results['results'][0]['data'][
+                            illust_id = results['results'][result_num]['data'][
                                 'pixiv_id']
 
                         else:
