@@ -505,21 +505,21 @@ async def store_hash(database, message_id, media_hash, loop):
         await db.rollback()
         print("Error in store_hash: " + str(e))
     # Delete hashes older than 30 days
-    sql = "DELETE FROM media_hash " \
-          + "WHERE Date NOT BETWEEN date('now','-30 days') " \
-          + "AND date('now');"
-    try:
-        # Execute the SQL command
-        await cursor.execute(sql)
-        # Commit your changes in the database
-        await db.commit()
-    except Exception as e:
-        # Rollback in case there is any error
-        await db.rollback()
-        print("Error in store_hash: " + str(e))
-    finally:
-        await cursor.close()
-    await db.close()
+    # sql = "DELETE FROM media_hash " \
+    #       + "WHERE Date NOT BETWEEN date('now','-30 days') " \
+    #       + "AND date('now');"
+    # try:
+    #     # Execute the SQL command
+    #     await cursor.execute(sql)
+    #     # Commit your changes in the database
+    #     await db.commit()
+    # except Exception as e:
+    #     # Rollback in case there is any error
+    #     await db.rollback()
+    #     print("Error in store_hash: " + str(e))
+    # finally:
+    #     await cursor.close()
+    # await db.close()
 
 
 # Fetch hash of message_id
@@ -543,6 +543,25 @@ async def fetch_one_hash(message_id, database, loop):
     await db.close()
     return result
 
+# Fetch the last 30 days of stored hashes
+async def fetch_30d_hashes(message_id, database, loop):
+    db = await aiosqlite.connect("db/" + database + ".db")
+    sql = "SELECT message_id, hash FROM media_hash WHERE Date" \
+        + " BETWEEN date('now','-30 days') AND date('now');"
+    cursor = await db.cursor()
+
+    try:
+        # Execute the SQL command
+        await cursor.execute(sql)
+        # Fetch all the rows in a list of lists.
+        result = await cursor.fetchall()
+    except Exception as e:
+        print("Error in compare_hash: " + str(e))
+        result = str(e)
+    finally:
+        await cursor.close()
+    await db.close()
+    return result
 
 # Fetch all stored hashes
 async def fetch_all_hashes(message_id, database, loop):
