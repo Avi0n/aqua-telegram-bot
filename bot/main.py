@@ -830,7 +830,10 @@ def repost(update, context):
             context.bot.delete_message(chat_id=update.message.chat.id,
                                        message_id=update.message.message_id)
             # Cleanup downloaded media
-            delete_media(media_name=file_name)
+            try:
+                delete_media(media_name=file_name)
+            except UnboundLocalError:
+                delete_media()
             return
 
 
