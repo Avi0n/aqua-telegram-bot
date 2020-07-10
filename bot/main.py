@@ -441,61 +441,79 @@ def repost_check(update, context):
     photo_hash = loop.run_until_complete(
         db.fetch_one_hash(update.message.reply_to_message.message_id, database,
                           loop))
+    # Fetch last 30 days of stored hashes
+    hash_list_30 = loop.run_until_complete(
+        db.fetch_30d_hashes(update.message.reply_to_message.message_id,
+                            database, loop)) 
     # Fetch all stored hashes
-    hash_list = loop.run_until_complete(
+    hash_list_all = loop.run_until_complete(
         db.fetch_all_hashes(update.message.reply_to_message.message_id,
                             database, loop))
 
     message_id_dupe_list = []
-    dupes = 0
-    # Compare hash or message command was used on with all other hashes
-    for x in range(len(hash_list)):
+    dupes_30d = 0
+    dupes_all = 0
+    # Compare hash for message command was used on with hashes from past 30 days
+    for x in range(len(hash_list_30)):
         # If the hash difference is less than 10, assume it is a duplicate
         if (imagehash.hex_to_hash(photo_hash[0]) -
-                imagehash.hex_to_hash(hash_list[x][1])) < 10:
-            dupes += 1
+                imagehash.hex_to_hash(hash_list_30[x][1])) < 10:
+            dupes_30d += 1
             # Store duplicate photo message ids
-            message_id_dupe_list.append(str(hash_list[x][0]))
+            message_id_dupe_list.append(str(hash_list_30[x][0]))
+    # Compare hash for message command was used on with all hashes
+    for x in range(len(hash_list_all)):
+        # If the hash difference is less than 10, assume it is a duplicate
+        if (imagehash.hex_to_hash(photo_hash[0]) -
+                imagehash.hex_to_hash(hash_list_all[x][1])) < 10:
+            dupes_all += 1
+            # Store duplicate photo message ids
+            #message_id_dupe_list.append(str(hash_list_all[x][0]))
 
     # If duplicates were found, let the user know
-    if dupes > 1:
+    if dupes_30d > 1:
         # Make sure user isn't using command on the
         # first occurrence of the photo
         if message_id_dupe_list[
                 0] == update.message.reply_to_message.message_id:
             context.bot.send_message(
                 chat_id=update.message.chat_id,
-                text="This is the first time this photo has "
-                "been posted in the last 30 days, but "
-                "it has been reposted " + str(dupes) + " times since then.")
+                text="This is the first time this photo has " \
+                "been posted in the last 30 days, but " \
+                f"it's been reposted {dupes_30d} times since then.")
             return
 
-        message_text = "Yep, that's a repost. " \
-                       + "Here's the first occurance I could find." \
-                       + "\nIt's been posted " \
-                       + str(dupes) + " times in the last 30 days."
-        message_sent = False
+        message_text = "Yep, that's a repost.\n" \
+                       + "Here's the first post I could find." \
+                       + f"\nIt's been posted {dupes_30d} times in" \
+                       + f" the last 30 days"
+        if dupes_30d == dupes_all:
+            message_text += "."
+        else:
+            message_text += f", and {dupes_all} times total."
+
         for x in range(len(message_id_dupe_list)):
             # If this is the last dupe message_id, the ones before it
             # have been deleted either by the user or an admin.
             # Send a different message.
-            if x + 1 == len(message_id_dupe_list) and message_sent is False:
+            if x + 1 == len(message_id_dupe_list):
                 message_text = "Yep, that's a repost.\nIt's been" \
-                               + " posted " + str(dupes) \
-                               + " times in the last 30 days, but" \
-                               + " I couldn't find the others." \
-                               + " Maybe they were deleted?"
+                               + f" posted {dupes_30d} times in the last" \
+                               + " 30 days"
+                if dupes_30d != dupes_all:
+                    message_text += f" and {dupes_all} times total"
+                message_text += ", but I couldn't find the other" \
+                                + " occurances. Maybe they were deleted?"
+
                 context.bot.send_message(chat_id=update.message.chat_id,
-                                         text=message_text)
-            elif message_sent is True:
-                break
+                                        text=message_text)
             else:
                 try:
                     context.bot.send_message(
                         chat_id=update.message.chat_id,
                         reply_to_message_id=message_id_dupe_list[x],
                         text=message_text).result()
-                    message_sent = True
+                    break
                 # TODO: Find a better way to handle "Reply message not found"
                 # Currently prints error to console and it should not
                 except BadRequest:
@@ -812,7 +830,10 @@ def repost(update, context):
             context.bot.delete_message(chat_id=update.message.chat.id,
                                        message_id=update.message.message_id)
             # Cleanup downloaded media
-            delete_media(media_name=file_name)
+            try:
+                delete_media(media_name=file_name)
+            except UnboundLocalError:
+                delete_media()
             return
 
 
@@ -1044,7 +1065,7 @@ def button(update, context):
 
 
 def main():
-    print("Starting Aqua 3.3 beta 1")
+    print("Starting Aqua 3.3")
     # Check to see if db folder exists
     if Path("db").exists() is True:
         pass
