@@ -1,3 +1,4 @@
+I have moved from Telegram to Matrix so this project is now abandoned.
 # AquaTelegramBot
 This bot is a fun little karma system for Telegram groups. The bot re-posts any picture you send to the chat room with inline emojis which you can use to vote with. 👍 is 1 point, 👌 is 2 points, and ❤️ is 3 points. Here are a couple pictures to give you a feel for what it does:   
 ![image1](https://i.imgur.com/7BzYRvE.png)   
